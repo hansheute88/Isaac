@@ -2,6 +2,37 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Python: Pyramid Application",
+      "type": "python",
+      "request": "launch",
+      "module": "pyramid.scripts.pserve",
+      "args": [
+        "/development.ini"
+      ],
+      "pyramid": true,
+      "jinja": true
+    },
+    {
+      "name": "Python: FastAPI",
+      "type": "python",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "main:app",
+        "--reload"
+      ],
+      "jinja": true
+    },
+
+    {
+      "name": "Python Debugger: Current File with Arguments",
+      "type": "python",
+      "request": "launch",
+      "program": "",
+      "console": "integratedTerminal",
+      "args": "pickArgs"
+    },
+    {
       "name": "Isaac Core",
       "type": "debugpy",
       "request": "launch",
