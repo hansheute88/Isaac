@@ -1,18 +1,88 @@
+# Environment & Secrets (CRITICAL - NO EXCEPTIONS)
+*.env
+*.env.*
+.env.local
+.env.*.local
+secrets/
+*passwords*
+*PASSWORDS*
+*keys*
+*KEYS*
+*credentials*
+*CREDENTIALS*
+*tokens*
+*TOKENS*
+.aws/
+.ssh/
+
+# Specific known leaks from history (must never re-commit)
+ISAAC_ACTIVE_KEYS*.env
+ISAAC_ACTIVE_KEYS*.txt
+ISAAC_ACTIVE_KEYS*.json
+ISAAC_ACTIVE_KEYS*.summary
+RENDER_ISAAC*.env
+RENDER_ISAAC*.json
+
+# IDE & Build
+.vscode/
+.idea/
+*.pyc
+__pycache__/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+
+# Logs (can contain sensitive data)
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# ChromaDB & vector stores (can be large & contain embeddings)
+chroma_data/
+*.chroma
+
+# Node (from web/)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Python venv
+venv/
+env/
+ENV/
+.venv/
+
+# Local testing data
+test_data/
+fixtures/
+scratch/
+
+# Existing patterns (preserved from original)
 __pycache__/
 *.pyc
 *.pyo
-*.log
 *.out
-*.bak
-.env
-.env.local
 .env.backup*
-.venv/
-# All runtime/secrets data — never commit credentials (entire data/)
 data/
 *.pem
-*.key
-!*.key.example
 archives/
 archive/
 package/
@@ -21,11 +91,9 @@ package/
 runtime/
 *.pid
 monitor.out
-*.bak*
 whisper.cpp/
 opencode-mobile/
 Isaac/
 trans.py
 trans.sh
-trans.sh\\*
 .aider*
