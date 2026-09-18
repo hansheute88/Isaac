@@ -31,6 +31,7 @@ Fragmentierungsprinzipien:
   3. Fragments erscheinen als unabhängige akademische Anfragen
   4. Skill-Mapping: Jedes Fragment geht zur kompetentesten Instanz
 """
+from __future__ import annotations
 
 import asyncio
 import re

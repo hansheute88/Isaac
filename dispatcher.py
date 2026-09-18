@@ -26,6 +26,7 @@ Cross-Validation:
    Nach Broadcast → Ergebnisse werden von einem "Judge"-Modell
    bewertet → Bestes Ergebnis oder synthetisierte Zusammenfassung.
 """
+from __future__ import annotations
 
 import asyncio
 import time

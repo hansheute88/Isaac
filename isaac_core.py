@@ -21,6 +21,7 @@ Datenschutz-Garantie:
   Steffens originaler Prompt wird NIEMALS direkt an externe KIs gesendet.
   Der Decomposer atomisiert jeden Prompt bevor er externe Instanzen erreicht.
 """
+from __future__ import annotations
 
 import asyncio
 import json

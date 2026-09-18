@@ -11,6 +11,7 @@ Korrekturen gegenüber v1:
   - Pre-Flight-Validation vor Ausführung
   - Korrekte Callback-Sicherheit (asyncio.create_task nur im Event Loop)
 """
+from __future__ import annotations
 
 import asyncio
 import time
@@ -316,7 +317,7 @@ class Executor:
 
     def __init__(self):
         self._tasks:    dict[str, Task]          = {}
-        self._queue:    asyncio.PriorityQueue    = asyncio.PriorityQueue()
+        self._queue_obj: Optional[asyncio.PriorityQueue] = None
         self._running:  set[str]                 = set()
         self._callbacks: list[Callable]          = []
         self._loop:     Optional[asyncio.AbstractEventLoop] = None
@@ -2090,6 +2091,16 @@ class Executor:
             if t.status in (TaskStatus.RUNNING, TaskStatus.EVALUATING,
                             TaskStatus.FOLLOWUP)
         ]
+
+    @property
+    def _queue(self) -> asyncio.PriorityQueue:
+        if self._queue_obj is None:
+            self._queue_obj = asyncio.PriorityQueue()
+        return self._queue_obj
+
+    @_queue.setter
+    def _queue(self, val: Any) -> None:
+        self._queue_obj = val
 
     def queue_size(self) -> int:
         return self._queue.qsize()
