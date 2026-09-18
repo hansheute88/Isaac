@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
 from audit import AuditLog
+from computer_use import AgentAction
 from mcp_registry import MCPRegistry
 from security_policy import ConfirmationPolicy, SecurityVerdict
 from result_contract import ensure_result_contract, error_result
@@ -205,9 +206,7 @@ class HermesComputerUseAdapter:
         return ToolResult(ok=bool(result.get("ok")), output=result, error=result.get("error", ""))
 
     @staticmethod
-    def _map_action(action: ComputerAction) -> "AgentAction | None":
-        from computer_use import AgentAction
-
+    def _map_action(action: ComputerAction) -> AgentAction | None:
         name = (action.action or "").strip().lower()
         params = dict(action.params or {})
         if name == "shell_command":

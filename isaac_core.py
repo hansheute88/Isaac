@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Isaac – Kernel v5.3
 =====================

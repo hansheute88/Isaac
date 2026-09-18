@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Isaac – Gedächtnis (SQLite)
 ============================
