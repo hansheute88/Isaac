@@ -27,11 +27,18 @@ class TestAntiMarketingPrompt(unittest.TestCase):
             (),
             {"active_directives": lambda s: [], "directives_as_context": lambda s: ""},
         )()
-        os.environ["ISAAC_FREE_CLOUD"] = "1"
-        p = IsaacKernel._build_system(k, False, Emp())
-        self.assertIn("Social-Media", p)
-        self.assertIn("Marketing", p)
-        self.assertIn("ziele", p)
+        orig_fc = os.environ.get("ISAAC_FREE_CLOUD")
+        try:
+            os.environ["ISAAC_FREE_CLOUD"] = "1"
+            p = IsaacKernel._build_system(k, False, Emp())
+            self.assertIn("Social-Media", p)
+            self.assertIn("Marketing", p)
+            self.assertIn("ziele", p)
+        finally:
+            if orig_fc is None:
+                os.environ.pop("ISAAC_FREE_CLOUD", None)
+            else:
+                os.environ["ISAAC_FREE_CLOUD"] = orig_fc
 
 
 class TestPurgeEvalNoise(unittest.TestCase):
