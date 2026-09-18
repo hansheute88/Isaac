@@ -37,6 +37,17 @@ class TestSentryAiMonitoringNoOp(unittest.TestCase):
             )
         )
 
+    def test_before_send_drops_ollama_offline_noise(self):
+        import isaac_sentry as mod
+
+        with mock.patch.dict(os.environ, {"ISAAC_FREE_CLOUD": "1"}, clear=False):
+            self.assertIsNone(
+                mod._before_send(
+                    {"message": "Ollama nicht erreichbar. Starte mit: ollama serve"},
+                    {},
+                )
+            )
+
     def test_init_without_dsn_is_disabled(self):
         import isaac_sentry as mod
 
