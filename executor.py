@@ -11,6 +11,7 @@ Korrekturen gegenüber v1:
   - Pre-Flight-Validation vor Ausführung
   - Korrekte Callback-Sicherheit (asyncio.create_task nur im Event Loop)
 """
+from __future__ import annotations
 
 import asyncio
 import time

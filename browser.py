@@ -23,6 +23,7 @@ Auto-Login:
   - Pro Domain: Username, Passwort, Login-URL, Selektoren
   - Wird beim Start automatisch durchgeführt
 """
+from __future__ import annotations
 
 import asyncio
 import json

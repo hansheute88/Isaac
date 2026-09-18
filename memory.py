@@ -10,6 +10,7 @@ Persistentes, durchsuchbares Gedächtnis auf drei Ebenen:
 SQLite ist atomar: kein Datenverlust bei Absturz.
 FTS5 für Volltextsuche.
 """
+from __future__ import annotations
 
 import sqlite3
 import json

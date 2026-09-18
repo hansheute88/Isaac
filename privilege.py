@@ -12,6 +12,7 @@ Jede privilegierte Aktion benötigt:
   2. Einen R-Trace (warum?)
   3. Das benötigte Recht
 """
+from __future__ import annotations
 
 import time
 import functools
