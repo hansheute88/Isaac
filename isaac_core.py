@@ -729,7 +729,7 @@ class IsaacKernel:
                 not sudo_aktiv):   # Bei SUDO: direkt, keine Verzögerung
             log.info(f"Decomposer: '{user_input[:40]}...'")
             result = await self.decomposer.decompose_and_execute(
-                user_input, aktive_instanzen
+                user_input, aktive_instanzen, classification=classification
             )
             return result.final, 7.0   # Decomposer-Ergebnisse gelten als gut
 
