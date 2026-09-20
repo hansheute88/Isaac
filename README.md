@@ -21,7 +21,7 @@ Das KI-Modell ist ein Werkzeug zur Ausführung, nicht die autoritative Quelle f�
 | Pipeline | `classify → retrieve → strategy → task → execute → evaluate → memory` |
 | Native Coding (Aider-**Muster**, kein Package) | ✅ `repo_map.py` · `code_edit.py` · `git_ops.py` |
 | Eval-Harness (lokal) | `ISAAC_DISABLE_VECTOR_MEMORY=1 python3 -m evals.eval_runner` → **130/130** |
-| Preferred Remote | `sc0rp0815/Isaac` `main` |
+| Preferred Remote | `hansheute88/isaac` `main` |
 
 **Kanonische Agent-Anweisung (Code + Routing + Do-NOT):** [`AGENTS.md`](AGENTS.md)  
 Dieses README ist die **philosophische / Governance-Hülle**. Bei Widerspruch gilt: **`AGENTS.md` → Checklisten → dieses README**.
