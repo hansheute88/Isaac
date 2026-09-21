@@ -1116,8 +1116,37 @@ class DashboardHTTPServer:
                     'regelwerk': mon._get_regelwerk_status() if hasattr(mon, '_get_regelwerk_status') else {},
                 })
 
+            async def serve_manifest(request):
+                manifest_data = {
+                    "name": "Isaac Cognitive Cockpit",
+                    "short_name": "Isaac",
+                    "description": "Isaac Autonomous AI Agent Cockpit",
+                    "start_url": "/",
+                    "display": "standalone",
+                    "background_color": "#07090e",
+                    "theme_color": "#00f0ff",
+                    "icons": [
+                        {
+                            "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%2307090e' stroke='%2300f0ff' stroke-width='6'/><circle cx='50' cy='50' r='20' fill='%2300f0ff'/></svg>",
+                            "sizes": "192x192 512x512",
+                            "type": "image/svg+xml"
+                        }
+                    ]
+                }
+                return web.json_response(manifest_data)
+
+            async def serve_sw(request):
+                sw_code = """
+self.addEventListener('install', (e) => { self.skipWaiting(); });
+self.addEventListener('activate', (e) => { e.waitUntil(self.clients.claim()); });
+self.addEventListener('fetch', (e) => { e.respondWith(fetch(e.request).catch(() => caches.match(e.request))); });
+"""
+                return web.Response(text=sw_code, content_type="application/javascript")
+
             app = web.Application()
             app.router.add_get("/", serve)
+            app.router.add_get("/manifest.json", serve_manifest)
+            app.router.add_get("/sw.js", serve_sw)
             app.router.add_get("/monitor_config", monitor_config)
             app.router.add_get("/api/tools", list_tools)
             app.router.add_get("/api/tools/catalog", list_local_catalog)

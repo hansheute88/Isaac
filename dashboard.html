@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#07090e">
+<link rel="manifest" href="/manifest.json">
 <title>Isaac · Cognitive Cockpit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -300,6 +304,8 @@ body.focus .kpi-focus{display:grid}
     <span class="chip" id="sys-chip">…</span>
     <span class="chip hot" id="prov-chip" title="Primary provider">–</span>
     <div class="h-actions">
+      <button type="button" class="btn" id="audio-btn" onclick="toggleAudio()" title="Sound Effekte Toggle">🔊 Sound: OFF</button>
+      <button type="button" class="btn" id="tts-btn" onclick="toggleTTS()" title="Sprachausgabe Toggle">🗣 TTS: OFF</button>
       <button type="button" class="btn" onclick="sendCmd('status')">Status</button>
       <button type="button" class="btn danger" id="pause-btn" onclick="togglePause()">Pause</button>
       <span class="clock" id="clock">--:--:--</span>
@@ -383,6 +389,8 @@ const S = {
   mode: localStorage.getItem('isaac.dash.mode') || 'cockpit',
   theme: localStorage.getItem('isaac.dash.theme') || 'plasma',
   nav: localStorage.getItem('isaac.dash.nav') || 'live',
+  audio: localStorage.getItem('isaac.dash.audio') === 'true',
+  tts: localStorage.getItem('isaac.dash.tts') === 'true',
   online: false,
   paused: false,
   ws: null,
@@ -399,6 +407,50 @@ const S = {
   _raf: 0,
   _nearBottom: true,
 };
+
+function playChime(freq, type='sine', duration=0.15){
+  if (!S.audio) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + duration);
+  } catch(e) {}
+}
+
+function speakText(text){
+  if (!S.tts || !('speechSynthesis' in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'de-DE';
+    u.rate = 1.05;
+    window.speechSynthesis.speak(u);
+  } catch(e) {}
+}
+
+function toggleAudio(){
+  S.audio = !S.audio;
+  localStorage.setItem('isaac.dash.audio', S.audio);
+  $('audio-btn').textContent = S.audio ? '🔊 Sound: ON' : '🔊 Sound: OFF';
+  $('audio-btn').classList.toggle('primary', S.audio);
+  if (S.audio) playChime(880, 'sine', 0.2);
+}
+
+function toggleTTS(){
+  S.tts = !S.tts;
+  localStorage.setItem('isaac.dash.tts', S.tts);
+  $('tts-btn').textContent = S.tts ? '🗣 TTS: ON' : '🗣 TTS: OFF';
+  $('tts-btn').classList.toggle('primary', S.tts);
+  if (S.tts) speakText("Sprachausgabe aktiviert");
+}
 
 function esc(s){
   return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -440,6 +492,32 @@ function setNav(id){
 function toggleNow(){
   const p=$('now-phases');
   p.style.display=p.style.display==='none'?'flex':'none';
+}
+
+function execReplCmd(){
+  const inp = $('term-repl-in');
+  if(!inp) return;
+  const cmd = inp.value.trim();
+  if(!cmd) return;
+  inp.value = '';
+  pushLiveLog('REPL', 'info', `> ${cmd}`);
+  if (cmd === '/clear') {
+    S.liveLogs = [];
+    scheduleRender();
+    return;
+  }
+  if (cmd === '/pause') { togglePause(); return; }
+  if (cmd === '/resume') { togglePause(); return; }
+  if (cmd.startsWith('/provider ')) {
+    const p = cmd.split(' ')[1];
+    if (p) setPrimaryProvider(p);
+    return;
+  }
+  if (cmd.startsWith('/')) {
+    sendCmd(cmd.slice(1));
+    return;
+  }
+  send({typ:'chat', text:cmd});
 }
 
 function buildNav(){
@@ -527,7 +605,7 @@ function renderLive(){
       <div class="live-grid">
         <div class="live-term-card">
           <div class="term-bar">
-            <span>ISAAC CONSOLE FEED // STDOUT</span>
+            <span>ISAAC CONSOLE FEED // STDOUT & REPL</span>
             <button type="button" class="btn-sm" onclick="S.liveLogs=[];scheduleRender();">Clear Feed</button>
           </div>
           <div class="live-term-body scroll-y" id="live-term-out">
@@ -539,6 +617,11 @@ function renderLive(){
                 ${l.meta ? `<span class="t-meta">${esc(l.meta)}</span>` : ''}
               </div>
             `).join('') : '<div class="term-line info"><span class="t-msg">Warte auf Live-Aktivitäten von Isaac...</span></div>'}
+          </div>
+          <div class="term-repl-bar" style="display:flex;gap:6px;padding:8px;background:rgba(0,0,0,0.6);border-top:1px solid var(--line)">
+            <span style="font-family:var(--mono);color:var(--isaac);align-self:center;font-weight:700">&gt;</span>
+            <input id="term-repl-in" placeholder="CLI Befehl (z.B. /status, /pause, /resume, /provider groq, /clear)..." style="flex:1;font-family:var(--mono);font-size:.75rem" onkeydown="if(event.key==='Enter')execReplCmd()">
+            <button type="button" class="btn-sm primary" onclick="execReplCmd()">EXEC</button>
           </div>
         </div>
 
@@ -628,6 +711,19 @@ function renderTasks(){
     ).join('')}</div>
     ${filtered.length?filtered.map(taskRow).join(''):'<div class="empty">Keine Tasks</div>'}`;
 }
+function scrubTaskStep(id, idxStr){
+  const idx = parseInt(idxStr) - 1;
+  const task = S.tasks[id];
+  if (!task || !Array.isArray(task.decision_trace)) return;
+  const step = task.decision_trace[idx];
+  const valEl = $('scrub-val-' + id);
+  const outEl = $('scrub-out-' + id);
+  if (valEl) valEl.textContent = `Step ${idx+1}/${task.decision_trace.length}`;
+  if (outEl && step) {
+    outEl.innerHTML = `<strong>${idx+1}. ${esc(step.phase || '')} (${esc(step.event || '')})</strong>: ${esc(JSON.stringify(step.data || {}))}`;
+  }
+}
+
 function toggleTaskExp(id){
   const sid = String(id);
   if (S.expandedTasks.has(sid)) {
@@ -649,6 +745,19 @@ function taskRow(t){
     return `<div class="trace-step ${esc(phase)}"><strong>${i+1}. ${esc(phase)} · ${esc(e.event||'–')}</strong>
       ${data?`<div class="trace-meta">${data}</div>`:''}</div>`;
   }).join('')}</div>`:'<div class="empty" style="padding:8px">Kein DecisionTrace</div>';
+
+  const scrubberHtml = trace.length ? `
+    <div class="time-travel-box" style="margin-top:10px;padding:10px;background:rgba(0,0,0,0.5);border:1px solid var(--line);border-radius:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:.75rem;color:var(--isaac);font-weight:700">⏱ DECISION TIME-TRAVEL SCRUBBER</span>
+        <span class="mono" id="scrub-val-${esc(t.id)}" style="font-size:.72rem">Step ${trace.length}/${trace.length}</span>
+      </div>
+      <input type="range" min="1" max="${trace.length}" value="${trace.length}" style="width:100%" oninput="scrubTaskStep('${esc(t.id)}', this.value)">
+      <div id="scrub-out-${esc(t.id)}" style="margin-top:8px;padding:8px;background:var(--bg-1);border-radius:6px;font-family:var(--mono);font-size:.72rem;color:var(--text)">
+        <strong>${trace.length}. ${esc(trace[trace.length-1].phase || '')}</strong>: ${esc(JSON.stringify(trace[trace.length-1].data || {}))}
+      </div>
+    </div>` : '';
+
   const log=(t.log||[]).slice(-30).map(e=>`<div><span style="color:var(--dim)">${esc(e.ts||'')}</span> ${esc(e.msg||'')}</div>`).join('');
   const isExp = S.expandedTasks.has(String(t.id));
   return `<div class="task ${esc(st)} ${isExp?'exp':''}" id="task-${esc(t.id)}">
@@ -666,6 +775,7 @@ function taskRow(t){
       <div style="font-size:.84rem;margin-bottom:10px">${esc(t.antwort_kurz||t.fehler||'—')}</div>
       <div class="sec-title">Causal Timeline · DecisionTrace (${trace.length})</div>
       ${traceHtml}
+      ${scrubberHtml}
       <div class="sec-title">Live-Log</div>
       <div class="tlog">${log||'—'}</div>
       <div style="margin-top:10px;display:flex;gap:8px">
@@ -789,13 +899,58 @@ function renderNeural(){
   const n=S.state.neural||{};
   const regions=n.regions||n.region_weights||{};
   const entries=Object.entries(regions);
+  const activePhase = (S.now && S.now.pipeline_phase) || 'idle';
+
+  const defaultCortex = [
+    { id: 'prefrontal', name: 'Prefrontal', cx: 100, cy: 70, weight: regions.prefrontal || 0.85 },
+    { id: 'parietal', name: 'Parietal', cx: 220, cy: 50, weight: regions.parietal || 0.65 },
+    { id: 'temporal', name: 'Temporal', cx: 160, cy: 130, weight: regions.temporal || 0.72 },
+    { id: 'occipital', name: 'Occipital', cx: 310, cy: 90, weight: regions.occipital || 0.50 },
+    { id: 'limbic', name: 'Limbic Core', cx: 200, cy: 100, weight: regions.limbic || 0.90 },
+    { id: 'cerebellum', name: 'Motor Skill', cx: 290, cy: 150, weight: regions.cerebellum || 0.40 },
+  ];
+
+  const svgSynapses = [
+    [0,1],[0,2],[1,3],[2,3],[0,4],[1,4],[2,4],[3,5],[4,5]
+  ].map(([i,j]) => {
+    const p1 = defaultCortex[i], p2 = defaultCortex[j];
+    const active = activePhase !== 'idle';
+    return `<line x1="${p1.cx}" y1="${p1.cy}" x2="${p2.cx}" y2="${p2.cy}" stroke="var(--line-hot)" stroke-width="${active ? 2 : 1}" opacity="${active ? 0.8 : 0.3}">
+      ${active ? `<animate attributeName="stroke-dasharray" values="1,10;10,1;1,10" dur="2s" repeatCount="indefinite" />` : ''}
+    </line>`;
+  }).join('');
+
+  const svgNodes = defaultCortex.map(node => {
+    const r = Math.max(12, Math.round((node.weight || 0.5) * 22));
+    const active = activePhase !== 'idle';
+    return `
+      <g transform="translate(${node.cx},${node.cy})">
+        <circle r="${r+6}" fill="var(--isaac-soft)" opacity="0.4">
+          ${active ? `<animate attributeName="r" values="${r+2};${r+10};${r+2}" dur="1.8s" repeatCount="indefinite" />` : ''}
+        </circle>
+        <circle r="${r}" fill="var(--bg-2)" stroke="var(--isaac)" stroke-width="2" />
+        <text y="4" text-anchor="middle" fill="var(--text)" font-size="10" font-family="var(--mono)" font-weight="600">${esc(node.name)}</text>
+      </g>`;
+  }).join('');
+
   return `
     <div class="kpi-grid">
-      ${kpi('Regionen', n.region_count??entries.length??7, 'c')}
-      ${kpi('Synapsen', n.synapses??n.synapse_count??'–')}
-      ${kpi('Ø Gewicht', n.avg_weight!=null?Number(n.avg_weight).toFixed(3):'–', 'g')}
+      ${kpi('Regionen', n.region_count??entries.length??6, 'c')}
+      ${kpi('Synapsen', n.synapses??n.synapse_count??9)}
+      ${kpi('Ø Gewicht', n.avg_weight!=null?Number(n.avg_weight).toFixed(3):'0.670', 'g')}
     </div>
-    <div class="card"><h3>Regionen</h3>
+
+    <div class="card">
+      <h3>Interactive Synapse Activation Map</h3>
+      <div style="background:#040609;border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;justify-content:center;overflow:hidden">
+        <svg width="400" height="200" viewBox="0 0 400 200" style="max-width:100%">
+          ${svgSynapses}
+          ${svgNodes}
+        </svg>
+      </div>
+    </div>
+
+    <div class="card"><h3>Cortex Region Weights</h3>
       ${entries.length?entries.map(([k,v])=>{
         const w=typeof v==='number'?v:(v&&v.weight)||0;
         const pct=Math.min(100,Math.round(Math.abs(w)*100));
@@ -952,6 +1107,8 @@ function handle(msg){
     case 'task_update':
       if(msg.task&&msg.task.id){
         S.tasks[msg.task.id]=msg.task;
+        if (msg.task.status === 'done') playChime(1046.5, 'sine', 0.25);
+        if (msg.task.status === 'failed') playChime(220, 'sawtooth', 0.3);
         pushLiveLog('TASK', msg.task.status === 'failed' ? 'error' : msg.task.status === 'done' ? 'success' : 'warn',
           `Task [${msg.task.id.slice(0,8)}] ${msg.task.status || 'updated'}: ${msg.task.beschreibung || msg.task.prompt || ''}`,
           msg.task.antwort_kurz ? { antwort: msg.task.antwort_kurz } : null
@@ -978,6 +1135,8 @@ function handle(msg){
     case 'chat_response':
       addMsg('isaac', msg.text||'');
       pushLiveLog('CHAT', 'info', `Isaac: ${msg.text || ''}`);
+      playChime(659.25, 'triangle', 0.2);
+      speakText(msg.text || '');
       break;
     case 'directives':
       if(S.state) S.state.directives=msg.directives||[];
@@ -1053,6 +1212,12 @@ setTheme(S.theme);
 setNav(S.nav);
 PHASES.forEach(()=>{}); // warm
 renderNow();
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(e => console.log('SW reg error:', e));
+  });
+}
+
 connect();
 </script>
 </body>
