@@ -89,6 +89,20 @@ Die langfristige Architektur soll drei Ebenen reflektieren:
 
 Diese Ebenen sind nicht nur organisatorisch, sondern funktional und mental-model-basiert zu verstehen.
 
+### System-Taxonomie & Harte Abgrenzung (A–E)
+
+Zur Vermeidung der Illusion kognitiver Autonomie durch reine Oberflächen- oder Infrastrukturanpassungen gilt für das gesamte Repository eine **harte Unterscheidung in 5 Kategorien** (siehe [`docs/SYSTEM_TAXONOMY.md`](docs/SYSTEM_TAXONOMY.md)):
+
+| Kategorie | Bezeichnung | Beschreibung & Beispiele |
+|-----------|-------------|--------------------------|
+| **A** | **Echte Kernel-Fähigkeit** | Kognitions-Pipeline, Reasoning, Gedächtnis, Goal Engine, Werte/Verfassung (`isaac_core.py`, `executor.py`, `memory.py`, `goal_store.py`, `constitution.py`). |
+| **B** | **Infrastruktur** | Cloud/Host-Deployments, Tool-Execution-Runtime, MCP-Protokoll, System/Termux-Brücken (`deploy/`, `tool_runtime.py`, `mcp_client.py`, `relay.py`, `secrets_store.py`). |
+| **C** | **Observability** | Audit-Trails, Sentry-AI-Spans, Telemetrie, Watchdog & Decision Traces (`audit.py`, `isaac_sentry.py`, `watchdog.py`, `decision_trace.py`, `monitor_api.py`). |
+| **D** | **UI** | Benutzeroberflächen, Web-Dashboards, WebSocket/HTTP-Stream-Server, Chat-Dialoge (`dashboard.html`, `web/`, `monitor_server.py`, `vercel.json`). |
+| **E** | **Demo / Simulation** | Evals-Harness, Unittests, Integrationstests, Remote Smoke-Tests & Mock-Umgebungen (`evals/`, `tests/`, `remote_smoke.py`, `sanity_check.py`). |
+
+**Grundsatz:** Fortschritte an der Erreichbarkeit oder der Oberfläche (Kategorie D/B, z. B. Vercel Dashboard Deploy) verbessern die Zugänglichkeit, stellen jedoch **keinen** Fortschritt der kognitiven Kernel-Architektur (Kategorie A) dar.
+
 ## Optional: External Memory (Mem0 / Cognee / Letta)
 
 Isaac bleibt Source of Truth (`memory.py`). Optional können drei Adapter aktiviert werden:
