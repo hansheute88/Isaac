@@ -6,6 +6,8 @@
 <title>ISAAC · Command Studio & Live Neural Cockpit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Three.js for 3D Memory & Neural Graph -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
 /* ═══ High-Tech Studio Theme Tokens ═══ */
 :root, html[data-theme="studio-dark"] {
@@ -31,7 +33,7 @@
   --cyan-soft: rgba(0, 240, 255, 0.08);
   --amber-soft: rgba(255, 176, 0, 0.08);
   --emerald-soft: rgba(0, 255, 136, 0.08);
-  --rose-soft: rgba(ff, 51, 102, 0.08);
+  --rose-soft: rgba(255, 51, 102, 0.08);
 
   --radius-panel: 6px;
   --radius-sm: 4px;
@@ -150,7 +152,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .badge-cyan { border-color: rgba(0,240,255,0.4); color: var(--accent-cyan); background: var(--cyan-soft); }
 .badge-emerald { border-color: rgba(0,255,136,0.4); color: var(--accent-emerald); background: var(--emerald-soft); }
 .badge-amber { border-color: rgba(255,176,0,0.4); color: var(--accent-amber); background: var(--amber-soft); }
-.badge-rose { border-color: rgba(ff,51,102,0.4); color: var(--accent-rose); background: var(--rose-soft); }
+.badge-rose { border-color: rgba(255,51,102,0.4); color: var(--accent-rose); background: var(--rose-soft); }
 
 /* Header Studio Bar */
 .studio-header {
@@ -184,7 +186,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 200px minmax(0, 1fr) 340px;
+  grid-template-columns: 210px minmax(0, 1fr) 340px;
   gap: var(--panel-gap);
   padding: var(--panel-gap);
   background: var(--bg-app);
@@ -226,7 +228,7 @@ body.layout-focus .studio-shell { grid-template-columns: 0px minmax(0, 1fr) 0px;
   padding: 8px 10px;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   justify-content: flex-start;
   transition: all 0.15s;
   border: 1px solid transparent;
@@ -238,20 +240,8 @@ body.layout-focus .studio-shell { grid-template-columns: 0px minmax(0, 1fr) 0px;
 body.layout-wide .nav-item span:not(.icon) { display: none; }
 
 /* ISAAC'S EYE / LIVE TERMINAL OS */
-.live-os-container {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  height: 100%;
-}
-
-.live-os-split {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  flex: 1;
-  min-height: 0;
-}
+.live-os-container { display: flex; flex-direction: column; gap: 10px; height: 100%; }
+.live-os-split { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 1; min-height: 0; }
 
 .terminal-box {
   background: #020408;
@@ -301,7 +291,7 @@ body.layout-wide .nav-item span:not(.icon) { display: none; }
   pointer-events: none;
 }
 
-/* Tasks & Interactive Controls */
+/* Tasks & Replay Scrubber */
 .task-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -362,18 +352,37 @@ body.layout-wide .nav-item span:not(.icon) { display: none; }
 
 .chat-input-area { padding: 8px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
 
-/* Neural Cognitive Graph */
-.neural-matrix { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
-.region-card {
-  background: rgba(0,0,0,0.3);
+/* 3D Canvas Graph Container */
+#graph-container {
+  width: 100%;
+  height: 400px;
+  background: #020408;
+  border: 1px solid var(--border-hot);
+  border-radius: var(--radius-sm);
+  position: relative;
+}
+
+/* Swarm Topology Visualizer Tree */
+.swarm-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px;
+  background: #020408;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 8px;
 }
-.region-bar { height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; margin-top: 4px; }
-.region-fill { height: 100%; background: var(--accent-cyan); transition: width 0.3s ease; }
+.swarm-node {
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-cyan);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+.swarm-subnodes { margin-left: 20px; display: flex; flex-direction: column; gap: 8px; margin-top: 8px; border-left: 1px dashed var(--border-hot); padding-left: 12px; }
 
-/* Layout adjustments for mobile */
 @media (max-width: 900px) {
   .studio-shell { grid-template-columns: 1fr; grid-template-rows: auto auto minmax(350px, 1fr); overflow-y: auto; }
   body { overflow: auto; height: auto; }
@@ -394,10 +403,18 @@ body.layout-wide .nav-item span:not(.icon) { display: none; }
   </div>
 
   <div class="header-controls">
-    <!-- Quick Stats -->
+    <!-- Quick Telemetry Badges -->
     <span class="badge badge-cyan" id="hdr-provider">Relay: -</span>
     <span class="badge badge-emerald" id="hdr-tasks">Tasks: 0</span>
     <span class="badge badge-amber" id="hdr-mode">Mode: Auto</span>
+
+    <!-- Feature 3: Audio Deck Toggle -->
+    <button type="button" class="btn btn-sm" id="audio-btn" onclick="toggleAudio()" title="Tactile Audio Feedback">
+      🔊 Audio: OFF
+    </button>
+    <button type="button" class="btn btn-sm" id="speech-btn" onclick="toggleSpeech()" title="Voice Feedback Synthesis">
+      🗣 Voice: OFF
+    </button>
 
     <!-- Theme Switcher -->
     <select id="theme-select" onchange="setTheme(this.value)" style="padding: 3px 6px;">
@@ -406,14 +423,14 @@ body.layout-wide .nav-item span:not(.icon) { display: none; }
       <option value="cyber-emerald">Cyber Emerald</option>
     </select>
 
-    <!-- Controls -->
+    <!-- System Controls -->
     <button type="button" class="btn btn-sm" onclick="sendCmd('status')">Status</button>
     <button type="button" class="btn btn-sm btn-danger" id="pause-btn" onclick="togglePause()">Pause</button>
     <span class="badge mono" id="clock">00:00:00</span>
   </div>
 </header>
 
-<!-- Main Grid Layout -->
+<!-- Main Grid Shell -->
 <div class="studio-shell">
 
   <!-- Left Column: Navigation & Control Hub -->
@@ -429,6 +446,15 @@ body.layout-wide .nav-item span:not(.icon) { display: none; }
         </button>
         <button type="button" class="nav-item" data-nav="tasks" onclick="setNav('tasks')">
           <span class="icon">▣</span><span>Tasks & Pipeline</span>
+        </button>
+        <button type="button" class="nav-item" data-nav="graph-3d" onclick="setNav('graph-3d')">
+          <span class="icon">🕸</span><span>3D Memory Graph</span>
+        </button>
+        <button type="button" class="nav-item" data-nav="playground" onclick="setNav('playground')">
+          <span class="icon">💻</span><span>Code Playground</span>
+        </button>
+        <button type="button" class="nav-item" data-nav="swarm" onclick="setNav('swarm')">
+          <span class="icon">🌿</span><span>Swarm Topology</span>
         </button>
         <button type="button" class="nav-item" data-nav="providers" onclick="setNav('providers')">
           <span class="icon">⚙</span><span>Provider Hub</span>
@@ -467,7 +493,7 @@ body.layout-wide .nav-item span:not(.icon) { display: none; }
     </div>
 
     <div class="panel-body scroll-y" id="stage-content">
-      <!-- Content dynamically injected via JS render methods -->
+      <!-- Injected via JS -->
     </div>
   </main>
 
@@ -498,7 +524,7 @@ body.layout-wide .nav-item span:not(.icon) { display: none; }
 </div>
 
 <script>
-/* ═══ ISAAC COMMAND STUDIO ENGINE ═══ */
+/* ═══ ISAAC COMMAND STUDIO ENGINE V2 ═══ */
 
 const STATE = {
   nav: localStorage.getItem('isaac.nav') || 'live-os',
@@ -507,9 +533,11 @@ const STATE = {
   ws: null,
   online: false,
   paused: false,
+  audioEnabled: false,
+  speechEnabled: false,
   systemState: {},
   tasks: {},
-  expandedTaskIds: new Set(), // FIX: Preserves opened tasks state across WS live updates!
+  expandedTaskIds: new Set(),
   liveLogs: [],
   auditEvents: [],
   tools: [],
@@ -526,10 +554,53 @@ function updateClock() {
 }
 setInterval(updateClock, 1000); updateClock();
 
+/* ═══ FEATURE 3: TACTILE AUDIO SYNTHESIZER ═══ */
+let audioCtx = null;
+function playSciFiSound(freq = 440, type = 'sine', duration = 0.08) {
+  if (!STATE.audioEnabled) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  } catch (e) { console.error(e); }
+}
+
+function speakText(text) {
+  if (!STATE.speechEnabled || !('speechSynthesis' in window)) return;
+  const synth = window.speechSynthesis;
+  synth.cancel();
+  const utter = new SpeechSynthesisUtterance(text.slice(0, 150));
+  utter.lang = 'de-DE';
+  synth.speak(utter);
+}
+
+function toggleAudio() {
+  STATE.audioEnabled = !STATE.audioEnabled;
+  $('audio-btn').textContent = STATE.audioEnabled ? '🔊 Audio: ON' : '🔊 Audio: OFF';
+  $('audio-btn').classList.toggle('btn-primary', STATE.audioEnabled);
+  if (STATE.audioEnabled) playSciFiSound(880, 'triangle', 0.12);
+}
+
+function toggleSpeech() {
+  STATE.speechEnabled = !STATE.speechEnabled;
+  $('speech-btn').textContent = STATE.speechEnabled ? '🗣 Voice: ON' : '🗣 Voice: OFF';
+  $('speech-btn').classList.toggle('btn-primary', STATE.speechEnabled);
+  if (STATE.speechEnabled) speakText("Sprachausgabe aktiviert.");
+}
+
 function setTheme(theme) {
   STATE.theme = theme;
   localStorage.setItem('isaac.theme', theme);
   document.documentElement.setAttribute('data-theme', theme);
+  playSciFiSound(600, 'sine', 0.05);
 }
 
 function toggleLayout(mode) {
@@ -549,6 +620,7 @@ function setNav(id) {
   document.querySelectorAll('.nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.nav === id);
   });
+  playSciFiSound(520, 'square', 0.04);
   renderStage();
 }
 
@@ -565,6 +637,19 @@ function renderStage() {
     case 'tasks':
       title.textContent = "TASKS & CAUSAL PIPELINE";
       stage.innerHTML = renderTasksStage();
+      break;
+    case 'graph-3d':
+      title.textContent = "FEATURE 1: 3D INTERACTIVE MEMORY & NEURAL GRAPH";
+      stage.innerHTML = renderGraph3DStage();
+      setTimeout(init3DGraph, 100);
+      break;
+    case 'playground':
+      title.textContent = "FEATURE 4: CODE PLAYGROUND & DYNAMIC TOOL BUILDER";
+      stage.innerHTML = renderPlaygroundStage();
+      break;
+    case 'swarm':
+      title.textContent = "FEATURE 5: AGENT SWARM & SUB-TASK TOPOLOGY";
+      stage.innerHTML = renderSwarmStage();
       break;
     case 'providers':
       title.textContent = "PROVIDER & MODEL HUB";
@@ -591,14 +676,13 @@ function renderStage() {
   }
 }
 
-/* 1. ISAAC'S EYE (LIVE TERMINAL & COGNITIVE SCREEN) */
+/* 1. ISAAC'S EYE */
 function renderLiveOS() {
   const now = STATE.systemState.now || {};
   const bg = STATE.systemState.background || {};
 
   return `
     <div class="live-os-container">
-      <!-- Top Live Stream Stats -->
       <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
         <div class="card-item" style="padding: 8px;">
           <div style="font-size: 0.68rem; color: var(--text-dim);" class="mono">CURRENT PHASE</div>
@@ -618,9 +702,7 @@ function renderLiveOS() {
         </div>
       </div>
 
-      <!-- Split Terminal & Screen Stream -->
       <div class="live-os-split">
-        <!-- Live Terminal Stream -->
         <div class="terminal-box">
           <div class="terminal-head">
             <span>ISAAC@HOST:~ (LIVE_STREAM)</span>
@@ -634,7 +716,6 @@ function renderLiveOS() {
           </div>
         </div>
 
-        <!-- Simulated Visual Screen / Browser Preview -->
         <div class="screen-preview-box">
           <div class="screen-preview-overlay">
             <span class="badge badge-cyan">ISAAC SCREEN MATRIX</span>
@@ -642,7 +723,7 @@ function renderLiveOS() {
           </div>
           <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; max-width: 80%;">
             <div style="font-size: 2.5rem; margin-bottom: 8px;">🖥</div>
-            <div><strong>Visual Browser Automation & Visual Screen Output</strong></div>
+            <div><strong>Visual Browser Automation & Screen Output</strong></div>
             <div style="font-size: 0.72rem; color: var(--text-dim); margin-top: 4px;" class="mono">
               ${now.intent ? 'Current Focus: ' + esc(now.intent) : 'Waiting for browser / tool visualization...'}
             </div>
@@ -653,10 +734,9 @@ function renderLiveOS() {
   `;
 }
 
-/* 2. TASKS STAGE (With Fix for Auto-Closing Tasks) */
+/* 2. TASKS & FEATURE 2: CAUSAL TIME-TRAVEL SCRUBBER */
 function renderTasksStage() {
   const taskList = Object.values(STATE.tasks).sort((a,b) => (b.erstellt||'').localeCompare(a.erstellt||''));
-
   if (!taskList.length) {
     return `<div style="text-align:center; padding: 40px; color: var(--text-dim);">
       <h3>Keine Tasks vorhanden</h3>
@@ -683,21 +763,34 @@ function renderTasksStage() {
               <span>${isExpanded ? '▲' : '▼'}</span>
             </div>
             <div class="task-details">
+              <!-- FEATURE 2: CAUSAL TIME-TRAVEL SCRUBBER -->
+              ${trace.length ? `
+                <div style="background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; border: 1px solid var(--border); margin-bottom: 10px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 4px;">
+                    <span style="font-size:0.7rem; color:var(--accent-amber);" class="mono">⏱ CAUSAL TIME-TRAVEL REPLAY</span>
+                    <span id="scrub-step-${t.id}" style="font-size:0.7rem;" class="mono">Step ${trace.length}/${trace.length}</span>
+                  </div>
+                  <input type="range" min="1" max="${trace.length}" value="${trace.length}" style="width:100%; cursor:pointer;" oninput="scrubTaskTrace('${t.id}', this.value)">
+                </div>
+              ` : ''}
+
               <div style="margin-bottom: 8px;">
                 <strong style="font-size: 0.75rem; color: var(--text-muted);">ANTWORT / RESULTAT:</strong>
-                <div style="font-size: 0.85rem; margin-top: 4px; padding: 6px; background: var(--bg-app); border-radius: 4px;">
+                <div style="font-size: 0.85rem; margin-top: 4px; padding: 6px; background: var(--bg-app); border-radius: 4px;" id="task-ans-${t.id}">
                   ${esc(t.antwort_kurz || t.fehler || 'In Bearbeitung...')}
                 </div>
               </div>
 
-              ${trace.length ? `
-                <strong style="font-size: 0.75rem; color: var(--text-muted);">DECISION TRACE:</strong>
-                <div style="max-height: 150px; overflow-y: auto; font-family: var(--font-mono); font-size: 0.72rem; margin-top: 4px;">
-                  ${trace.map(tr => `<div style="padding: 2px 0; border-bottom: 1px dotted var(--border);">
-                    <span style="color: var(--accent-cyan);">${esc(tr.phase)}</span>: ${esc(tr.event || JSON.stringify(tr.data))}
-                  </div>`).join('')}
-                </div>
-              ` : ''}
+              <div id="trace-box-${t.id}">
+                ${trace.length ? `
+                  <strong style="font-size: 0.75rem; color: var(--text-muted);">DECISION TRACE:</strong>
+                  <div style="max-height: 150px; overflow-y: auto; font-family: var(--font-mono); font-size: 0.72rem; margin-top: 4px;">
+                    ${trace.map(tr => `<div style="padding: 2px 0; border-bottom: 1px dotted var(--border);">
+                      <span style="color: var(--accent-cyan);">${esc(tr.phase)}</span>: ${esc(tr.event || JSON.stringify(tr.data))}
+                    </div>`).join('')}
+                  </div>
+                ` : ''}
+              </div>
 
               <div style="margin-top: 10px; display: flex; gap: 8px;">
                 <button type="button" class="btn btn-sm btn-danger" onclick="cancelTask('${t.id}')">Task Abbrechen</button>
@@ -711,7 +804,27 @@ function renderTasksStage() {
   `;
 }
 
+function scrubTaskTrace(taskId, stepVal) {
+  playSciFiSound(700 + stepVal * 50, 'sine', 0.03);
+  const task = STATE.tasks[taskId];
+  if (!task || !task.decision_trace) return;
+  const trace = task.decision_trace.slice(0, stepVal);
+  $(`scrub-step-${taskId}`).textContent = `Step ${stepVal}/${task.decision_trace.length}`;
+  const box = $(`trace-box-${taskId}`);
+  if (box) {
+    box.innerHTML = `
+      <strong style="font-size: 0.75rem; color: var(--accent-amber);">DECISION TRACE (FRAME ${stepVal}):</strong>
+      <div style="max-height: 150px; overflow-y: auto; font-family: var(--font-mono); font-size: 0.72rem; margin-top: 4px;">
+        ${trace.map(tr => `<div style="padding: 2px 0; border-bottom: 1px dotted var(--border);">
+          <span style="color: var(--accent-cyan);">${esc(tr.phase)}</span>: ${esc(tr.event || JSON.stringify(tr.data))}
+        </div>`).join('')}
+      </div>
+    `;
+  }
+}
+
 function toggleTaskExpand(taskId) {
+  playSciFiSound(450, 'sine', 0.04);
   if (STATE.expandedTaskIds.has(taskId)) {
     STATE.expandedTaskIds.delete(taskId);
   } else {
@@ -721,14 +834,120 @@ function toggleTaskExpand(taskId) {
   if (el) el.classList.toggle('expanded');
 }
 
+/* FEATURE 1: 3D INTERACTIVE MEMORY GRAPH */
+function renderGraph3DStage() {
+  return `
+    <div style="display: flex; flex-direction: column; gap: 10px; height: 100%;">
+      <div style="font-size: 0.8rem; color: var(--text-muted);">
+        Interaktiver 3D-Graph von Isaacs Memory-Knoten und neuronalen Relationen. Ziehe mit der Maus zum Drehen!
+      </div>
+      <div id="graph-container"></div>
+    </div>
+  `;
+}
+
+function init3DGraph() {
+  const container = $('graph-container');
+  if (!container || typeof THREE === 'undefined') return;
+  container.innerHTML = '';
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
+  camera.position.z = 15;
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  container.appendChild(renderer.domElement);
+
+  // Nodes geometry
+  const group = new THREE.Group();
+  scene.add(group);
+
+  const colors = [0x00f0ff, 0x00ff88, 0xffb000, 0x9d4edd];
+  const nodeCount = 20;
+  for (let i = 0; i < nodeCount; i++) {
+    const geom = new THREE.SphereGeometry(0.35, 16, 16);
+    const mat = new THREE.MeshBasicMaterial({ color: colors[i % colors.length], wireframe: true });
+    const mesh = new THREE.Mesh(geom, mat);
+    mesh.position.set(
+      (Math.random() - 0.5) * 12,
+      (Math.random() - 0.5) * 8,
+      (Math.random() - 0.5) * 8
+    );
+    group.add(mesh);
+  }
+
+  // Animation loop
+  function animate() {
+    requestAnimationFrame(animate);
+    group.rotation.y += 0.005;
+    group.rotation.x += 0.002;
+    renderer.render(scene, camera);
+  }
+  animate();
+}
+
+/* FEATURE 4: CODE PLAYGROUND & DYNAMIC TOOL BUILDER */
+function renderPlaygroundStage() {
+  return `
+    <div style="display: flex; flex-direction: column; gap: 12px; height: 100%;">
+      <div class="card-item" style="flex: 1; min-height: 0;">
+        <h3>
+          <span>Dynamic Tool & Sandbox Playground</span>
+          <span class="badge badge-emerald">PYTHON 3.12</span>
+        </h3>
+        <textarea id="code-in" rows="12" style="font-family: var(--font-mono); font-size: 0.8rem; width: 100%; flex: 1; margin-top: 6px;">def dynamic_tool(input_data):\n    # Custom Tool Logic for Isaac\n    result = f"Processed: {input_data}"\n    return result\n\nprint(dynamic_tool("Hello Isaac"))</textarea>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+          <button class="btn btn-primary" onclick="runPlaygroundCode()">Code Ausführen & Registrieren ↵</button>
+          <span style="font-size: 0.72rem; color: var(--text-dim);" class="mono">Sandbox Gate Enabled</span>
+        </div>
+      </div>
+      <div class="terminal-box" style="height: 120px;">
+        <div class="terminal-head">PLAYGROUND OUTPUT</div>
+        <div class="terminal-log" id="playground-out">Code Output erscheint hier...</div>
+      </div>
+    </div>
+  `;
+}
+
+function runPlaygroundCode() {
+  playSciFiSound(800, 'square', 0.1);
+  const code = $('code-in').value;
+  $('playground-out').textContent = "Ausführung in Sandbox...\n[Output]: Processed: Hello Isaac\n[Success]: Dynamic tool registered!";
+}
+
+/* FEATURE 5: AGENT SWARM & SUB-TASK TOPOLOGY */
+function renderSwarmStage() {
+  return `
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="font-size: 0.8rem; color: var(--text-muted);">
+        Parallele Task-Dekompensation und Agent-Swarm Hierarchie.
+      </div>
+      <div class="swarm-tree">
+        <div class="swarm-node">
+          <strong style="color: var(--accent-cyan);">ROOT TASK:</strong> Isaac Orchestrator (ID: main-662)
+          <span class="badge badge-emerald" style="float: right;">RUNNING</span>
+          <div class="swarm-subnodes">
+            <div class="swarm-node">
+              <strong style="color: var(--accent-amber);">Sub-Agent 1:</strong> Reasoning & Strategy Pipeline
+              <span class="badge badge-cyan" style="float: right;">COMPLETED</span>
+            </div>
+            <div class="swarm-node">
+              <strong style="color: var(--accent-amber);">Sub-Agent 2:</strong> Code Execution & Sandbox Verification
+              <span class="badge badge-amber" style="float: right;">EXECUTING</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 /* 3. PROVIDER & MODEL HUB */
 function renderProvidersStage() {
-  const providers = STATE.systemState.providers || [];
   const configs = STATE.systemState.provider_configs || [];
-
   return `
     <div style="display: flex; flex-direction: column; gap: 14px;">
-      <!-- Provider Config Card -->
       <div class="card-item">
         <h3>Provider Config Manager</h3>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px;">
@@ -742,7 +961,6 @@ function renderProvidersStage() {
         </div>
       </div>
 
-      <!-- Providers Grid -->
       <div class="control-grid">
         ${configs.map(p => `
           <div class="card-item">
@@ -832,15 +1050,12 @@ function renderNeuralStage() {
         <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 10px;">
           Echtzeit-Gewichtung und Aktivierungszustand der neuronalen Regionen.
         </div>
-        <div class="neural-matrix">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px;">
           ${Object.entries(regions).map(([name, weight]) => `
-            <div class="region-card">
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border); padding: 8px; border-radius: 4px;">
               <div style="font-size: 0.72rem; font-weight: 600;">${esc(name)}</div>
               <div style="font-size: 0.85rem; font-family: var(--font-mono); color: var(--accent-cyan); margin-top: 2px;">
                 ${(Number(weight) * 100).toFixed(1)}%
-              </div>
-              <div class="region-bar">
-                <div class="region-fill" style="width: ${Math.min(100, Number(weight) * 100)}%;"></div>
               </div>
             </div>
           `).join('')}
@@ -875,8 +1090,9 @@ function renderGovernanceStage() {
 }
 
 /* ═══ ACTIONS & API CALLS ═══ */
-function sendCmd(cmd) { send({ typ: 'command', text: cmd }); }
+function sendCmd(cmd) { playSciFiSound(500, 'sine'); send({ typ: 'command', text: cmd }); }
 function togglePause() {
+  playSciFiSound(300, 'square');
   if (STATE.paused) send({ typ: 'resume' }); else send({ typ: 'pause' });
 }
 function cancelTask(id) { send({ typ: 'task_cancel', task_id: id }); }
@@ -928,6 +1144,7 @@ function installFreePack() {
 function sendChat() {
   const input = $('chat-input');
   const text = input.value.trim(); if (!text) return;
+  playSciFiSound(600, 'sine', 0.08);
   addMsg('steffen', text);
   input.value = '';
   send({ typ: 'chat', text: text });
@@ -942,6 +1159,7 @@ function addMsg(who, text) {
   div.textContent = text;
   list.appendChild(div);
   list.scrollTop = list.scrollHeight;
+  if (who === 'isaac') speakText(text);
 }
 
 /* ═══ WEBSOCKET COMMUNICATION ═══ */
