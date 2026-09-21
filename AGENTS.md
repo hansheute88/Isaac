@@ -80,6 +80,20 @@ Core runtime lives in the repository root.
 
 **Entwicklungsrichtung:** vom modularen Nebeneinander zur kausal erklärbaren Vernetzung.
 
+### System-Taxonomie & Entwicklungs-Disziplin (A–E)
+
+Alle Aufgaben, Pull Requests und Commits müssen strikt nach folgenden **5 Kategorien** eingeordnet werden (Details: [`docs/SYSTEM_TAXONOMY.md`](docs/SYSTEM_TAXONOMY.md)):
+
+1. **A. Echte Kernel-Fähigkeit:** Kognitions-Pipeline, Reasoning, Gedächtnis, Goal Engine, Ethik, Verfassung, Selbstmodell (`isaac_core.py`, `executor.py`, `memory.py`, `goal_store.py`, `constitution.py`).
+2. **B. Infrastruktur:** Cloud-Deployments, Tool-Execution-Runtime, MCP-Protokoll, Termux-Brücken, Settings (`deploy/`, `tool_runtime.py`, `mcp_client.py`, `relay.py`, `secrets_store.py`).
+3. **C. Observability:** Audit-Trails, Telemetrie, Sentry-AI-Spans, Watchdog & Decision Traces (`audit.py`, `isaac_sentry.py`, `watchdog.py`, `decision_trace.py`, `monitor_api.py`).
+4. **D. UI:** Dashboards, Web-Frontends, WebSocket/HTTP Stream-Server, Chat-Dialoge (`dashboard.html`, `web/`, `monitor_server.py`, `vercel.json`).
+5. **E. Demo / Simulation:** Eval-Harness, Unittests, Integrationstests, Smoke-Tests & Mocking (`evals/`, `tests/`, `remote_smoke.py`, `sanity_check.py`).
+
+**Eiserne Regel für Agenten:**
+- **Reichweite ≠ Kognition:** Oberflächen- und Deployment-Anpassungen (z. B. Dashboard-Deploys auf Vercel/Render) gehören zu Kategorie D/B. Sie verbessern die Zugänglichkeit, stellen aber **keinen** Fortschritt der kognitiven Kernel-Autonomie dar.
+- Agenten dürfen Änderungen in Kategorie B/D niemals als Fortschritt des kognitiven Kerns (Kategorie A) deklarieren.
+
 ### Verbindliche Architekturprinzipien
 
 1. Classification must control routing.
