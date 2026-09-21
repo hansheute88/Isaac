@@ -207,6 +207,84 @@ class Task:
     resume_start_iteration: int = 0
     watchdog_resume_pending: bool = False
 
+    # TaskGraph (Pillar 2 - Prove the Kernel)
+    dependencies: list = field(default_factory=list)
+    goal_id: Optional[str] = None
+    subgoal_ids: list = field(default_factory=list)
+    required_capabilities: list = field(default_factory=list)
+    risk_level: str = "low"
+    actions: list = field(default_factory=list)
+    evidence: list = field(default_factory=list)
+    decision: dict = field(default_factory=dict)
+    outcome: dict = field(default_factory=dict)
+    learned_from: list = field(default_factory=list)
+
+    @property
+    def task_id(self) -> str:
+        return self.id
+
+    def record_action(self, action_type: str, details: Optional[dict] = None) -> dict:
+        entry = {
+            "ts": time.time(),
+            "time": time.strftime("%H:%M:%S"),
+            "action_type": action_type,
+            "details": details or {},
+        }
+        self.actions.append(entry)
+        return entry
+
+    def record_evidence(self, source: str, content: Any, confidence: float = 1.0) -> dict:
+        entry = {
+            "ts": time.time(),
+            "time": time.strftime("%H:%M:%S"),
+            "source": source,
+            "content": content,
+            "confidence": confidence,
+        }
+        self.evidence.append(entry)
+        return entry
+
+    def record_decision(self, summary: str, details: Optional[dict] = None):
+        self.decision = {
+            "ts": time.time(),
+            "summary": summary,
+            "details": details or {},
+        }
+
+    def record_outcome(self, status: str, result_summary: str, details: Optional[dict] = None):
+        self.outcome = {
+            "ts": time.time(),
+            "status": status,
+            "summary": result_summary,
+            "details": details or {},
+        }
+
+    def to_graph_node(self) -> dict:
+        return {
+            "task_id": self.id,
+            "parent_id": self.parent_id,
+            "dependencies": list(self.dependencies),
+            "goal": self.goal_id,
+            "subgoals": list(self.subgoal_ids),
+            "classification": self.classification.as_dict() if self.classification else None,
+            "strategy": self.strategy.as_dict(),
+            "required_capabilities": list(self.required_capabilities),
+            "risk_level": self.risk_level,
+            "actions": list(self.actions),
+            "evidence": list(self.evidence),
+            "decision": dict(self.decision),
+            "outcome": dict(self.outcome),
+            "errors": [self.fehler] if self.fehler else [],
+            "learned_from": list(self.learned_from),
+            "decision_trace": self.decision_trace.to_list(),
+            "timestamps": {
+                "created_at": self.erstellt,
+                "started_at": self.gestartet,
+                "completed_at": self.abgeschlossen,
+            },
+            "status": self.status.value,
+        }
+
     def log(self, msg: str):
         self.log_entries.append({"ts": time.strftime("%H:%M:%S"), "msg": msg})
         if len(self.log_entries) > 50:
@@ -287,6 +365,7 @@ class Task:
             "checkpoint_ts": self.checkpoint_ts,
             "resume_checkpoint_id": self.resume_checkpoint_id,
             "resume_strategy": self.resume_strategy,
+            "task_graph": self.to_graph_node(),
         }
 
     @property
@@ -2077,6 +2156,33 @@ class Executor:
     # ── Abfragen ─────────────────────────────────────────────────────────────
     def get_task(self, task_id: str) -> Optional[Task]:
         return self._tasks.get(task_id)
+
+    def get_task_graph(self, root_task_id: str) -> dict:
+        root = self.get_task(root_task_id)
+        if not root:
+            return {}
+        nodes = {}
+        visited = set()
+
+        def _walk(tid: str):
+            if tid in visited:
+                return
+            visited.add(tid)
+            t = self.get_task(tid)
+            if not t:
+                return
+            nodes[tid] = t.to_graph_node()
+            for stid in t.sub_task_ids:
+                _walk(stid)
+            for dep_id in t.dependencies:
+                _walk(dep_id)
+
+        _walk(root_task_id)
+        return {
+            "root_id": root_task_id,
+            "node_count": len(nodes),
+            "nodes": nodes,
+        }
 
     def all_tasks(self, limit: int = 200) -> list[dict]:
         return [
