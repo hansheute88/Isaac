@@ -106,6 +106,7 @@ class AtomicDecomposer:
         stagger_ms:      int = 1500,
         classification:  Optional[Any] = None,
         strategy:        Optional[Any] = None,
+        parent_id:       Optional[str] = None,
     ) -> DecomposeResult:
         """
         1. Prompt analysieren
@@ -178,7 +179,7 @@ class AtomicDecomposer:
         for i, fragment in enumerate(fragmente):
             delay = (i * stagger_ms) / 1000.0
             tasks.append(
-                self._execute_fragment(fragment, delay)
+                self._execute_fragment(fragment, delay, parent_id=parent_id)
             )
 
         await asyncio.gather(*tasks, return_exceptions=True)

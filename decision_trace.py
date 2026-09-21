@@ -6,7 +6,10 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from task_graph import TaskGraph
 
 
 # Sensitive key fragments — values redacted in portable export (not dropped).
@@ -59,6 +62,7 @@ class TraceEntry:
 @dataclass
 class DecisionTrace:
     entries: list[TraceEntry] = field(default_factory=list)
+    task_graph: Any | None = field(default=None)
 
     def add(self, phase: TracePhase, event: str, data: dict[str, Any] | None = None) -> TraceEntry:
         payload = dict(data or {})
@@ -70,7 +74,40 @@ class DecisionTrace:
             data=payload,
         )
         self.entries.append(entry)
+
+        if self.task_graph is not None:
+            self._sync_to_graph(entry)
+
         return entry
+
+    def _sync_to_graph(self, entry: TraceEntry) -> None:
+        if self.task_graph is None:
+            return
+        try:
+            from task_graph import EdgeType
+            seq_id = f"evt_{entry.sequence}_{entry.phase.value}"
+            task_id = str(entry.data.get("task_id") or "")
+            if not task_id:
+                task_nodes = [nid for nid, n in self.task_graph.nodes.items() if getattr(n, "node_type", "") == "task"]
+                task_id = task_nodes[0] if task_nodes else "root"
+
+            if task_id not in self.task_graph.nodes:
+                self.task_graph.add_node(task_id, node_type="task", label=task_id)
+
+            if entry.phase in (TracePhase.GOVERNANCE, TracePhase.CLASSIFICATION, TracePhase.STRATEGY, TracePhase.SELECTION, TracePhase.ELIGIBILITY):
+                node = self.task_graph.add_node(seq_id, node_type="decision", label=f"Decision: {entry.event}", payload=entry.data)
+                self.task_graph.add_edge(task_id, node.id, EdgeType.DECISION)
+            elif entry.phase in (TracePhase.RETRIEVAL, TracePhase.CONTEXT_INTEGRATION):
+                node = self.task_graph.add_node(seq_id, node_type="evidence", label=f"Evidence: {entry.event}", payload=entry.data)
+                self.task_graph.add_edge(task_id, node.id, EdgeType.EVIDENCE)
+            elif entry.phase in (TracePhase.EXECUTION, TracePhase.EVALUATION):
+                node = self.task_graph.add_node(seq_id, node_type="outcome", label=f"Outcome: {entry.event}", payload=entry.data)
+                self.task_graph.add_edge(task_id, node.id, EdgeType.OUTCOME)
+            elif entry.phase in (TracePhase.LEARNING, TracePhase.FOLLOWUP):
+                node = self.task_graph.add_node(seq_id, node_type="learned_from", label=f"LearnedFrom: {entry.event}", payload=entry.data)
+                self.task_graph.add_edge(task_id, node.id, EdgeType.LEARNED_FROM)
+        except Exception:
+            pass
 
     def to_list(self) -> list[dict[str, Any]]:
         return [entry.to_dict() for entry in self.entries]
@@ -84,6 +121,8 @@ class DecisionTrace:
         Redaction sensibler Keys; gen_ai.*-Aliase aus EXECUTION-Daten.
         """
         rid = (request_id or "").strip() or "isaac-trace"
+        tg_dict = self.task_graph.to_dict() if self.task_graph else None
+
         if not self.entries:
             return {
                 "schema": "isaac.decision_trace.portable_v1_1",
@@ -91,11 +130,24 @@ class DecisionTrace:
                 "service": "isaac-cognitive-kernel",
                 "resourceSpans": [],
                 "entries": [],
+                "task_graph": tg_dict,
             }
 
         root_start = self.entries[0].ts
         root_end = self.entries[-1].ts
         root_span_id = f"root-{rid[:12]}"
+
+        root_attrs: dict[str, Any] = {
+            "isaac.request_id": rid,
+            "service.name": "isaac-cognitive-kernel",
+        }
+
+        if self.task_graph and rid in self.task_graph.nodes:
+            causal = self.task_graph.build_causal_chain(rid)
+            for rel_key, rel_list in causal.items():
+                if rel_key != "node" and rel_list:
+                    root_attrs[f"causal.{rel_key}"] = json.dumps([item["id"] for item in rel_list])
+
         spans: list[dict[str, Any]] = [
             {
                 "traceId": rid,
@@ -104,10 +156,7 @@ class DecisionTrace:
                 "kind": "SERVER",
                 "startTimeUnixNano": int(root_start * 1_000_000_000),
                 "endTimeUnixNano": int(root_end * 1_000_000_000),
-                "attributes": {
-                    "isaac.request_id": rid,
-                    "service.name": "isaac-cognitive-kernel",
-                },
+                "attributes": root_attrs,
                 "events": [],
             }
         ]
@@ -124,12 +173,15 @@ class DecisionTrace:
                     "ts": entry.ts,
                     "phase": phase_key,
                     "event": entry.event,
-                    "data": enriched,
+                    "data": safe_data,
                 }
             )
+
             if phase_key not in phase_spans:
-                span_attrs: dict[str, Any] = {"isaac.phase": phase_key}
-                # Lift gen_ai / model keys onto the phase span when present.
+                span_attrs: dict[str, Any] = {
+                    "isaac.phase": phase_key,
+                    "isaac.sequence": entry.sequence,
+                }
                 for key in (
                     "gen_ai.system",
                     "gen_ai.request.model",
@@ -154,7 +206,6 @@ class DecisionTrace:
                 phase_spans[phase_key] = span
                 spans.append(span)
             else:
-                # Update span-level attrs if later events carry model metadata.
                 for key in (
                     "gen_ai.system",
                     "gen_ai.request.model",
@@ -179,6 +230,7 @@ class DecisionTrace:
             "request_id": rid,
             "service": "isaac-cognitive-kernel",
             "entries": redacted_entries,
+            "task_graph": tg_dict,
             "resourceSpans": [
                 {
                     "resource": {

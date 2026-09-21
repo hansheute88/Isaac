@@ -192,6 +192,7 @@ class Task:
     classification: Optional[ClassificationResult] = None
     retrieved_context: dict   = field(default_factory=dict)
     decision_trace: DecisionTrace = field(default_factory=DecisionTrace)
+    task_graph: Any = None
 
     # Watchdog
     _last_watchdog_progress: float = 0.0
@@ -206,6 +207,18 @@ class Task:
     resume_tool_context: str = ""
     resume_start_iteration: int = 0
     watchdog_resume_pending: bool = False
+
+    def __post_init__(self):
+        if self.task_graph is None:
+            from task_graph import TaskGraph
+            self.task_graph = TaskGraph()
+        self.decision_trace.task_graph = self.task_graph
+        self.task_graph.add_node(
+            self.id,
+            node_type="task",
+            label=self.beschreibung or self.id,
+            payload={"prompt": self.prompt, "status": self.status.value, "typ": self.typ.value},
+        )
 
     def log(self, msg: str):
         self.log_entries.append({"ts": time.strftime("%H:%M:%S"), "msg": msg})
@@ -287,6 +300,7 @@ class Task:
             "checkpoint_ts": self.checkpoint_ts,
             "resume_checkpoint_id": self.resume_checkpoint_id,
             "resume_strategy": self.resume_strategy,
+            "task_graph": self.task_graph.to_dict() if self.task_graph else None,
         }
 
     @property
@@ -462,6 +476,23 @@ class Executor:
             classification = classification,
             retrieved_context = retrieved_context or {},
         )
+        if parent_id and parent_id in self._tasks:
+            parent_task = self._tasks[parent_id]
+            task.task_graph = parent_task.task_graph
+            task.decision_trace.task_graph = parent_task.task_graph
+
+        from task_graph import EdgeType
+        task.task_graph.add_node(
+            task.id,
+            node_type="task",
+            label=task.beschreibung or task.id,
+            payload={"prompt": task.prompt, "status": task.status.value, "typ": task.typ.value},
+        )
+        if parent_id:
+            task.task_graph.add_node(parent_id, node_type="task", label=parent_id)
+            task.task_graph.add_edge(parent_id, task.id, EdgeType.CHILD)
+            task.task_graph.add_edge(task.id, parent_id, EdgeType.PARENT)
+
         self._tasks[task.id] = task
         AuditLog.task(task.id, "created", task.beschreibung[:100])
         return task
@@ -1677,6 +1708,8 @@ class Executor:
                                   sub_prompts: list[str],
                                   provider: Optional[str]) -> list[str]:
         tasks = []
+        from task_graph import EdgeType
+        prev_sub_id = None
         for prompt in sub_prompts:
             sub = self.create_task(
                 typ          = parent.typ,
@@ -1694,6 +1727,13 @@ class Executor:
             )
             parent.sub_task_ids.append(sub.id)
             tasks.append(sub)
+
+            parent.task_graph.add_edge(parent.id, sub.id, EdgeType.CHILD)
+            parent.task_graph.add_edge(sub.id, parent.id, EdgeType.PARENT)
+            if prev_sub_id:
+                parent.task_graph.add_edge(prev_sub_id, sub.id, EdgeType.DEPENDENCY)
+            prev_sub_id = sub.id
+
         await asyncio.gather(*[self._execute(t) for t in tasks])
         return [t.antwort for t in tasks if t.antwort]
 
