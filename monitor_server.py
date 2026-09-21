@@ -257,6 +257,20 @@ class MonitorServer:
         elif t == "resume":
             self.gate.resume(steffen_ctx("Dashboard-Resume"))
             await self._broadcast({"typ": "system", "event": "resumed"})
+        elif t == "set_provider":
+            p_id = msg.get("provider", "")
+            if p_id:
+                get_config().set_default_provider(p_id)
+                get_relay().refresh_provider_config()
+                await self._broadcast({"typ": "state", "state": self._build_state()})
+                await self._send(ws, {"typ": "ok", "msg": f"Primary Provider set to {p_id}"})
+        elif t == "toggle_setting":
+            key = msg.get("key")
+            val = msg.get("value")
+            if key:
+                get_config().update_runtime_settings({key: val})
+                await self._broadcast({"typ": "state", "state": self._build_state()})
+                await self._send(ws, {"typ": "ok", "msg": f"Setting {key}={val} updated"})
         elif t == "state_request":
             await self._send(ws, {"typ": "state", "state": self._build_state()})
         elif t == "tasks_request":
