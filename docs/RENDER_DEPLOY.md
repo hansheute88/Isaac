@@ -39,6 +39,32 @@
    - `GROQ_API_KEY` = Secret
 8. Create Web Service → warten bis Live
 
+## Integration: Google Labs Jules & Render
+
+Render bietet eine direkte Integration mit Google Labs Jules zur automatischen Behebung von Build-Fehlern in Pull Requests.
+
+### Prerequisites (Voraussetzungen)
+Bevor du einen API-Schlüssel generierst, stelle sicher, dass Render und GitHub bereit sind:
+1. **Pull Request Previews aktivieren:** Gehe zu deinem Render-Dashboard und aktiviere *Pull Request Previews*.
+2. **GitHub-Berechtigungen prüfen:** Prüfe deine GitHub Installations.
+   - Suche nach **Google Labs Jules**.
+   - Falls ein Link *Review Request* daneben angezeigt wird, klicke ihn an, um die aktualisierten Berechtigungen zu akzeptieren.
+   - Falls kein Link zu sehen ist, sind die Berechtigungen bereits auf dem neuesten Stand.
+
+### Setup (Einrichtung)
+1. **API-Schlüssel bereitstellen:** Navigiere zum Render Dashboard. Klicke oben rechts auf das Menu **Help** und wähle **Coding Agents**, um den Provisionierungs-Bildschirm zu öffnen. Alternativ kannst du direkt [dashboard.render.com/jules](https://dashboard.render.com/jules) aufrufen.
+2. **Schlüssel erstellen:** Klicke auf **Create API key**. Kopiere den angezeigten Schlüssel (er wird nur einmal angezeigt).
+3. **In Jules verbinden:** Öffne in Jules **Settings > Integrations**, füge den Schlüssel in das Render-Feld ein und sende das Formular ab.
+
+### Automated Fixes (Automatische Korrekturen)
+Sobald die Verbindung hergestellt ist, überwacht Jules automatisch von ihm erstellte Pull Requests auf Build-Fehler:
+* **Jules erstellt einen PR:** Wenn du einen Plan akzeptierst, öffnet Jules einen Pull Request mit den Änderungen.
+* **Erkennung:** Wenn der Render-Build für diesen PR fehlschlägt, analysiert Jules automatisch die Build-Logs.
+* **Behebung:** Jules schreibt einen Fix und pusht einen neuen Commit auf denselben Branch.
+* **Merge:** Du überprüfst die Korrektur wie jede andere Änderung und mergest sie, wenn sie bereit ist.
+
+*Hinweis:* Jules überwacht und behebt derzeit nur Build-Fehler auf Pull Requests, die von Jules selbst erstellt wurden.
+
 ## Nach dem Deploy
 
 | URL | Erwartung |
