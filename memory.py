@@ -84,6 +84,8 @@ class RetrievalContext:
     relevant_procedures: list[dict]
     # Goal-Autonomie Slice 1b: short owner-goal surface for prompt composition
     active_goals: list[dict] = field(default_factory=list)
+    # DIVA runtime modulator snapshot
+    modulator_state: dict[str, float] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -100,6 +102,7 @@ class RetrievalContext:
             "open_questions": self.open_questions,
             "relevant_procedures": self.relevant_procedures,
             "active_goals": self.active_goals,
+            "modulator_state": self.modulator_state,
         }
 
 
@@ -906,12 +909,25 @@ class Memory:
         self, user_input: str, intent: str = "", interaction_class: str = "",
         n_history: int = 6
     ) -> RetrievalContext:
+        # Obtain DIVA modulator snapshot to adjust retrieval sensitivity
+        mod_state: dict[str, float] = {}
+        effective_min_conf = MIN_RETRIEVAL_CONFIDENCE
+        try:
+            from modulator import get_modulator
+            mod = get_modulator()
+            mod_state = mod.get_all()
+            u_val = mod_state.get("uncertainty", 0.0)
+            if u_val > 0.3:
+                # Lower confidence threshold under high uncertainty to retrieve more candidate facts
+                effective_min_conf = max(0.05, MIN_RETRIEVAL_CONFIDENCE - 0.05 * u_val)
+        except Exception:
+            mod_state = {}
         query_terms = [w for w in re.findall(r"\w+", user_input.lower()) if len(w) >= 4][:5]
         query = " ".join(query_terms) or user_input[:40]
         directives = self.get_directives()[:3]
         facts = [
             f for f in (self.search_facts(query, limit=8) if query else [])
-            if float(f.get("confidence") or 0.0) >= MIN_RETRIEVAL_CONFIDENCE
+            if float(f.get("confidence") or 0.0) >= effective_min_conf
         ]
         seen_fact_keys = {f.get("key") for f in facts}
         for term in {w for w in re.findall(r"\w+", user_input.lower()) if len(w) >= 3}:
@@ -921,7 +937,7 @@ class Memory:
             record = self.get_fact_record(def_key)
             if (
                 record
-                and float(record.get("confidence") or 0.0) >= MIN_RETRIEVAL_CONFIDENCE
+                and float(record.get("confidence") or 0.0) >= effective_min_conf
             ):
                 facts.append(record)
                 seen_fact_keys.add(def_key)
@@ -981,7 +997,7 @@ class Memory:
             key = (fact.get("key") or "").lower()
             if (
                 self._is_preference_key(key)
-                and normalized["confidence"] >= MIN_RETRIEVAL_CONFIDENCE
+                and normalized["confidence"] >= effective_min_conf
             ):
                 preferences.append({
                     "source": "fact",
@@ -1071,6 +1087,7 @@ class Memory:
             open_questions=open_questions[:3],
             relevant_procedures=relevant_procedures[:3],
             active_goals=active_goals,
+            modulator_state=mod_state,
         )
 
     def _active_goals_for_retrieval(self, *, limit: int = 5) -> list[dict]:

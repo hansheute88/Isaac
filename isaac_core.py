@@ -957,6 +957,17 @@ class IsaacKernel:
             retrieval_ctx=retrieval_ctx,
             word_count=classification.word_count,
         )
+        try:
+            from modulator import get_modulator
+            diva_mod_state = get_modulator().get_all()
+            if any(v > 0.0 for v in diva_mod_state.values()):
+                task.decision_trace.add(
+                    TracePhase.STRATEGY,
+                    "diva_modulator_state",
+                    {"modulators": diva_mod_state},
+                )
+        except Exception:
+            pass
         strategy = self._select_response_strategy(
             user_input=user_input,
             intent=intent,
@@ -3904,6 +3915,22 @@ class IsaacKernel:
                     style_note += "\n[Antwortstil] Bleibe knapp, direkt und rein sachlich."
             else:
                 style_note += "\n[Antwortstil] Kein Sarkasmus in dieser Antwort."
+
+        # DIVA Modulator Influence: under elevated uncertainty/caution, inject clarification/caution instructions
+        mod_state = retrieval_ctx.get("modulator_state") or {}
+        if not mod_state:
+            try:
+                from modulator import get_modulator
+                mod_state = get_modulator().get_all()
+            except Exception:
+                mod_state = {}
+
+        if mod_state.get("caution", 0.0) > 0.4 or mod_state.get("uncertainty", 0.0) > 0.4:
+            style_note += (
+                f"\n[DIVA-Modulator] Erhöhte Unsicherheit ({mod_state.get('uncertainty', 0.0):.2f}) "
+                f"oder Vorsicht ({mod_state.get('caution', 0.0):.2f}). "
+                "Agieren Sie besonders präzise, vorsichtig und fragen Sie bei Unklarheiten zur Herkunft oder Absicht nach."
+            )
 
         # Short follow-ups: stay on topic; no credential/browser/key hunting
         if intent == Intent.CHAT and self._is_short_followup(user_input):
