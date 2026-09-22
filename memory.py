@@ -19,7 +19,7 @@ import logging
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from typing import Optional, Any
 from contextlib import contextmanager
 from enum import Enum
@@ -34,6 +34,7 @@ class EpistemicClass(Enum):
     AGENT_GENERATED = "AGENT_GENERATED"
     VERIFIED        = "VERIFIED"
     CONTRADICTED    = "CONTRADICTED"
+    UNCERTAINTY_EVENT = "UNCERTAINTY_EVENT"
 
 
 @dataclass
@@ -465,7 +466,22 @@ class Memory:
             candidates.append(fact)
         return candidates
 
-    def search_facts(self, query: str, limit: int = 10) -> list[dict]:
+    def search_facts(self, query: str, limit: int = 10, memory_bias_strength: float = 0.0) -> list[dict]:
+        epistemic_bias_results = []
+        if memory_bias_strength > 0.0:
+            try:
+                ep_entries = self.search_epistemic_memories(query=query, epistemic_class="UNCERTAINTY_EVENT", limit=int(limit * memory_bias_strength) + 1)
+                for ep in ep_entries:
+                    epistemic_bias_results.append({
+                        "id": ep.memory_id,
+                        "key": ep.key,
+                        "value": f"[DIVA Uncertainty] {ep.value}",
+                        "category": "diva_uncertainty",
+                        "updated": ep.ts,
+                        "confidence": ep.confidence,
+                    })
+            except Exception:
+                pass
         terms = [t for t in re.findall(r"[\w]+", (query or "").lower()) if len(t) >= 2]
         if not terms:
             return []
@@ -501,7 +517,7 @@ class Memory:
             dict(r) for r in rows
             if float(r["confidence"] or 0.0) >= MIN_RETRIEVAL_CONFIDENCE
         ]
-        return self.prioritize_temporal_facts(facts, limit=limit)
+        return (epistemic_bias_results + self.prioritize_temporal_facts(facts, limit=limit))[:limit]
 
     @staticmethod
     def prioritize_temporal_facts(
