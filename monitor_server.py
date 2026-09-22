@@ -445,6 +445,9 @@ class MonitorServer:
             "blacklist":   blacklist_status,
             "neural":      neural_status,
             "governance":  governance_status,
+            "diva_modulators": (
+                get_self_model().get_diva_modulators() if getattr(self.cfg, "diva", None) and self.cfg.diva.enabled else {}
+            ),
             "now":         now_snap,
             "goals":       goals_extra.get("goals") or {},
             "missions":    goals_extra.get("missions") or {},
@@ -976,6 +979,37 @@ class DashboardHTTPServer:
                 except Exception as e:
                     return web.json_response({"ok": False, "error": str(e)}, status=400)
 
+
+            async def diva_status_api(request):
+                from self_model import get_self_model
+                mods = get_self_model().get_diva_modulators() if getattr(self.cfg, "diva", None) and self.cfg.diva.enabled else {}
+                return web.json_response({
+                    "ok": True,
+                    "enabled": bool(getattr(self.cfg, "diva", None) and self.cfg.diva.enabled),
+                    "decay_type": getattr(self.cfg.diva, "decay_type", "exponential") if getattr(self.cfg, "diva", None) else "disabled",
+                    "modulators": mods,
+                })
+
+            async def diva_trigger_api(request):
+                try:
+                    data = await request.json()
+                except Exception:
+                    data = {}
+                uncertainty = float(data.get("uncertainty", 0.5))
+                relevance = float(data.get("relevance", 0.5))
+                event_id = data.get("event_id")
+                updated = self.kernel.trigger_diva_event(uncertainty, relevance, event_id=event_id)
+                return web.json_response({"ok": True, "modulators": updated})
+
+            async def diva_resolve_api(request):
+                try:
+                    data = await request.json()
+                except Exception:
+                    data = {}
+                event_id = data.get("event_id")
+                updated = self.kernel.resolve_diva_event(event_id=event_id)
+                return web.json_response({"ok": True, "modulators": updated})
+
             async def updater_status_api(request):
                 return web.json_response(updater_status())
 
@@ -1150,6 +1184,9 @@ class DashboardHTTPServer:
             app.router.add_post("/api/update/inspect", updater_inspect)
             app.router.add_post("/api/update/apply", updater_apply)
             app.router.add_post("/api/update/rollback", updater_rollback)
+            app.router.add_get("/api/diva/status", diva_status_api)
+            app.router.add_post("/api/diva/trigger", diva_trigger_api)
+            app.router.add_post("/api/diva/resolve", diva_resolve_api)
             app.router.add_get("/api/update/status", updater_status_api)
             app.router.add_get("/api/monitor/state", monitor_state)
             app.router.add_get("/healthz", healthz)

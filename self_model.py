@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from diva_protocol import create_initial_diva_modulators
+
 """Isaac – Self Model
 Explizites Selbstmodell mit stabilen und lernbaren Bereichen.
 """
@@ -59,6 +61,7 @@ def _default_self_model() -> Dict[str, Any]:
             "sensitive_topics": [],
             "last_owner_feedback": "",
         },
+        "diva_modulators": create_initial_diva_modulators(),
         "epistemic_state": {
             "known_facts": [],
             "hypotheses": [],
@@ -424,6 +427,21 @@ class SelfModel:
         if text not in arr:
             arr.append(text[:300])
             self._save(self.data)
+
+
+    def get_diva_modulators(self) -> Dict[str, Any]:
+        mods = self.data.get("diva_modulators")
+        if not isinstance(mods, dict):
+            mods = create_initial_diva_modulators()
+            self.data["diva_modulators"] = mods
+            self._save(self.data, audit=False)
+        return mods
+
+    def save_diva_modulators(self, modulators: Dict[str, Any], audit: bool = False):
+        self.data["diva_modulators"] = modulators
+        self._save(self.data, audit=audit)
+        if audit:
+            AuditLog.action("SelfModel", "update_diva_modulators", str(modulators))
 
     def bump_maturity(self, delta: float = 0.01) -> float:
         dev = self.data.setdefault("development_state", {})

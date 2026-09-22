@@ -392,6 +392,20 @@ class IdeenConfig:
 
 
 @dataclass
+class DivaConfig:
+    enabled: bool = field(default_factory=lambda: _bool(os.getenv("ISAAC_DIVA_ENABLED", "1"), True))
+    decay_type: str = field(default_factory=lambda: os.getenv("ISAAC_DIVA_DECAY_TYPE", "exponential").strip().lower())
+    resolved_multiplier: float = field(default_factory=lambda: float(os.getenv("ISAAC_DIVA_RESOLVED_MULTIPLIER", "3.0")))
+    decay_rate_arousal: float = field(default_factory=lambda: float(os.getenv("ISAAC_DIVA_DECAY_RATE_AROUSAL", "0.08")))
+    decay_rate_urgency: float = field(default_factory=lambda: float(os.getenv("ISAAC_DIVA_DECAY_RATE_URGENCY", "0.10")))
+    decay_rate_memory_bias: float = field(default_factory=lambda: float(os.getenv("ISAAC_DIVA_DECAY_RATE_MEMORY_BIAS", "0.07")))
+    half_life_arousal: float = field(default_factory=lambda: float(os.getenv("ISAAC_DIVA_HALF_LIFE_AROUSAL", "1800.0")))
+    half_life_urgency: float = field(default_factory=lambda: float(os.getenv("ISAAC_DIVA_HALF_LIFE_URGENCY", "1200.0")))
+    half_life_memory_bias: float = field(default_factory=lambda: float(os.getenv("ISAAC_DIVA_HALF_LIFE_MEMORY_BIAS", "2400.0")))
+    cognitive_loss_threshold: float = field(default_factory=lambda: float(os.getenv("ISAAC_DIVA_COGNITIVE_LOSS_THRESHOLD", "2.0")))
+
+
+@dataclass
 class IsaacConfig:
     providers: dict[str, ProviderConfig] = field(default_factory=_provider_defaults_from_env)
     logic: LogicConfig = field(default_factory=LogicConfig)
@@ -400,6 +414,7 @@ class IsaacConfig:
     memory: MemoryConfig = field(default_factory=MemoryConfig)
     relay: RelayConfig = field(default_factory=RelayConfig)
     ideen: IdeenConfig = field(default_factory=IdeenConfig)
+    diva: DivaConfig = field(default_factory=DivaConfig)
     filesystem_full_access: bool = True
     filesystem_access_tier: str = "full"  # workspace | project | full
     browser_automation: bool = True
@@ -540,11 +555,26 @@ class IsaacConfig:
             "free_only_providers": bool(self.free_only_providers),
             "multi_tool_mode": bool(self.multi_tool_mode),
             "style_mode": self.style_mode,
+            "diva_enabled": bool(self.diva.enabled),
+            "diva_decay_type": self.diva.decay_type,
         }
 
     def update_runtime_settings(self, patch: dict[str, Any]) -> dict[str, Any]:
         changed: list[str] = []
         for key, value in (patch or {}).items():
+            if key == "diva_enabled":
+                val = _bool(value, self.diva.enabled)
+                if self.diva.enabled != val:
+                    self.diva.enabled = val
+                    changed.append(key)
+                continue
+            if key == "diva_decay_type":
+                dt = str(value or "").strip().lower()
+                if dt in {"exponential", "logarithmic", "linear", "turn"}:
+                    if self.diva.decay_type != dt:
+                        self.diva.decay_type = dt
+                        changed.append(key)
+                continue
             if not hasattr(self, key):
                 continue
             current = getattr(self, key)

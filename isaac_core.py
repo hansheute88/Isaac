@@ -390,6 +390,32 @@ class IsaacKernel:
 
         t0 = time.monotonic()
 
+        # DIVA Modulatoren Decay pro Turn
+        cfg = getattr(self, "cfg", None) or get_config()
+        if getattr(cfg, "diva", None) and cfg.diva.enabled:
+            try:
+                from diva_protocol import decay_modulators
+                from self_model import get_self_model
+                sm = get_self_model()
+                mods = sm.get_diva_modulators()
+                updated_mods = decay_modulators(
+                    modulators=mods,
+                    decay_type=self.cfg.diva.decay_type,
+                    half_lives={
+                        "uncertainty_arousal": self.cfg.diva.half_life_arousal,
+                        "urgency_modifier": self.cfg.diva.half_life_urgency,
+                        "memory_bias_strength": self.cfg.diva.half_life_memory_bias,
+                    },
+                    base_rates={
+                        "uncertainty_arousal": self.cfg.diva.decay_rate_arousal,
+                        "urgency_modifier": self.cfg.diva.decay_rate_urgency,
+                        "memory_bias_strength": self.cfg.diva.decay_rate_memory_bias,
+                    },
+                )
+                sm.save_diva_modulators(updated_mods, audit=False)
+            except Exception as exc:
+                log.debug("DIVA decay skipped: %s", exc)
+
         # Ort-Korrektur nach Wetter: „Ich wollte für 99974 Mühlhausen …“
         try:
             from search import (
@@ -1215,6 +1241,52 @@ class IsaacKernel:
         return antwort, score
 
     # ── Post-Processing ────────────────────────────────────────────────────────
+
+    def trigger_diva_event(self, uncertainty: float, relevance: float, event_id: Optional[str] = None) -> dict[str, Any]:
+        cfg = getattr(self, "cfg", None) or get_config()
+        if not (getattr(cfg, "diva", None) and cfg.diva.enabled):
+            from self_model import get_self_model
+            return get_self_model().get_diva_modulators()
+        try:
+            from diva_protocol import raise_modulators
+            from self_model import get_self_model
+            sm = get_self_model()
+            mods = sm.get_diva_modulators()
+            updated = raise_modulators(
+                modulators=mods,
+                uncertainty=uncertainty,
+                relevance=relevance,
+                event_id=event_id,
+            )
+            sm.save_diva_modulators(updated, audit=True)
+            return updated
+        except Exception as exc:
+            log.warning("DIVA trigger failed: %s", exc)
+            from self_model import get_self_model
+            return get_self_model().get_diva_modulators()
+
+    def resolve_diva_event(self, event_id: Optional[str] = None) -> dict[str, Any]:
+        cfg = getattr(self, "cfg", None) or get_config()
+        if not (getattr(cfg, "diva", None) and cfg.diva.enabled):
+            from self_model import get_self_model
+            return get_self_model().get_diva_modulators()
+        try:
+            from diva_protocol import on_diva_resolved
+            from self_model import get_self_model
+            sm = get_self_model()
+            mods = sm.get_diva_modulators()
+            updated = on_diva_resolved(
+                modulators=mods,
+                event_id=event_id,
+                decay_type=self.cfg.diva.decay_type,
+            )
+            sm.save_diva_modulators(updated, audit=True)
+            return updated
+        except Exception as exc:
+            log.warning("DIVA resolve failed: %s", exc)
+            from self_model import get_self_model
+            return get_self_model().get_diva_modulators()
+
     def _update_self_model_from_interaction(
         self,
         user_input: str,
