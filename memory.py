@@ -19,7 +19,7 @@ import logging
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from typing import Optional, Any
 from contextlib import contextmanager
 from enum import Enum

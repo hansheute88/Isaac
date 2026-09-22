@@ -957,17 +957,7 @@ class IsaacKernel:
             retrieval_ctx=retrieval_ctx,
             word_count=classification.word_count,
         )
-        try:
-            from modulator import get_modulator
-            diva_mod_state = get_modulator().get_all()
-            if any(v > 0.0 for v in diva_mod_state.values()):
-                task.decision_trace.add(
-                    TracePhase.STRATEGY,
-                    "diva_modulator_state",
-                    {"modulators": diva_mod_state},
-                )
-        except Exception:
-            pass
+
         strategy = self._select_response_strategy(
             user_input=user_input,
             intent=intent,
