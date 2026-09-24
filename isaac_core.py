@@ -363,6 +363,8 @@ class IsaacKernel:
             log.debug("sentry process wrapper: %s", exc)
         return await self._process_body(user_input, sudo_token=sudo_token)
 
+    handle_message = process
+
     async def _process_body(self, user_input: str,
                             sudo_token: Optional[str] = None) -> str:
         t_start = time.perf_counter()
