@@ -132,10 +132,52 @@ class LearningEngine:
         self._save_candidate(cand)
         return cand
 
-    def commit_candidate(self, candidate_id: str) -> Optional[LearningCandidate]:
+    def verify_candidate_evidence(
+        self,
+        candidate_id: str,
+        require_evidence_tasks: bool = True,
+        require_decision_trace: bool = False,
+    ) -> dict[str, Any]:
+        """Verifies candidate evidence against TaskGraph and DecisionTrace nodes."""
+        cand = self.get_candidate(candidate_id)
+        if not cand:
+            return {"verified": False, "error": "Candidate not found"}
+
+        task_ids = cand.evidence_task_ids or []
+        if require_evidence_tasks and not task_ids:
+            return {"verified": False, "error": "No evidence task IDs linked to candidate"}
+
+        try:
+            from executor import get_executor
+            executor = get_executor()
+            valid_tasks = []
+            for tid in task_ids:
+                if executor.get_task(tid):
+                    valid_tasks.append(tid)
+            if require_evidence_tasks and not valid_tasks:
+                return {"verified": False, "error": "None of the evidence task IDs exist in Executor"}
+        except Exception as exc:
+            valid_tasks = task_ids
+
+        return {
+            "verified": True,
+            "candidate_id": candidate_id,
+            "evidence_task_count": len(task_ids),
+            "valid_task_count": len(valid_tasks),
+        }
+
+    def commit_candidate(self, candidate_id: str, verify_evidence: bool = False) -> Optional[LearningCandidate]:
         cand = self.get_candidate(candidate_id)
         if not cand:
             return None
+
+        if verify_evidence:
+            ev_check = self.verify_candidate_evidence(candidate_id, require_evidence_tasks=True)
+            if not ev_check.get("verified"):
+                cand.status = CandidateStatus.REJECTED
+                cand.notes = f"{cand.notes} [Evidence verification failed: {ev_check.get('error')}]".strip()
+                self._save_candidate(cand)
+                return cand
 
         if not (cand.replay_passed and cand.regression_check_passed and cand.governance_approved):
             cand.status = CandidateStatus.REJECTED

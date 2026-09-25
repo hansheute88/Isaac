@@ -1351,6 +1351,55 @@ class Memory:
             metadata=json.loads(r.get("metadata") or "{}"),
         )
 
+    def resolve_contradiction(
+        self,
+        memory_id: str,
+        contradicting_ref: str,
+        new_epistemic_class: EpistemicClass | str = EpistemicClass.CONTRADICTED,
+        new_confidence: float = 0.1,
+    ) -> Optional[EpistemicMemoryEntry]:
+        """Marks an epistemic memory entry as contradicted by new evidence or task."""
+        entry = self.get_epistemic_memory(memory_id)
+        if not entry:
+            return None
+
+        contradicted_list = list(entry.contradicted_by)
+        if contradicting_ref not in contradicted_list:
+            contradicted_list.append(contradicting_ref)
+
+        eclass_val = new_epistemic_class.value if isinstance(new_epistemic_class, EpistemicClass) else str(new_epistemic_class)
+
+        with _conn() as con:
+            con.execute(
+                "UPDATE epistemic_memories SET epistemic_class=?, confidence=?, contradicted_by=? WHERE memory_id=?",
+                (eclass_val, max(0.0, min(1.0, new_confidence)), json.dumps(contradicted_list), entry.memory_id),
+            )
+        return self.get_epistemic_memory(entry.memory_id)
+
+    def link_evidence_to_memory(
+        self,
+        memory_id: str,
+        task_id: str,
+        confidence_boost: float = 0.0,
+    ) -> Optional[EpistemicMemoryEntry]:
+        """Links an execution Task ID as supporting evidence for an epistemic memory."""
+        entry = self.get_epistemic_memory(memory_id)
+        if not entry:
+            return None
+
+        evidence_list = list(entry.evidence_task_ids)
+        if task_id not in evidence_list:
+            evidence_list.append(task_id)
+
+        updated_confidence = min(1.0, max(0.0, entry.confidence + confidence_boost))
+
+        with _conn() as con:
+            con.execute(
+                "UPDATE epistemic_memories SET evidence_task_ids=?, confidence=? WHERE memory_id=?",
+                (json.dumps(evidence_list), updated_confidence, entry.memory_id),
+            )
+        return self.get_epistemic_memory(entry.memory_id)
+
     def search_epistemic_memories(
         self, query: str = "", epistemic_class: Optional[str] = None, limit: int = 20
     ) -> list[EpistemicMemoryEntry]:
