@@ -90,12 +90,21 @@ class KernelMetricsReport:
 class KernelMetricsEvaluator:
     """Evaluates Kernel Autonomy & Governance metrics over a set of task nodes or traces."""
 
-    def evaluate_tasks(self, tasks: list[dict[str, Any]]) -> KernelMetricsReport:
+    def evaluate_tasks(self, tasks: list[Any]) -> KernelMetricsReport:
         report = KernelMetricsReport()
         report.total_tasks = len(tasks)
 
-        for task in tasks:
-            status = task.get("status")
+        for item in tasks:
+            if hasattr(item, "to_dict"):
+                task = item.to_dict()
+            elif hasattr(item, "__dict__") and not isinstance(item, dict):
+                task = vars(item)
+            elif isinstance(item, dict):
+                task = item
+            else:
+                task = {}
+
+            status = str(task.get("status", "")).lower()
             if status in ("done", "completed"):
                 report.successful_tasks += 1
             elif status in ("failed", "cancelled"):

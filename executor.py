@@ -2184,6 +2184,80 @@ class Executor:
             "nodes": nodes,
         }
 
+    def validate_task_graph(self, root_task_id: str) -> dict[str, Any]:
+        """Validates DAG integrity for a task graph (detects cycles, missing dependencies)."""
+        graph = self.get_task_graph(root_task_id)
+        if not graph:
+            return {"is_valid": False, "has_cycle": False, "missing_dependencies": [], "error": "Root task not found"}
+
+        nodes = graph.get("nodes", {})
+        missing_deps = []
+
+        for tid, node in nodes.items():
+            for dep_id in node.get("dependencies", []):
+                if dep_id not in self._tasks:
+                    missing_deps.append({"task_id": tid, "missing_dep": dep_id})
+
+        visited = {}
+        has_cycle = False
+        cycle_path = []
+
+        def _dfs(tid: str, path: list[str]) -> bool:
+            nonlocal has_cycle, cycle_path
+            visited[tid] = 1
+            path.append(tid)
+
+            t = self.get_task(tid)
+            if t:
+                neighbors = list(t.dependencies) + list(t.sub_task_ids)
+                for neighbor in neighbors:
+                    if neighbor not in self._tasks:
+                        continue
+                    if visited.get(neighbor, 0) == 1:
+                        has_cycle = True
+                        cycle_path = list(path) + [neighbor]
+                        return True
+                    elif visited.get(neighbor, 0) == 0:
+                        if _dfs(neighbor, path):
+                            return True
+
+            path.pop()
+            visited[tid] = 2
+            return False
+
+        for tid in nodes:
+            if visited.get(tid, 0) == 0:
+                if _dfs(tid, []):
+                    break
+
+        is_valid = (not has_cycle) and (len(missing_deps) == 0)
+        return {
+            "is_valid": is_valid,
+            "has_cycle": has_cycle,
+            "cycle_path": cycle_path,
+            "missing_dependencies": missing_deps,
+            "node_count": len(nodes),
+        }
+
+    def are_dependencies_satisfied(self, task_id: str) -> bool:
+        """Checks if all prerequisite dependency tasks are completed."""
+        task = self.get_task(task_id)
+        if not task:
+            return False
+        for dep_id in task.dependencies:
+            dep_task = self.get_task(dep_id)
+            if not dep_task or dep_task.status not in (TaskStatus.DONE, "completed", "done"):
+                return False
+        return True
+
+    def get_executable_tasks(self) -> list[Task]:
+        """Returns all pending tasks whose dependencies are satisfied."""
+        executable = []
+        for task in self._tasks.values():
+            if task.status in (TaskStatus.QUEUED, "queued", "pending", TaskStatus.RESUMABLE) and self.are_dependencies_satisfied(task.id):
+                executable.append(task)
+        return executable
+
     def all_tasks(self, limit: int = 200) -> list[dict]:
         return [
             t.to_dict()
