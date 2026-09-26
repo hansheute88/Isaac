@@ -208,7 +208,7 @@ async def _bridge_github(prompt: str) -> dict[str, Any]:
 
         # issues / prs / repo
         m = re.search(r"([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)", text)
-        owner = m.group(1) if m else "glinkasteffen075-bit"
+        owner = m.group(1) if m else "hansheute88"
         repo = m.group(2) if m else "Isaac"
 
         if low.startswith("issues") or " issues" in low or low.startswith("issue"):

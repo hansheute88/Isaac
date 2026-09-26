@@ -343,7 +343,7 @@ class BrowserConfig:
 
 @dataclass
 class MonitorConfig:
-    host: str = "localhost"
+    host: str = (os.getenv("ISAAC_BIND_HOST", "") or "").strip() or "localhost"
     port: int = int(os.getenv("MONITOR_PORT", "8765"))
     http_port: int = int(os.getenv("DASHBOARD_PORT", "8766"))
     push_interval: float = 0.5

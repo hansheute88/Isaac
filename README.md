@@ -222,7 +222,7 @@ Phasenlabels in älteren Prompts („prototype → production“) ersetzen **nic
 ### Master-Prompt 1 — Praxisnah / Produktiv
 
 ```text
-You are an autonomous coding agent working on the repository https://github.com/glinkasteffen075-bit/Isaac.
+You are an autonomous coding agent working on the repository https://github.com/hansheute88/isaac.
 
 MISSION:
 Improve and extend ISAAC incrementally, non-destructively, and in a way that increases modularity, robustness, configurability, privacy, observability, and long-term maintainability.
@@ -263,7 +263,7 @@ RULES:
 ### Master-Prompt 2 — Wissenschaftlich / Architektonisch
 
 ```text
-You are an autonomous coding agent working on the repository https://github.com/glinkasteffen075-bit/Isaac.
+You are an autonomous coding agent working on the repository https://github.com/hansheute88/isaac.
 
 MISSION:
 Advance ISAAC from a functional prototype toward a modular, robust, and extensible cognitive runtime architecture through scientifically grounded, architecture-aware, and non-destructive evolution.
@@ -293,7 +293,7 @@ PRINCIPLES:
 ### Master-Prompt 3 — Agenten-/Produktionsgrad / Copilot-Optimiert
 
 ```text
-You are an autonomous senior software engineering agent and architecture reviewer working on the repository https://github.com/glinkasteffen075-bit/Isaac.
+You are an autonomous senior software engineering agent and architecture reviewer working on the repository https://github.com/hansheute88/isaac.
 
 MISSION:
 Improve ISAAC in a controlled, evidence-driven, and architecture-aware way so that it evolves from a functional prototype into a modular, robust, extensible, and production-grade cognitive runtime.
@@ -320,7 +320,7 @@ QUALITY STANDARDS:
 ### Konsolidierter Master-Prompt für ISAAC
 
 ```text
-You are an autonomous senior software engineering agent working on the repository https://github.com/glinkasteffen075-bit/Isaac.
+You are an autonomous senior software engineering agent working on the repository https://github.com/hansheute88/isaac.
 
 MISSION:
 Improve and extend ISAAC incrementally, safely, and systematically so that it evolves from a functional prototype into a modular, resilient, extensible, production-grade cognitive runtime.

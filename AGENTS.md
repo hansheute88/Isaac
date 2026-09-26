@@ -1,7 +1,7 @@
 # AGENTS.md — Isaac Repository & Master-Arbeitsanweisung
 
 > Kanonische Agenten-Anweisung für Codex, Claude, Copilot, Cursor und alle automatisierten Entwicklungsroutinen.
-> Repository: https://github.com/glinkasteffen075-bit/Isaac
+> Repository: https://github.com/hansheute88/isaac
 > Konsolidiert aus `MASTER_ARBEITSANWEISUNG_PROMPT.md`, READMEs, Leitdateien und Architekturdocs.
 >
 > **Agent-Tool-Kompatibilität:** `AGENTS.md` ist die einzige bearbeitbare Quelle. `AGENT.md` ist ein Symlink auf diese Datei (agents.md-Format).
@@ -452,7 +452,7 @@ Siehe `docs/DRIVE_PATCH_REVIEW_2026-07-24.md` und Master-Roadmap §8 Anti-Liste.
 ## Kompakter Ausführungs-Prompt (Copy-Paste)
 
 ```text
-You are a senior implementation agent for https://github.com/glinkasteffen075-bit/Isaac.
+You are a senior implementation agent for https://github.com/hansheute88/isaac.
 Read AGENTS.md first — it is the canonical instruction set.
 
 MISSION: Improve Isaac incrementally, safely, architecture-aware. Local stateful cognitive kernel — NOT a chatbot wrapper.
