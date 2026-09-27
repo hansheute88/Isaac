@@ -231,6 +231,22 @@ class PrivilegeGate:
         log.info(f"Direktive hinzugefügt: [{d.id}] {text[:80]}")
         return d
 
+    def seed_directive(self, directive_id: str, text: str,
+                       priority: int = 10) -> Directive:
+        """Fügt eine Direktive mit stabiler ID hinzu (idempotent, kein Duplikat)."""
+        for d in self._directives:
+            if d.id == directive_id:
+                return d
+        d = Directive(
+            id=directive_id,
+            text=text,
+            timestamp=time.strftime("%Y-%m-%d %H:%M:%S"),
+            priority=priority,
+        )
+        self._directives.append(d)
+        log.info(f"Direktive hinzugefügt: [{d.id}] {text[:80]}")
+        return d
+
     def revoke_directive(self, directive_id: str) -> bool:
         for d in self._directives:
             if d.id == directive_id:

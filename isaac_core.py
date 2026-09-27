@@ -1905,12 +1905,15 @@ class IsaacKernel:
             ),
         ]
         try:
-            active = {d.get("id") for d in self.memory.get_directives()}
+            active_mem = {d.get("id") for d in self.memory.get_directives()}
+            active_gate = {d.id for d in self.gate.active_directives()}
             for did, text, prio in directives:
-                if did in active:
-                    continue
-                self.memory.save_directive(did, text, priority=prio)
-                log.info("Owner-Direktive gesetzt: %s", did)
+                if did not in active_mem:
+                    self.memory.save_directive(did, text, priority=prio)
+                    log.info("Owner-Direktive im Memory gesetzt: %s", did)
+                if did not in active_gate:
+                    self.gate.seed_directive(did, text, prio)
+                    log.info("Owner-Direktive im Gate gesetzt: %s", did)
         except Exception as e:
             log.warning("Owner-Direktiven-Seed: %s", e)
 
