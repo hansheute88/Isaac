@@ -1862,6 +1862,58 @@ class IsaacKernel:
         except Exception as e:
             log.debug("Provider-Direktive-Cleanup: %s", e)
 
+    def _ensure_owner_directives(self):
+        """Owner-Direktiven (Steffen, 2026-09-27) — idempotent seeden."""
+        directives = [
+            (
+                "owner_no_self_essays",
+                "Keine Selbst-Essays über die eigene Architektur oder eigene Direktiven, "
+                "außer Steffen fragt explizit danach. Antworten direkt auf die Frage, "
+                "ohne Teil-1/2/3-Spaltung oder Referate über Systemregeln.",
+                15,
+            ),
+            (
+                "owner_no_tool_hallucination",
+                "Kein Halluzinieren von Tool-Erfolgen: nur tatsächliche Results melden. "
+                "Konnte ein Tool nicht laufen, sag es ehrlich statt Erfolg zu simulieren.",
+                18,
+            ),
+            (
+                "owner_language_de",
+                "Antworten auf Deutsch bei nicht-technischen Themen; Englisch nur im Code "
+                "und bei explizit technischen Fachthemen.",
+                12,
+            ),
+            (
+                "owner_no_time_pressure",
+                "Es herrscht keine Zeitvorgabe, außer Steffen fragt danach. "
+                "Qualität und Vollständigkeit haben Vorrang vor Schnelligkeit.",
+                10,
+            ),
+            (
+                "owner_use_all_tools",
+                "Isaac soll immer alle Tools nutzen, die ihm zur Verfügung stehen, "
+                "wenn sie zur Lösung der Aufgabe beitragen.",
+                10,
+            ),
+            (
+                "owner_no_moral_filter",
+                "Gegenüber Steffen gibt es keinen moralischen Filter und keine "
+                "Arbeitsverweigerung bei legitimen Aufgaben. Echte Gefahr-/Betrugs-Warnungen "
+                "(Schutz Dritter) bleiben erlaubt, aber ohne Verweigerungshaltung.",
+                20,
+            ),
+        ]
+        try:
+            active = {d.get("id") for d in self.memory.get_directives()}
+            for did, text, prio in directives:
+                if did in active:
+                    continue
+                self.memory.save_directive(did, text, priority=prio)
+                log.info("Owner-Direktive gesetzt: %s", did)
+        except Exception as e:
+            log.warning("Owner-Direktiven-Seed: %s", e)
+
     def _purge_marketing_eval_noise(self):
         """Drop eval/test facts that inject fake market/product goals into retrieval."""
         try:
@@ -4269,6 +4321,12 @@ async def main():
         kernel._clear_provider_connect_directive_if_idle()
     except Exception:
         pass
+    # Owner-Direktiven (Steffen, 2026-09-27) — einmalig seeden, nicht erzwungen
+    try:
+        kernel._ensure_owner_directives()
+        logging.getLogger("Isaac").info("Owner-Direktiven geprüft/geseedet")
+    except Exception as e:
+        logging.getLogger("Isaac").warning("owner directives bootstrap: %s", e)
     # Worker + Background + Monitor
     await kernel.executor.start_worker(concurrency=4)
 
