@@ -102,6 +102,7 @@ class Intent:
     LETTA       = "letta"           # Explizit: Letta Code Companion-CLI
     OPEN_INTERPRETER = "open_interpreter"  # Explizit: Open Interpreter Companion
     GROK_AGENT  = "grok_agent"      # Explizit: Grok Build Agent CLI (headless)
+    JULES_AGENT = "jules_agent"      # Explizit: Jules Coding Agent
     COPILOT_AGENT = "copilot_agent"  # Explizit: GitHub Copilot CLI / cloud agent
     CONTEXT7    = "context7"        # Explizit: Context7 Library-Docs (docs:)
     REMOTE_CLOUD = "remote_cloud"    # Explizit: remote Isaac (Render free) cloud:
