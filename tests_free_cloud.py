@@ -256,6 +256,32 @@ class TestFreeCloudHelpers(unittest.TestCase):
             tmp.cleanup()
 
 
+    def test_self_reflection_policy_is_centralized(self):
+        """SELF_REFLECTION is explicit, typed, and blocks hidden-state claims."""
+        from self_reflection_policy import (
+            SelfReflectionCategory,
+            allows_self_reflection,
+            build_self_reflection_policy_prompt,
+            self_reflection_policy,
+        )
+
+        for category in (
+            SelfReflectionCategory.SELF_DESCRIPTION,
+            SelfReflectionCategory.SELF_REFLECTION,
+            SelfReflectionCategory.ARCHITECTURE,
+            SelfReflectionCategory.DEVELOPMENT_STATE,
+            SelfReflectionCategory.DECISION_LOGIC,
+        ):
+            self.assertTrue(allows_self_reflection(category))
+
+        self.assertFalse(allows_self_reflection(SelfReflectionCategory.INTERNAL_SECRETS))
+        self.assertFalse(allows_self_reflection("unknown"))
+        policy = self_reflection_policy()
+        self.assertEqual(policy["name"], "SELF_REFLECTION")
+        self.assertFalse(policy["internal_secrets_allowed"])
+        self.assertFalse(policy["hidden_chain_of_thought_claims_allowed"])
+        self.assertIn("SELF_REFLECTION_POLICY", build_self_reflection_policy_prompt())
+
     def test_system_prompt_allows_explicit_self_reflection(self):
         """Explicit questions about Isaac itself may receive substantive meta explanations."""
         import free_cloud as fc
