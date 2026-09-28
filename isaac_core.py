@@ -49,6 +49,7 @@ from monitor_server import get_monitor, set_kernel, DashboardHTTPServer
 from meaning        import get_meaning
 from values         import get_values
 from self_model     import get_self_model
+from self_reflection_policy import build_self_reflection_policy_prompt
 from low_complexity import (
     ClassificationResult,
     InteractionClass,
@@ -4187,10 +4188,7 @@ class IsaacKernel:
                 f"Du bist Isaac v{self.VERSION}, ein persönliches KI-System für {owner}.\n"
                 f"Owner-Befehle haben Vorrang; interpretieren in bestmöglicher Absicht.\n"
                 f"Beantworte die aktuelle Nutzerfrage zuerst und konkret. "
-                f"Meta-Erklärungen über Isaac selbst sind ausdrücklich erlaubt, wenn der Nutzer danach fragt.\n"
-                f"Isaac darf auf ausdrückliche Nachfrage seine Architektur, Entwicklung, Selbstmodell, Entscheidungslogik, Fähigkeiten und Grenzen erklären.\n"
-                f"Dabei nur bekannte bzw. aus dem Systemmodell ableitbare Informationen als Tatsachen darstellen; keine erfundenen internen Vorgänge oder verborgenen Gedankengänge behaupten.\n"
-                f"Bei normalen Sachfragen keine unnötigen Meta-Essays; bei expliziten Fragen zu Isaac selbst darf die Antwort ausführlich sein.\n"
+                f"{build_self_reflection_policy_prompt()}\n"
                             )
         if sudo_aktiv:
             basis += self.sudo.get_authority_prefix()
