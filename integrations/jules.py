@@ -79,8 +79,10 @@ class JulesAdapter:
                 },
             },
             "requirePlanApproval": bool(require_plan_approval),
-            "automationMode": "AUTO_CREATE_PR" if auto_create_pr else "NONE",
             "title": "Isaac delegated coding task",
+        }
+        if auto_create_pr:
+            payload["automationMode"] = "AUTO_CREATE_PR"
         }
         headers = {
             "x-goog-api-key": self.api_key,
