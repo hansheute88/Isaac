@@ -188,6 +188,11 @@ EXPLICIT_COMMAND_PATTERNS = [
         r"^xai-agent\s*:",
         r"^xai agent\s*:",
     ]),
+    (Intent.JULES_AGENT, [
+        r"^jules\s*:",
+        r"^jules-agent\s*:",
+        r"^jules agent\s*:",
+    ]),
     (Intent.COPILOT_AGENT, [
         r"^copilot\s*:",
         r"^gh-copilot\s*:",
@@ -647,6 +652,7 @@ class IsaacKernel:
             Intent.OPEN_INTERPRETER: self._handle_open_interpreter,
             Intent.GROK_AGENT: self._handle_grok_agent,
             Intent.COPILOT_AGENT: self._handle_copilot_agent,
+            Intent.JULES_AGENT: self._handle_jules_agent,
             Intent.CONTEXT7:   self._handle_context7,
             Intent.REMOTE_CLOUD: self._handle_remote_cloud,
             Intent.REMOTE_BOTH: self._handle_remote_both,
@@ -3274,6 +3280,55 @@ class IsaacKernel:
                 prompt = rest
 
         return prompt, force_new, resume_override, mode
+
+    def _handle_jules_agent(self, text: str) -> str:
+        """Explicit Google Jules coding companion: 'jules: …'."""
+        prompt = text or ""
+        low = prompt.lower()
+        for prefix in ("jules:", "jules-agent:", "jules agent:"):
+            if low.startswith(prefix):
+                prompt = prompt[len(prefix):].strip()
+                break
+        if not prompt:
+            return (
+                "[Jules] Format: jules: AUFGABE\n"
+                "Konfiguration: ISAAC_JULES_ENABLED=1 + JULES_API_KEY + JULES_REPO=owner/repo"
+            )
+        try:
+            from constitution import get_constitution
+            decision = get_constitution().validate_action(
+                "system_command",
+                {
+                    "command": "jules-agent",
+                    "prompt": prompt[:200],
+                    "owner_approved": True,
+                    "risk": "normal",
+                    "audit_logged": True,
+                },
+            )
+            if not decision.get("allowed", True):
+                return "[Jules] Verfassung blockiert die Ausführung."
+            from privilege import steffen_ctx
+            ok, reason = self.gate.authorize(
+                "system_command",
+                steffen_ctx("Jules coding companion"),
+            )
+            if not ok:
+                return f"[Jules] Privileg verweigert: {reason}"
+            from tool_bridge import run_bridge
+            result = asyncio.run(run_bridge("jules", prompt))
+            if not result.get("ok"):
+                return f"[Jules] Fehler: {result.get('error') or 'unbekannt'}"
+            return (
+                f"[Jules] Session: {result.get('session_id') or '(unbekannt)'}\n"
+                f"{result.get('output') or ''}"
+            )
+        except RuntimeError:
+            # Already inside an event loop: explicit command normally runs through
+            # the async process path, so return a deterministic instruction.
+            return "[Jules] Wird im asynchronen Kernel-Pfad ausgeführt."
+        except Exception as exc:
+            return f"[Jules] Fehler: {exc}"
 
     def _handle_copilot_agent(self, text: str) -> str:
         """Explicit GitHub Copilot companion: 'copilot: …' / cloud tasks."""
