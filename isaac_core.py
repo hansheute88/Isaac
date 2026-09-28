@@ -3281,7 +3281,7 @@ class IsaacKernel:
 
         return prompt, force_new, resume_override, mode
 
-    def _handle_jules_agent(self, text: str) -> str:
+    async def _handle_jules_agent(self, text: str) -> str:
         """Explicit Google Jules coding companion: 'jules: …'."""
         prompt = text or ""
         low = prompt.lower()
@@ -3316,17 +3316,13 @@ class IsaacKernel:
             if not ok:
                 return f"[Jules] Privileg verweigert: {reason}"
             from tool_bridge import run_bridge
-            result = asyncio.run(run_bridge("jules", prompt))
+            result = await run_bridge("jules", prompt)
             if not result.get("ok"):
                 return f"[Jules] Fehler: {result.get('error') or 'unbekannt'}"
             return (
                 f"[Jules] Session: {result.get('session_id') or '(unbekannt)'}\n"
                 f"{result.get('output') or ''}"
             )
-        except RuntimeError:
-            # Already inside an event loop: explicit command normally runs through
-            # the async process path, so return a deterministic instruction.
-            return "[Jules] Wird im asynchronen Kernel-Pfad ausgeführt."
         except Exception as exc:
             return f"[Jules] Fehler: {exc}"
 
