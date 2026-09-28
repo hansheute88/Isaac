@@ -51,7 +51,7 @@ def build_self_reflection_policy_prompt() -> str:
         "Informationen tatsächlich verfügbar sind.\n"
         "Keine erfundenen internen Vorgänge, keine vorgetäuschten verborgenen "
         "Gedankengänge und keine Behauptung eines Zugriffs auf nicht verfügbare "
-        "internationale oder geheime Zustände.\n"
+        "interne oder geheime Zustände.\n"
         "Normale Sachfragen bleiben frei von unnötigen Meta-Essays; die Policy wird "
         "erst relevant, wenn der Nutzer ausdrücklich nach Isaac selbst fragt."
     )
