@@ -1,0 +1,34 @@
+# Base44 dev environment for Isaac
+# Runs the Python kernel from cloned source with the slim free-cloud deps.
+services:
+  isaac:
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - ./:/app
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./.env.base44-defaults
+      - /run/base44/app.env
+    environment:
+      # Free-cloud single-port mode: HTTP + WS on one port, bind all interfaces
+      - ISAAC_FREE_CLOUD=1
+      - ISAAC_UNIFIED_PORT=1
+      - ISAAC_BIND_HOST=0.0.0.0
+      - ISAAC_DISABLE_VECTOR_MEMORY=1
+      - PORT=3000
+      - ISAAC_OWNER=Steffen
+      - ACTIVE_PROVIDER=groq
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    # Install slim deps from lockfile, then start the kernel.
+    # aiohttp has no built-in reload; use reload_preview after edits.
+    command: ["sh", "-ec", "pip install --no-cache-dir -r requirements-free.txt && exec python isaac_core.py"]
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:3000/healthz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      start_period: 40s
+      retries: 5

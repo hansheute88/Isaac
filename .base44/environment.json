@@ -1,0 +1,25 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/healthz",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "GROQ_API_KEY",
+      "description": "Groq API key for the LLM provider (free tier at https://console.groq.com). Required for AI chat functionality.",
+      "requiredAtBoot": false,
+      "generatedForDevelopment": false
+    },
+    {
+      "name": "OPENROUTER_API_KEY",
+      "description": "OpenRouter API key for multi-model LLM access (https://openrouter.ai). Optional alternative provider.",
+      "requiredAtBoot": false,
+      "generatedForDevelopment": false
+    },
+    {
+      "name": "GOOGLE_API_KEY",
+      "description": "Google AI Studio / Gemini API key (https://aistudio.google.com/apikey). Optional alternative provider.",
+      "requiredAtBoot": false,
+      "generatedForDevelopment": false
+    }
+  ]
+}
