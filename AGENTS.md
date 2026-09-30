@@ -498,3 +498,16 @@ Historische Phase-3/4-Checklisten und Alt-Instruktionen liegen nicht mehr im Tre
 ---
 
 *Isaac Kernel v5.3 | Kanonische Agenten-Anweisung*
+
+---
+
+## Base44 Dev Environment (Sandbox)
+
+Isaac läuft hier via `docker compose -f docker-compose.base44.yml up -d`:
+
+- Service `isaac` = `python:3.12-slim`, Source per Bind-Mount, Deps aus `requirements-free.txt` beim Start.
+- Free-Cloud-Modus: `ISAAC_FREE_CLOUD=1 ISAAC_UNIFIED_PORT=1 PORT=3000` → HTTP + WS (`/ws`) auf einem Port, Web-Entry ist Host-Port 3000.
+- Verifizieren: `curl http://localhost:3000/healthz` → `ok:true`, `has_groq_key` prüfen.
+- Secrets (GROQ_API_KEY, optional OPENROUTER_API_KEY / GOOGLE_API_KEY) kommen aus `/run/base44/app.env` (überschreibt `.env.base44-defaults`).
+- aiohttp hat kein Hot-Reload: Nach Code-Änderungen `docker compose -f docker-compose.base44.yml restart isaac` (bzw. reload_preview).
+- Validierung in der Sandbox (kein venv nötig): `docker compose -f docker-compose.base44.yml exec -T isaac sh -c "ISAAC_DISABLE_VECTOR_MEMORY=1 python -m unittest tests_phase_a_stabilization tests_state_io tests_provider_configuration -q"`
