@@ -83,7 +83,6 @@ class JulesAdapter:
         }
         if auto_create_pr:
             payload["automationMode"] = "AUTO_CREATE_PR"
-        }
         headers = {
             "x-goog-api-key": self.api_key,
             "Content-Type": "application/json",
