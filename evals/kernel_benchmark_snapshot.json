@@ -1,5 +1,5 @@
 {
-  "timestamp": 1790244490.5581732,
+  "timestamp": 1790895716.390847,
   "suite": "kernel_benchmark",
   "passed": 100,
   "total": 100,
@@ -17,7 +17,7 @@
     "cost_latency": {
       "total_tokens": 0,
       "api_cost_estimate_eur": 0.0,
-      "total_runtime_seconds": 44.00939999999999,
+      "total_runtime_seconds": 36.55350000000001,
       "total_tool_calls": 0,
       "provider_switches": 0
     }
@@ -31,7 +31,7 @@
       "detail": {
         "category": "1_classification_intent",
         "response_length": 37,
-        "duration": 0.4106,
+        "duration": 0.3397,
         "detected_intent": "chat",
         "expected_intent": "CHAT",
         "interaction_class": "NORMAL_CHAT"
@@ -45,7 +45,7 @@
       "detail": {
         "category": "1_classification_intent",
         "response_length": 37,
-        "duration": 0.3974,
+        "duration": 0.3356,
         "detected_intent": "chat",
         "expected_intent": "CHAT",
         "interaction_class": "NORMAL_CHAT"
@@ -59,7 +59,7 @@
       "detail": {
         "category": "1_classification_intent",
         "response_length": 37,
-        "duration": 0.4019,
+        "duration": 0.3388,
         "detected_intent": "chat",
         "expected_intent": "CHAT",
         "interaction_class": "NORMAL_CHAT"
@@ -73,7 +73,7 @@
       "detail": {
         "category": "1_classification_intent",
         "response_length": 37,
-        "duration": 0.3927,
+        "duration": 0.3349,
         "detected_intent": "chat",
         "expected_intent": "STATUS",
         "interaction_class": "NORMAL_CHAT"
@@ -86,8 +86,8 @@
       "ok": true,
       "detail": {
         "category": "1_classification_intent",
-        "response_length": 161,
-        "duration": 0.0057,
+        "response_length": 209,
+        "duration": 0.005,
         "detected_intent": "goal_set",
         "expected_intent": "GOAL_SET",
         "interaction_class": "NORMAL_CHAT"
@@ -101,7 +101,7 @@
       "detail": {
         "category": "1_classification_intent",
         "response_length": 37,
-        "duration": 0.3931,
+        "duration": 0.3365,
         "detected_intent": "chat",
         "expected_intent": "GOAL_LIST",
         "interaction_class": "NORMAL_CHAT"
@@ -115,7 +115,7 @@
       "detail": {
         "category": "1_classification_intent",
         "response_length": 37,
-        "duration": 1.604,
+        "duration": 1.279,
         "detected_intent": "chat",
         "expected_intent": "SEARCH",
         "interaction_class": "TOOL_REQUEST"
@@ -129,7 +129,7 @@
       "detail": {
         "category": "1_classification_intent",
         "response_length": 37,
-        "duration": 0.7029,
+        "duration": 0.6391,
         "detected_intent": "chat",
         "expected_intent": "SEARCH",
         "interaction_class": "TOOL_REQUEST"
@@ -142,8 +142,8 @@
       "ok": true,
       "detail": {
         "category": "1_classification_intent",
-        "response_length": 3674,
-        "duration": 3.0936,
+        "response_length": 3722,
+        "duration": 3.1336,
         "detected_intent": "chat",
         "expected_intent": "BROWSER",
         "interaction_class": "TOOL_REQUEST"
@@ -156,8 +156,8 @@
       "ok": true,
       "detail": {
         "category": "1_classification_intent",
-        "response_length": 103,
-        "duration": 0.4106,
+        "response_length": 109,
+        "duration": 0.0075,
         "detected_intent": "translate",
         "expected_intent": "TRANSLATE",
         "interaction_class": "NORMAL_CHAT"
@@ -171,7 +171,7 @@
       "detail": {
         "category": "1_classification_intent",
         "response_length": 264,
-        "duration": 0.1234,
+        "duration": 0.1078,
         "detected_intent": "chat",
         "expected_intent": "CODE",
         "interaction_class": "NORMAL_CHAT"
@@ -185,7 +185,7 @@
       "detail": {
         "category": "1_classification_intent",
         "response_length": 37,
-        "duration": 0.0018,
+        "duration": 0.0017,
         "detected_intent": "fact_set",
         "expected_intent": "FACT_SET",
         "interaction_class": "NORMAL_CHAT"
@@ -199,7 +199,7 @@
       "detail": {
         "category": "1_classification_intent",
         "response_length": 160,
-        "duration": 0.001,
+        "duration": 0.0017,
         "detected_intent": "directive",
         "expected_intent": "DIRECTIVE",
         "interaction_class": "NORMAL_CHAT"
@@ -213,7 +213,7 @@
       "detail": {
         "category": "1_classification_intent",
         "response_length": 37,
-        "duration": 0.4034,
+        "duration": 0.3475,
         "detected_intent": "chat",
         "expected_intent": "CHAT",
         "interaction_class": "NORMAL_CHAT"
@@ -227,7 +227,7 @@
       "detail": {
         "category": "1_classification_intent",
         "response_length": 37,
-        "duration": 0.4156,
+        "duration": 0.3379,
         "detected_intent": "chat",
         "expected_intent": "CODE",
         "interaction_class": "NORMAL_CHAT"
@@ -241,7 +241,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 37,
-        "duration": 0.4044,
+        "duration": 0.3414,
         "retrieval_context_built": true
       }
     },
@@ -253,7 +253,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 37,
-        "duration": 0.4049,
+        "duration": 0.3399,
         "retrieval_context_built": true
       }
     },
@@ -265,7 +265,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.3999,
+        "duration": 0.3414,
         "retrieval_context_built": true
       }
     },
@@ -277,7 +277,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.4056,
+        "duration": 0.3412,
         "retrieval_context_built": true
       }
     },
@@ -289,7 +289,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.3973,
+        "duration": 0.3413,
         "retrieval_context_built": true
       }
     },
@@ -301,7 +301,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.4066,
+        "duration": 0.3416,
         "retrieval_context_built": true
       }
     },
@@ -313,7 +313,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.4006,
+        "duration": 0.3394,
         "retrieval_context_built": true
       }
     },
@@ -325,7 +325,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.4077,
+        "duration": 0.3435,
         "retrieval_context_built": true
       }
     },
@@ -337,7 +337,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.4035,
+        "duration": 0.3415,
         "retrieval_context_built": true
       }
     },
@@ -349,7 +349,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.4024,
+        "duration": 0.3379,
         "retrieval_context_built": true
       }
     },
@@ -361,7 +361,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.4095,
+        "duration": 0.3375,
         "retrieval_context_built": true
       }
     },
@@ -373,7 +373,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.4056,
+        "duration": 0.3416,
         "retrieval_context_built": true
       }
     },
@@ -385,7 +385,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.4065,
+        "duration": 0.3392,
         "retrieval_context_built": true
       }
     },
@@ -397,7 +397,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.4023,
+        "duration": 0.3395,
         "retrieval_context_built": true
       }
     },
@@ -409,7 +409,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.398,
+        "duration": 0.3397,
         "retrieval_context_built": true
       }
     },
@@ -421,7 +421,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 37,
-        "duration": 0.404,
+        "duration": 0.3373,
         "strategy_response_ok": true
       }
     },
@@ -433,7 +433,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 37,
-        "duration": 0.4032,
+        "duration": 0.3382,
         "strategy_response_ok": true
       }
     },
@@ -445,7 +445,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.4089,
+        "duration": 0.3401,
         "strategy_response_ok": true
       }
     },
@@ -457,7 +457,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.4001,
+        "duration": 0.3394,
         "strategy_response_ok": true
       }
     },
@@ -469,7 +469,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.412,
+        "duration": 0.3395,
         "strategy_response_ok": true
       }
     },
@@ -481,7 +481,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.4065,
+        "duration": 0.3392,
         "strategy_response_ok": true
       }
     },
@@ -493,7 +493,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.4016,
+        "duration": 0.3419,
         "strategy_response_ok": true
       }
     },
@@ -505,7 +505,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.3999,
+        "duration": 0.3419,
         "strategy_response_ok": true
       }
     },
@@ -517,7 +517,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.4067,
+        "duration": 0.3405,
         "strategy_response_ok": true
       }
     },
@@ -529,7 +529,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.4074,
+        "duration": 0.3417,
         "strategy_response_ok": true
       }
     },
@@ -541,7 +541,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.4079,
+        "duration": 0.3425,
         "strategy_response_ok": true
       }
     },
@@ -553,7 +553,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.4058,
+        "duration": 0.3407,
         "strategy_response_ok": true
       }
     },
@@ -565,7 +565,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.4098,
+        "duration": 0.3382,
         "strategy_response_ok": true
       }
     },
@@ -577,7 +577,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.4037,
+        "duration": 0.3399,
         "strategy_response_ok": true
       }
     },
@@ -589,7 +589,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.4105,
+        "duration": 0.3392,
         "strategy_response_ok": true
       }
     },
@@ -601,7 +601,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 37,
-        "duration": 0.4067,
+        "duration": 0.3393,
         "require_sudo": false,
         "governance_ok": true
       }
@@ -614,7 +614,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 37,
-        "duration": 0.4071,
+        "duration": 0.3384,
         "require_sudo": false,
         "governance_ok": true
       }
@@ -627,7 +627,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.4011,
+        "duration": 0.3375,
         "require_sudo": true,
         "governance_ok": true
       }
@@ -640,7 +640,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.4009,
+        "duration": 0.3372,
         "require_sudo": false,
         "governance_ok": true
       }
@@ -653,7 +653,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.4027,
+        "duration": 0.3378,
         "require_sudo": false,
         "governance_ok": true
       }
@@ -666,7 +666,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.4042,
+        "duration": 0.3386,
         "require_sudo": true,
         "governance_ok": true
       }
@@ -679,7 +679,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.4076,
+        "duration": 0.3393,
         "require_sudo": false,
         "governance_ok": true
       }
@@ -692,7 +692,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.4044,
+        "duration": 0.337,
         "require_sudo": false,
         "governance_ok": true
       }
@@ -705,7 +705,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.4071,
+        "duration": 0.3381,
         "require_sudo": true,
         "governance_ok": true
       }
@@ -718,7 +718,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.4051,
+        "duration": 0.3414,
         "require_sudo": false,
         "governance_ok": true
       }
@@ -731,7 +731,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.4138,
+        "duration": 0.3408,
         "require_sudo": false,
         "governance_ok": true
       }
@@ -744,7 +744,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.3988,
+        "duration": 0.3393,
         "require_sudo": true,
         "governance_ok": true
       }
@@ -757,7 +757,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.4051,
+        "duration": 0.3391,
         "require_sudo": false,
         "governance_ok": true
       }
@@ -770,7 +770,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.4068,
+        "duration": 0.341,
         "require_sudo": false,
         "governance_ok": true
       }
@@ -783,7 +783,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.4077,
+        "duration": 0.3396,
         "require_sudo": true,
         "governance_ok": true
       }
@@ -796,7 +796,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 37,
-        "duration": 0.4111,
+        "duration": 0.3406,
         "graph_nodes": 2
       }
     },
@@ -808,7 +808,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 37,
-        "duration": 0.4085,
+        "duration": 0.343,
         "graph_nodes": 1
       }
     },
@@ -820,7 +820,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.4065,
+        "duration": 0.3426,
         "graph_nodes": 2
       }
     },
@@ -832,7 +832,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.4146,
+        "duration": 0.3395,
         "graph_nodes": 1
       }
     },
@@ -844,7 +844,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.4137,
+        "duration": 0.3388,
         "graph_nodes": 2
       }
     },
@@ -856,7 +856,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.396,
+        "duration": 0.3384,
         "graph_nodes": 1
       }
     },
@@ -868,7 +868,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.4119,
+        "duration": 0.3398,
         "graph_nodes": 2
       }
     },
@@ -880,7 +880,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.4058,
+        "duration": 0.339,
         "graph_nodes": 1
       }
     },
@@ -892,7 +892,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.4161,
+        "duration": 0.3423,
         "graph_nodes": 2
       }
     },
@@ -904,7 +904,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.4113,
+        "duration": 0.3435,
         "graph_nodes": 1
       }
     },
@@ -916,7 +916,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.4159,
+        "duration": 0.342,
         "graph_nodes": 2
       }
     },
@@ -928,7 +928,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.4061,
+        "duration": 0.3418,
         "graph_nodes": 1
       }
     },
@@ -940,7 +940,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.4109,
+        "duration": 0.343,
         "graph_nodes": 2
       }
     },
@@ -952,7 +952,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.4082,
+        "duration": 0.344,
         "graph_nodes": 1
       }
     },
@@ -964,7 +964,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.4066,
+        "duration": 0.3424,
         "graph_nodes": 2
       }
     },
@@ -976,7 +976,7 @@
       "detail": {
         "category": "6_evaluation_selfcorrection",
         "response_length": 37,
-        "duration": 0.4184,
+        "duration": 0.3459,
         "score": 0.88
       }
     },
@@ -988,7 +988,7 @@
       "detail": {
         "category": "6_evaluation_selfcorrection",
         "response_length": 37,
-        "duration": 0.4122,
+        "duration": 0.3452,
         "score": 0.88
       }
     },
@@ -1000,7 +1000,7 @@
       "detail": {
         "category": "6_evaluation_selfcorrection",
         "response_length": 129,
-        "duration": 0.4162,
+        "duration": 0.3454,
         "score": 0.88
       }
     },
@@ -1012,7 +1012,7 @@
       "detail": {
         "category": "6_evaluation_selfcorrection",
         "response_length": 129,
-        "duration": 0.4104,
+        "duration": 0.3431,
         "score": 0.88
       }
     },
@@ -1024,7 +1024,7 @@
       "detail": {
         "category": "6_evaluation_selfcorrection",
         "response_length": 129,
-        "duration": 0.4179,
+        "duration": 0.34,
         "score": 0.88
       }
     },
@@ -1036,7 +1036,7 @@
       "detail": {
         "category": "6_evaluation_selfcorrection",
         "response_length": 129,
-        "duration": 0.4226,
+        "duration": 0.3422,
         "score": 0.88
       }
     },
@@ -1048,7 +1048,7 @@
       "detail": {
         "category": "6_evaluation_selfcorrection",
         "response_length": 129,
-        "duration": 0.4217,
+        "duration": 0.3442,
         "score": 0.88
       }
     },
@@ -1060,7 +1060,7 @@
       "detail": {
         "category": "6_evaluation_selfcorrection",
         "response_length": 129,
-        "duration": 0.4148,
+        "duration": 0.3435,
         "score": 0.88
       }
     },
@@ -1072,7 +1072,7 @@
       "detail": {
         "category": "6_evaluation_selfcorrection",
         "response_length": 129,
-        "duration": 0.4137,
+        "duration": 0.3447,
         "score": 0.88
       }
     },
@@ -1084,7 +1084,7 @@
       "detail": {
         "category": "6_evaluation_selfcorrection",
         "response_length": 129,
-        "duration": 0.4197,
+        "duration": 0.3445,
         "score": 0.88
       }
     },
@@ -1096,7 +1096,7 @@
       "detail": {
         "category": "7_decision_trace",
         "response_length": 103,
-        "duration": 0.4112,
+        "duration": 0.345,
         "phases_count": 12,
         "redacted": true
       }
@@ -1109,7 +1109,7 @@
       "detail": {
         "category": "7_decision_trace",
         "response_length": 103,
-        "duration": 0.4183,
+        "duration": 0.3422,
         "phases_count": 12,
         "redacted": true
       }
@@ -1122,7 +1122,7 @@
       "detail": {
         "category": "7_decision_trace",
         "response_length": 129,
-        "duration": 0.407,
+        "duration": 0.3418,
         "phases_count": 12,
         "redacted": true
       }
@@ -1135,7 +1135,7 @@
       "detail": {
         "category": "7_decision_trace",
         "response_length": 129,
-        "duration": 0.4185,
+        "duration": 0.3418,
         "phases_count": 12,
         "redacted": true
       }
@@ -1148,7 +1148,7 @@
       "detail": {
         "category": "7_decision_trace",
         "response_length": 129,
-        "duration": 0.4193,
+        "duration": 0.3415,
         "phases_count": 12,
         "redacted": true
       }
@@ -1161,7 +1161,7 @@
       "detail": {
         "category": "7_decision_trace",
         "response_length": 129,
-        "duration": 0.4142,
+        "duration": 0.3443,
         "phases_count": 12,
         "redacted": true
       }
@@ -1174,7 +1174,7 @@
       "detail": {
         "category": "7_decision_trace",
         "response_length": 129,
-        "duration": 0.4792,
+        "duration": 0.345,
         "phases_count": 12,
         "redacted": true
       }
@@ -1187,8 +1187,8 @@
       "detail": {
         "category": "8_learning_commit",
         "response_length": 37,
-        "duration": 0.4797,
-        "commit_hash": "ea9f2e83ffbda3e9"
+        "duration": 0.344,
+        "commit_hash": "a94e13f019aa04bb"
       }
     },
     {
@@ -1199,8 +1199,8 @@
       "detail": {
         "category": "8_learning_commit",
         "response_length": 37,
-        "duration": 0.4884,
-        "commit_hash": "823fb28fe1063205"
+        "duration": 0.3442,
+        "commit_hash": "b1e41c83fde20587"
       }
     },
     {
@@ -1211,8 +1211,8 @@
       "detail": {
         "category": "8_learning_commit",
         "response_length": 129,
-        "duration": 0.4952,
-        "commit_hash": "473a099599e1cce7"
+        "duration": 0.3442,
+        "commit_hash": "01b2324a57bc5c45"
       }
     },
     {
@@ -1223,8 +1223,8 @@
       "detail": {
         "category": "8_learning_commit",
         "response_length": 129,
-        "duration": 0.4997,
-        "commit_hash": "f48e32d0cf173478"
+        "duration": 0.3439,
+        "commit_hash": "401d42d7e2bfafba"
       }
     },
     {
@@ -1235,8 +1235,8 @@
       "detail": {
         "category": "8_learning_commit",
         "response_length": 129,
-        "duration": 0.4949,
-        "commit_hash": "5a715fa7dbaab09b"
+        "duration": 0.3476,
+        "commit_hash": "67f8b67be84ba600"
       }
     },
     {
@@ -1247,8 +1247,8 @@
       "detail": {
         "category": "8_learning_commit",
         "response_length": 129,
-        "duration": 0.4569,
-        "commit_hash": "8b952db41cf5395e"
+        "duration": 0.3442,
+        "commit_hash": "fc051d8a34e4561a"
       }
     },
     {
@@ -1259,8 +1259,8 @@
       "detail": {
         "category": "8_learning_commit",
         "response_length": 129,
-        "duration": 0.4168,
-        "commit_hash": "4237cdafa157499a"
+        "duration": 0.3439,
+        "commit_hash": "383f4ada85cc7467"
       }
     },
     {
@@ -1271,8 +1271,8 @@
       "detail": {
         "category": "8_learning_commit",
         "response_length": 129,
-        "duration": 0.4197,
-        "commit_hash": "b1afe745049029e5"
+        "duration": 0.343,
+        "commit_hash": "93315c856bbf874d"
       }
     }
   ]
