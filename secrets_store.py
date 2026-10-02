@@ -1,10 +1,15 @@
 from __future__ import annotations
 import time
 from pathlib import Path
+import os
 
 from state_io import atomic_write_json, load_json_or_recover
 
-DATA_DIR = Path(__file__).parent / "data"
+DATA_DIR = (
+    Path(os.getenv("TMPDIR", "/tmp")) / "isaac" / "data"
+    if os.getenv("VERCEL")
+    else Path(__file__).parent / "data"
+)
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 SECRETS_FILE = DATA_DIR / "secrets_store.json"
 
