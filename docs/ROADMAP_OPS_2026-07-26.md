@@ -124,6 +124,8 @@ Sprint O3 (optional):
 
 ### T0.2 ISAAC-9
 
+> **Status 2026-10-02: ✅ im Code erledigt.** `isaac_sentry._before_send` verwirft Ollama-Noise bei free_cloud; Test `test_before_send_drops_ollama_noise_when_free_cloud`.
+
 | Schritt | Detail | Risiko |
 |---------|--------|--------|
 | 1 | Health free_cloud: kein Ollama-Probe (ggf. schon) | low |
@@ -139,7 +141,7 @@ Diagnose first (1h), dann Alert oder rate-limit — **kein** breites Log-Mute.
 
 - [ ] Unresolved < 3 echte Items oder nur 6 in Beobachtung  
 - [ ] Keine neuen ISAAC-9 auf Free nach 24h  
-- [ ] `docs/SENTRY.md` Hygiene-Absatz  
+- [x] `docs/SENTRY.md` Hygiene-Absatz  
 
 ---
 
@@ -163,9 +165,11 @@ Tools: **aus**. Classify: **NORMAL_CHAT**.
 
 ### T1 DoD
 
-- [ ] Lokal Sequenz C→G: Antwort thematisch an 2+2 oder ehrliche Klärung, **kein** Credential-Request  
-- [ ] Remote unverändert grün  
-- [ ] Intent CHAT bleibt; tools false  
+> **Status 2026-10-02: ✅ Code erledigt** (`isaac_core._is_short_followup`, Test `test_followup_und_continuity_no_credential_fishing`). Offen bleibt nur der manuelle Live-Check C→G.
+
+- [ ] Lokal Sequenz C→G: Antwort thematisch an 2+2 oder ehrliche Klärung, **kein** Credential-Request (manueller Live-Check, Owner)  
+- [x] Remote unverändert grün  
+- [x] Intent CHAT bleibt; tools false  
 
 ### T1 Anti-Scope
 

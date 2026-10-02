@@ -65,6 +65,10 @@ Core runtime lives in the repository root.
 | `workspace/`, `logs/` | Artefakte & Logs |
 | `tests_phase_a_stabilization.py`, `tests_state_io.py`, `tests_provider_configuration.py` | Regression |
 | `.ona/automations.yaml` | Ona/Gitpod-Deploy (Port-Overrides) |
+| `diva_protocol.py` | DIVA: Herkunfts-Unsicherheit (Provenance), auditierbar, verfassungsgebunden |
+| `self_reflection_policy.py` | Policy für explizite Selbstauskunft (kein Chain-of-Thought-Leak) |
+| `integrations/jules.py` | Optional: Google Jules als bounded Coding-Companion (`ISAAC_JULES_ENABLED=1`) |
+| `integrations/browserbase.py` | Optional: Browserbase-Cloud-Browser, nur Session-Provisioning (`ISAAC_BROWSERBASE_ENABLED=1`) |
 
 **Nicht kanonisch:** `isaac_merged_final.py`, `isaac_core_orchestrator.py`, `start_isaac.sh`/`install.sh` (nur Wrapper).
 
@@ -441,7 +445,9 @@ Kurzliste (Details + Gap-Matrix in der Master-Roadmap):
 2. Self-Model / bounded Learning weiter koppeln (Track C4)  
 3. MCP Contract-Tests & Docs — Grundgerüst + Resources vorhanden (Track C2), **kein** Subagent-Expansion  
 4. Portable Trace / EXECUTION-Metadaten vertiefen (Track C1)  
-5. CI Billing entsperren (Track C5)
+5. ~~CI Billing entsperren (Track C5)~~ ✅ erledigt 2026-10, CI grün
+
+Aktueller verifizierter Offen-Stand (Code + PRs): `docs/MASTER_PLAN.md`
 
 **Nicht aus Drive-Patch-Paketen / Parallel-Roadmaps übernehmen** (Juli 2026):  
 eigene State-Machine, OTel-Doppeltypen, Isaac-Lab-Mocks, Vector-Doppelpfade, SNN/WBE auf main.  

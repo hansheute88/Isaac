@@ -140,13 +140,15 @@ tail -f data/audit.jsonl
 
 ## Was ist NOT inklusive?
 
-Auch im Admin-Modus sind folgende Funktionen **nicht verfügbar** (Phases später):
-- ❌ Personality/Instincts-Layer (noch nicht gebaut)
-- ❌ Learning-Loops (noch nicht aktiviert)
-- ❌ Inquiry/Clarification (noch nicht gebaut)
-- ❌ Trust-Modeling (noch nicht gebaut)
+Auch im Admin-Modus sind folgende Funktionen **bewusst nicht gebaut** (Do-NOT laut `AGENTS.md`):
+- ❌ Personality/Instincts-Layer
+- ❌ Trust-Modeling gegen den Owner
 
-Diese sind auf der Roadmap, aber noch nicht implementiert.
+Inzwischen **vorhanden** (bounded, auditierbar):
+- ✅ Learning-Loops: `learning_engine.py`, `learning_policy.py`
+- ✅ Inquiry/Research, an Ziele gebunden: `goal_inquiry` (Goal-Autonomie S0–S4)
+
+Aktueller Gesamtstand: `docs/MASTER_PLAN.md`.
 
 ---
 

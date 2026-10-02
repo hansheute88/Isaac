@@ -30,7 +30,7 @@
 | Ops T0.2 (Ollama-Sentry-Filter) und T1 (Follow-up-Kontinuität) | ✅ **im Code erledigt**, Docs nicht nachgezogen |
 | CI (GitHub Actions) | ✅ **läuft wieder** (Python-Package, CodeQL, Remote-Smoke grün) — Billing-Lock ist aufgehoben, Docs sagen noch das Gegenteil |
 | Offene PRs | 🔴 **6 offen**, 2 davon mit Merge-Konflikten, mehrere überlappen sich |
-| Docs-Drift | 🟡 Eval-Zahl inkonsistent (README 130/130, Roadmap 96/96, E2-Checklist 66/66) |
+| Docs-Drift | ✅ behoben in Stufe 0 — Eval-Zahl einheitlich **231/231** (lokal gemessen 2026-10-02) |
 | Code-TODOs | ✅ keine |
 
 **Kernaussage:** Die größte offene Arbeit liegt **nicht** in neuem Code. Sie liegt in (a) der **Entscheidung über 6 offene Jules-PRs** und (b) einem **Doc-Sync**, damit die Roadmaps wieder die Wahrheit sagen.
@@ -105,7 +105,7 @@ Dauerhafte Owner-Pflichten, kein Code:
 
 | Datei | Problem |
 |-------|---------|
-| `README.md` | Eval **130/130** (aktuellster Wert, als Referenz nehmen) |
+| `README.md` | sagte **130/130**, real gemessen **231/231** → korrigiert |
 | `docs/MASTER_ROADMAP_ISAAC_v5_2026-07-24.md` | sagt **96/96** und „CI Billing offen“ |
 | `05_evolution2_checklist.txt` | sagt **66/66**, `[!] 5.4` Billing |
 | `docs/ROADMAP_OPS_2026-07-26.md` | T0.2/T1 als offen, obwohl erledigt |
@@ -123,7 +123,7 @@ Dauerhafte Owner-Pflichten, kein Code:
 ### 3.9 Bewusst geparkt (Do-NOT, kein offener Punkt)
 
 Human Layer, Personality, Trust-Modeling gegen Owner, Dashboard-Redesign, Vector-Memory-Redesign, MCP-Subagenten, LangGraph/CrewAI/Aider wholesale, SNN/WBE auf main (Track R).
-Diese Punkte sind **keine Lücken**, sondern Architekturentscheidungen (`AGENTS.md`, Master v5 §8).
+Diese Punkte sind **keine L��cken**, sondern Architekturentscheidungen (`AGENTS.md`, Master v5 §8).
 
 ---
 
@@ -133,18 +133,20 @@ Jede Stufe ist klein, testbar und nach jedem Schritt lauffähig. Validierung sie
 
 ### Stufe 0 — Aufräumen und Wahrheit herstellen (sofort, kein Kernel-Risiko)
 
-| # | Arbeit | Kat. | DoD |
-|---|--------|------|-----|
-| 0.1 | PR **#26** schließen (leer) | — | geschlossen |
-| 0.2 | Docs-Sync: Billing/CI abhaken, Eval-Zahl vereinheitlichen, T0.2/T1 abhaken, `ANDROID_ADMIN_MODE.md` korrigieren | E/Doku | alle Leitdateien sagen dasselbe |
-| 0.3 | `AGENTS.md` Struktur-Tabelle um Jules/Browserbase/DIVA/Self-Reflection ergänzen | Doku | Tabelle = Dateisystem |
-| 0.4 | CI-Status in README dokumentieren | E | C5 DoD erfüllt |
+| # | Arbeit | Kat. | DoD | Status |
+|---|--------|------|-----|--------|
+| 0.1 | PR **#26** schließen (leer) | — | geschlossen | siehe Commit/PR-Verlauf |
+| 0.2 | Docs-Sync: Billing/CI abhaken, Eval-Zahl vereinheitlichen, T0.2/T1 abhaken, `ANDROID_ADMIN_MODE.md` korrigieren | E/Doku | alle Leitdateien sagen dasselbe | ✅ 2026-10-02 |
+| 0.3 | `AGENTS.md` Struktur-Tabelle um Jules/Browserbase/DIVA/Self-Reflection ergänzen | Doku | Tabelle = Dateisystem | ✅ 2026-10-02 |
+| 0.4 | CI-Status in README dokumentieren | E | C5 DoD erfüllt | ✅ 2026-10-02 |
+
+**Neue Messlatte:** `evals.eval_runner` → **231/231** (Stufe 1.1 DoD entsprechend: Evals ≥ 231).
 
 ### Stufe 1 — PR-Entscheidungen (Kernel-relevant, Review-pflichtig)
 
 | # | Arbeit | Kat. | DoD |
 |---|--------|------|-----|
-| 1.1 | **#28** Prove-the-Kernel reviewen, lokal `unittest` + `eval_runner` ausführen, mergen | A | Evals ≥ 130, keine Regression |
+| 1.1 | **#28** Prove-the-Kernel reviewen, lokal `unittest` + `eval_runner` ausführen, mergen | A | Evals ≥ 231, keine Regression |
 | 1.2 | **#17** TaskGraph gegen Prove-the-Kernel-TaskGraph abgleichen. Bei Redundanz schließen, sonst rebasen | A | **ein** TaskGraph-Modell |
 | 1.3 | **DIVA:** #19 vs #21 entscheiden. Empfehlung: #19 (kleiner, mergeable) als Basis, Decay aus #21 gezielt nachziehen | A | ein Modulator, Retrieval vor Strategy bleibt gewahrt |
 | 1.4 | **#14** Vercel-Deploy: nur mit Owner-Freigabe (Kat. B/D) | B/D | bewusste Entscheidung |

@@ -12,7 +12,7 @@ Die Repository-Kontextdateien, Architekturregeln, Sicherheitsprinzipien, Arbeits
 
 Das KI-Modell ist ein Werkzeug zur Ausführung, nicht die autoritative Quelle für Architektur, Sicherheit oder Systemlogik.
 
-## Aktueller Stand (kanonisch · Stand 2026-08)
+## Aktueller Stand (kanonisch · Stand 2026-10-02)
 
 | Bereich | Status |
 |---------|--------|
@@ -20,7 +20,9 @@ Das KI-Modell ist ein Werkzeug zur Ausführung, nicht die autoritative Quelle f�
 | Evolution 2.0 + Goal-Autonomie S0–S4 | ✅ |
 | Pipeline | `classify → retrieve → strategy → task → execute → evaluate → memory` |
 | Native Coding (Aider-**Muster**, kein Package) | ✅ `repo_map.py` · `code_edit.py` · `git_ops.py` |
-| Eval-Harness (lokal) | `ISAAC_DISABLE_VECTOR_MEMORY=1 python3 -m evals.eval_runner` → **130/130** |
+| Eval-Harness (lokal) | `ISAAC_DISABLE_VECTOR_MEMORY=1 python3 -m evals.eval_runner` → **231/231** (2026-10-02) |
+| CI (GitHub Actions) | ✅ grün: `python-package.yml`, `remote-smoke.yml`, CodeQL — Billing-Lock aufgehoben |
+| Offene Arbeit | [`docs/MASTER_PLAN.md`](docs/MASTER_PLAN.md) |
 | Preferred Remote | `hansheute88/isaac` `main` |
 
 **Kanonische Agent-Anweisung (Code + Routing + Do-NOT):** [`AGENTS.md`](AGENTS.md)  

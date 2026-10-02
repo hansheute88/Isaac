@@ -33,9 +33,9 @@ Isaac ist ein **lokaler Cognitive Kernel** (ROT/BLAU/GRÜN), kein Chatbot-Wrappe
 | **Goal-Autonomie S0–S4** | ✅ | Goal Store, Motivation, Inquiry/Research, Digest, Temporal Facts |
 | **Consolidate (aktiv)** | 🔄 | Härten, Evals, ehrliche Docs; keine neuen Framework-Layer |
 
-**Messlatte lokal:** `unittest` grün · `evals.eval_runner` **96/96** · `sanity_check`  
+**Messlatte lokal:** `unittest` grün · `evals.eval_runner` **231/231** (2026-10-02; Stand 07-24: 96/96) · `sanity_check`  
 
-**Offen ops:** GitHub Actions Billing-Lock (E2.0.5.4) — kein Code-Blocker.
+**Ops:** GitHub Actions Billing-Lock (E2.0.5.4) **aufgehoben**, CI grün (2026-10). Aktueller offener Stand: `docs/MASTER_PLAN.md`.
 
 ---
 
@@ -192,11 +192,11 @@ Jeder Track: **klein, testbar, ROT/BLAU/GRÜN-Ownership, nach jedem Substep runn
 
 #### C5 — Release / CI (ops)
 
-- [ ] GitHub Actions Billing entsperren  
+- [x] GitHub Actions Billing entsperren (2026-10)  
 - [x] unittest + eval_runner lokal  
-- [ ] CI grün dokumentieren  
+- [x] CI grün dokumentieren (README-Statustabelle)  
 
-**DoD:** Ein Push → CI grün (sobald Billing ok).
+**DoD:** Ein Push → CI grün. ✅ erfüllt (2026-10).
 
 ---
 
@@ -343,7 +343,7 @@ Validierungsfälle A–G: `evals/replay_eval` (erweitert H–J).
 | 3 | C3 | Checkpoint soft-path polish |
 | 4 | C4 | Self-model/learning bounded gaps |
 | 5 | G1–G2 | Autonomie Docs/Live-Ops |
-| 6 | C5 | CI Billing |
+| 6 | C5 | CI Billing ✅ erledigt |
 | 7 | M1 | Memory-Adapter fail-soft |
 | ∞ | R | nur mit Owner-Freigabe |
 
@@ -355,7 +355,7 @@ Validierungsfälle A–G: `evals/replay_eval` (erweitert H–J).
 - [x] Drive-Patches bewertet und abgelehnt wo redundant/gefährlich  
 - [x] Eval-Harness deckt Governance, Routing, Goals, MCP ab (96+)  
 - [x] Track C1–C2 abgeschlossen (portable+MCP Contracts)  
-- [ ] CI grün (Billing)  
+- [x] CI grün (Billing aufgehoben, 2026-10)  
 - [ ] Research-Brain nicht mit Kernel-main vermischt  
 
 ---
