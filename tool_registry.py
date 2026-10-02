@@ -2,9 +2,14 @@ from __future__ import annotations
 import json, time, uuid
 from dataclasses import dataclass, asdict, field
 from pathlib import Path
+import os
 from typing import Any, Optional
 
-DATA_DIR = Path(__file__).parent / "data"
+DATA_DIR = (
+    Path(os.getenv("TMPDIR", "/tmp")) / "isaac" / "data"
+    if os.getenv("VERCEL")
+    else Path(__file__).parent / "data"
+)
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 TOOLS_FILE = DATA_DIR / "tools_registry.json"
 
