@@ -397,6 +397,7 @@ class Executor:
     def __init__(self):
         self._tasks:    dict[str, Task]          = {}
         self._queue_obj: Optional[asyncio.PriorityQueue] = None
+        self._queue_loop: Optional[asyncio.AbstractEventLoop] = None
         self._running:  set[str]                 = set()
         self._callbacks: list[Callable]          = []
         self._loop:     Optional[asyncio.AbstractEventLoop] = None
@@ -2274,8 +2275,15 @@ class Executor:
 
     @property
     def _queue(self) -> asyncio.PriorityQueue:
-        if self._queue_obj is None:
+        try:
+            curr_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            curr_loop = None
+
+        if self._queue_obj is None or (curr_loop is not None and self._queue_loop != curr_loop):
             self._queue_obj = asyncio.PriorityQueue()
+            self._queue_loop = curr_loop
+
         return self._queue_obj
 
     @_queue.setter
