@@ -17,10 +17,8 @@ def create_app() -> Flask:
     app = Flask(__name__)
 
     from mcp_server import mcp_api
-    from monitor_api import monitor_api
 
     app.register_blueprint(mcp_api)
-    app.register_blueprint(monitor_api)
 
     @app.get("/")
     def root():
@@ -34,6 +32,11 @@ def create_app() -> Flask:
                 "health": "/healthz",
             }
         )
+
+    @app.get("/api/monitor/state")
+    def monitor_state():
+        from monitor_api import state
+        return state()
 
     @app.get("/healthz")
     def healthz():
