@@ -18,6 +18,13 @@ MCP_TOOL_PRIVILEGES: Dict[str, str] = {
     "isaac.start_task": "chat_response",
     "isaac.search_web": "internet_search",
     "isaac.run_browser_action": "browser_navigate",
+    "isaac.goal_list": "read_memory",
+    "isaac.goal_get": "read_memory",
+    "isaac.goal_update": "write_memory",
+    "isaac.permission_check": "read_memory",
+    "isaac.safety_check": "read_memory",
+    "isaac.action_request": "chat_response",
+    "isaac.notification_send": "chat_response",
 }
 
 MCP_RESOURCE_PRIVILEGES: Dict[str, str] = {
