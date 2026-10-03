@@ -29,9 +29,10 @@ jobs:
           python -m venv .venv
           .\.venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel
           .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-          .\.venv\Scripts\python.exe -m py_compile isaac_core.py executor.py low_complexity.py memory.py relay.py logic.py watchdog.py task_checkpoint.py
+          .\.venv\Scripts\python.exe -m py_compile isaac_core.py executor.py low_complexity.py memory.py relay.py logic.py watchdog.py task_checkpoint.py windows_desktop.py computer_use.py
           .\.venv\Scripts\python.exe -c "import app; print('Flask entrypoint OK')"
           .\.venv\Scripts\python.exe -m unittest tests_provider_configuration -q
+          .\.venv\Scripts\python.exe -c "from computer_use import detect_runtime, computer_use_enabled; print('Computer-Use runtime:', detect_runtime()); print('Computer-Use enabled:', computer_use_enabled())"
           $stdout = Join-Path $env:RUNNER_TEMP 'isaac-startup.stdout.log'
           $stderr = Join-Path $env:RUNNER_TEMP 'isaac-startup.stderr.log'
           $proc = Start-Process -FilePath '.\\.venv\\Scripts\\python.exe' -ArgumentList 'isaac_core.py' -WorkingDirectory $PWD -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
