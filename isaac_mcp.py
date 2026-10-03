@@ -60,7 +60,7 @@ TOOL_POLICIES: dict[str, MCPToolPolicy] = {
     "isaac.goal_update": MCPToolPolicy("write"),
     "isaac.permission_check": MCPToolPolicy("read"),
     "isaac.safety_check": MCPToolPolicy("read"),
-    "isaac.action_request": MCPToolPolicy("write"),
+    "isaac.action_request": MCPToolPolicy("read"),
     "isaac.notification_send": MCPToolPolicy("write"),
 }
 
