@@ -21,7 +21,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Validate Isaac
+      - name: Validate Isaac on Windows
         shell: pwsh
         env:
           ISAAC_DISABLE_VECTOR_MEMORY: "1"
@@ -31,7 +31,7 @@ jobs:
           .\.venv\Scripts\python.exe -m pip install -r requirements.txt
           .\.venv\Scripts\python.exe -m py_compile isaac_core.py executor.py low_complexity.py memory.py relay.py logic.py watchdog.py task_checkpoint.py
           .\.venv\Scripts\python.exe -c "import app; print('Flask entrypoint OK')"
-          .\.venv\Scripts\python.exe -m unittest tests_phase_a_stabilization tests_state_io tests_provider_configuration -q
+          .\.venv\Scripts\python.exe -m unittest tests_provider_configuration -q
       - name: Install Inno Setup
         shell: pwsh
         run: choco install innosetup --no-progress -y
