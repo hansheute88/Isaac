@@ -6,6 +6,7 @@ JSON-RPC 2.0 Dispatcher für MCP-Methoden (initialize, tools/*, resources/*, pro
 
 import json
 import logging
+import os
 from typing import Any
 
 from config import Level
@@ -16,7 +17,7 @@ log = logging.getLogger("Isaac.MCP.JsonRpc")
 JSONRPC_VERSION = "2.0"
 MCP_PROTOCOL_VERSION = "2024-11-05"
 SERVER_NAME = "isaac"
-SERVER_VERSION = "5.3"
+SERVER_VERSION = os.getenv("ISAAC_MCP_VERSION", "1.0.0")
 
 PARSE_ERROR = -32700
 INVALID_REQUEST = -32600
