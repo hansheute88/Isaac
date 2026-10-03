@@ -24,6 +24,7 @@ MCP_TOOL_PRIVILEGES: Dict[str, str] = {
     "isaac.permission_check": "read_memory",
     "isaac.safety_check": "read_memory",
     "isaac.action_request": "chat_response",
+    "isaac.autonomy_evaluate": "read_memory",
     "isaac.notification_send": "chat_response",
 }
 
@@ -376,6 +377,33 @@ def _action_request(
     }
 
 
+def _autonomy_evaluate(
+    action: str = "",
+    reason: str = "",
+    risk: str = "normal",
+    outside_effect: bool = True,
+    destructive: bool = False,
+    goal: str = "",
+    memory_query: str = "",
+    **kwargs,
+) -> Dict[str, Any]:
+    """Run the full Isaac autonomy gate without executing the action."""
+    from isaac_control_plane import get_autonomy_control_plane
+
+    return get_autonomy_control_plane().evaluate(
+        action=action,
+        reason=reason,
+        risk=risk,
+        outside_effect=outside_effect,
+        destructive=destructive,
+        goal=goal,
+        memory_query=memory_query,
+        caller=str(kwargs.get("_caller", "MCP")),
+        caller_level=int(kwargs.get("_caller_level", Level.TASK)),
+        trusted_internal=bool(kwargs.get("_trusted_internal", False)),
+    )
+
+
 def _notification_send(
     message: str = "",
     title: str = "Isaac",
@@ -656,6 +684,27 @@ def _register_defaults(reg: MCPRegistry):
             "required_privilege": "read_memory",
         },
         handler=_safety_check,
+    )
+    reg.register_tool(
+        "isaac.autonomy_evaluate",
+        {
+            "description": "Führt Intent-, Memory-, Goal-, Permission-, Safety- und Confirmation-Prüfung zusammen; führt niemals aus.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string"},
+                    "reason": {"type": "string"},
+                    "risk": {"type": "string"},
+                    "outside_effect": {"type": "boolean"},
+                    "destructive": {"type": "boolean"},
+                    "goal": {"type": "string"},
+                    "memory_query": {"type": "string"},
+                },
+                "required": ["action"],
+            },
+            "required_privilege": MCP_TOOL_PRIVILEGES["isaac.autonomy_evaluate"],
+        },
+        handler=_autonomy_evaluate,
     )
     reg.register_tool(
         "isaac.action_request",
