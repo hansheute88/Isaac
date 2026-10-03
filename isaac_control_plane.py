@@ -144,15 +144,17 @@ class IsaacAutonomyControlPlane:
         return ensure_result_contract(
             {
                 "ok": True,
-                "decision": AutonomyDecision(
-                    status=status,
-                    execution_authorized=False,
-                    permission=permission,
-                    safety=safety,
-                    confirmation=confirmation,
-                    proposal=proposal,
-                    context=context,
-                ).__dict__},
+                "output": {
+                    "decision": AutonomyDecision(
+                        status=status,
+                        execution_authorized=False,
+                        permission=permission,
+                        safety=safety,
+                        confirmation=confirmation,
+                        proposal=proposal,
+                        context=context,
+                    ).__dict__
+                },
             },
             source="isaac_control_plane",
         )
