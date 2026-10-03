@@ -273,8 +273,21 @@ def _tool_result_to_mcp(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def get_jsonrpc_handler(registry: MCPRegistry | None = None) -> MCPJsonRpcHandler:
+def get_jsonrpc_handler(
+    registry: MCPRegistry | None = None,
+    *,
+    service=None,
+    caller: str = "MCP",
+    caller_level: int = Level.TASK,
+    trusted_internal: bool = False,
+) -> MCPJsonRpcHandler:
     if registry is None:
         from mcp_registry import get_mcp_registry
         registry = get_mcp_registry()
-    return MCPJsonRpcHandler(registry)
+    return MCPJsonRpcHandler(
+        registry,
+        service=service,
+        caller=caller,
+        caller_level=caller_level,
+        trusted_internal=trusted_internal,
+    )
