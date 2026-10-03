@@ -89,7 +89,7 @@ def jsonrpc():
 
 @mcp_api.get("/capabilities")
 def capabilities():
-    return jsonify({"ok": True, "capabilities": _registry().capabilities()})
+    return jsonify({"ok": True, "capabilities": _service().capabilities(caller_level=Level.TASK)})
 
 
 @mcp_api.get("/resources")
