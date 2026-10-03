@@ -64,8 +64,9 @@ jobs:
         run: |
           $installRoot = Join-Path $env:LOCALAPPDATA 'Isaac'
           if (Test-Path $installRoot) { Remove-Item $installRoot -Recurse -Force }
-          & 'dist\\IsaacSetup.exe' /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
-          if ($LASTEXITCODE -ne 0) { throw "IsaacSetup.exe exited with code $LASTEXITCODE." }
+          $installer = Join-Path $PWD 'dist\\IsaacSetup.exe'
+          $install = Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-',('/DIR="' + $installRoot + '"')) -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "IsaacSetup.exe exited with code $($install.ExitCode)." }
           $launcher = Join-Path $installRoot 'start_isaac_windows.cmd'
           if (-not (Test-Path $launcher)) { throw "Installed launcher not found: $launcher" }
           $stdout = Join-Path $env:RUNNER_TEMP 'installed-isaac.stdout.log'
