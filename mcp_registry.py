@@ -606,15 +606,6 @@ def _register_defaults(reg: MCPRegistry):
         handler=_search_web,
     )
     reg.register_tool(
-        "isaac.memory_search",
-        {
-            "description": "Sucht strukturierten Memory-/Retrieval-Kontext ohne Memory zu verändern.",
-            "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "limit": {"type": "integer"}}, "required": ["query"]},
-            "required_privilege": "read_memory",
-        },
-        handler=_query_memory,
-    )
-    reg.register_tool(
         "isaac.goal_list",
         {
             "description": "Listet Isaacs aktive oder abgeschlossene Owner-Ziele.",
