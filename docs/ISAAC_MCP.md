@@ -25,7 +25,6 @@ Runtime-Reihenfolge:
 | 'isaac.task_status' | read | Taskstatus lesen |
 | 'isaac.audit_recent' | read | Audit-Tail lesen |
 | 'isaac.query_memory' | read | Retrieval-Kontext lesen |
-| 'isaac.memory_search' | read | strukturierte Memory-Suche |
 | 'isaac.goal_list' | read | Owner-Ziele lesen |
 | 'isaac.goal_get' | read | Ziel + Subgoals lesen |
 | 'isaac.permission_check' | read | Privilege-Gate prüfen |
