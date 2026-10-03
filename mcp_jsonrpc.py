@@ -6,8 +6,10 @@ JSON-RPC 2.0 Dispatcher für MCP-Methoden (initialize, tools/*, resources/*, pro
 
 import json
 import logging
+import os
 from typing import Any
 
+from config import Level
 from mcp_registry import MCPRegistry
 
 log = logging.getLogger("Isaac.MCP.JsonRpc")
@@ -15,7 +17,7 @@ log = logging.getLogger("Isaac.MCP.JsonRpc")
 JSONRPC_VERSION = "2.0"
 MCP_PROTOCOL_VERSION = "2024-11-05"
 SERVER_NAME = "isaac"
-SERVER_VERSION = "5.3"
+SERVER_VERSION = os.getenv("ISAAC_MCP_VERSION", "1.0.0")
 
 PARSE_ERROR = -32700
 INVALID_REQUEST = -32600
@@ -26,8 +28,20 @@ APPLICATION_ERROR = -32000
 
 
 class MCPJsonRpcHandler:
-    def __init__(self, registry: MCPRegistry):
+    def __init__(
+        self,
+        registry: MCPRegistry,
+        *,
+        service=None,
+        caller: str = "MCP",
+        caller_level: int = Level.TASK,
+        trusted_internal: bool = False,
+    ):
         self.registry = registry
+        self.service = service
+        self.caller = caller
+        self.caller_level = int(caller_level)
+        self.trusted_internal = bool(trusted_internal)
         self._initialized = False
         self._client_info: dict[str, Any] = {}
 
@@ -119,7 +133,12 @@ class MCPJsonRpcHandler:
 
     def _format_tools(self) -> list[dict[str, Any]]:
         tools: list[dict[str, Any]] = []
-        for item in self.registry.tools():
+        items = (
+            self.service.list_tools(caller_level=self.caller_level, trusted_internal=self.trusted_internal)
+            if self.service is not None
+            else self.registry.tools()
+        )
+        for item in items:
             tools.append({
                 "name": item.get("name", ""),
                 "description": item.get("description", ""),
@@ -153,7 +172,16 @@ class MCPJsonRpcHandler:
         if not name:
             raise MCPRpcError(INVALID_PARAMS, "tools/call requires name")
         arguments = dict(params.get("arguments") or {})
-        result = self.registry.invoke_tool(name, arguments)
+        if self.service is not None:
+            result = self.service.invoke(
+                name,
+                arguments,
+                caller=self.caller,
+                caller_level=self.caller_level,
+                trusted_internal=self.trusted_internal,
+            )
+        else:
+            result = self.registry.invoke_tool(name, arguments)
         return _tool_result_to_mcp(result)
 
     def _resources_read(self, params: dict[str, Any]) -> dict[str, Any]:
