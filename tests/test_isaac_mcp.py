@@ -206,6 +206,56 @@ class TestMCPJsonRpcServiceBoundary(unittest.TestCase):
         self.assertFalse(result["result"]["isError"])
         self.assertEqual(registry.calls[0][0], "isaac.query_memory")
 
+    def test_remote_owner_override_is_blocked_at_jsonrpc_boundary(self):
+        registry = FakeRegistry()
+        service = IsaacMCPService(registry)
+        handler = MCPJsonRpcHandler(
+            registry,
+            service=service,
+            caller="MCP-HTTP",
+            caller_level=Level.TASK,
+            trusted_internal=False,
+        )
+        result = handler.handle_payload({
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "tools/call",
+            "params": {
+                "name": "isaac.query_memory",
+                "arguments": {
+                    "query": "OWNER_OVERRIDE_REGRESSION",
+                    "owner_override": True,
+                    "override_reason": "remote-test",
+                },
+            },
+        })
+        self.assertTrue(result["result"]["isError"])
+        self.assertIn("Owner override is not accepted", result["result"]["content"][0]["text"])
+        self.assertEqual(registry.calls, [])
+
+    def test_write_tool_is_blocked_at_jsonrpc_boundary(self):
+        registry = FakeRegistry()
+        service = IsaacMCPService(registry)
+        handler = MCPJsonRpcHandler(
+            registry,
+            service=service,
+            caller="MCP-HTTP",
+            caller_level=Level.TASK,
+            trusted_internal=False,
+        )
+        result = handler.handle_payload({
+            "jsonrpc": "2.0",
+            "id": 4,
+            "method": "tools/call",
+            "params": {
+                "name": "isaac.goal_update",
+                "arguments": {"goal": "GOVERNANCE_REGRESSION", "status": "done"},
+            },
+        })
+        self.assertTrue(result["result"]["isError"])
+        self.assertIn("write tools are disabled", result["result"]["content"][0]["text"])
+        self.assertEqual(registry.calls, [])
+
 
 class TestIsaacMCPRegistrySurface(unittest.TestCase):
     def test_canonical_governance_tools_are_registered(self):
