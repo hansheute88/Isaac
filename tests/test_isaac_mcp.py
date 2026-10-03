@@ -146,6 +146,27 @@ class TestMCPRegistryCallerBoundary(unittest.TestCase):
 
 
 class TestMCPJsonRpcServiceBoundary(unittest.TestCase):
+    def test_handler_factory_accepts_governance_context(self):
+        registry = FakeRegistry()
+        service = IsaacMCPService(registry)
+        from mcp_jsonrpc import get_jsonrpc_handler
+
+        handler = get_jsonrpc_handler(
+            registry,
+            service=service,
+            caller="MCP-HTTP",
+            caller_level=Level.TASK,
+            trusted_internal=False,
+        )
+        result = handler.handle_payload({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/list",
+            "params": {},
+        })
+        self.assertEqual(result["jsonrpc"], "2.0")
+        self.assertIn("tools", result["result"])
+
     def test_tools_list_uses_governed_service(self):
         registry = FakeRegistry()
         service = IsaacMCPService(registry)
