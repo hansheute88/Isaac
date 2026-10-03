@@ -186,6 +186,38 @@ class TestMCPJsonRpcServiceBoundary(unittest.TestCase):
         self.assertEqual(registry.calls[0][0], "isaac.query_memory")
 
 
+class TestIsaacMCPRegistrySurface(unittest.TestCase):
+    def test_canonical_governance_tools_are_registered(self):
+        from mcp_registry import get_mcp_registry
+
+        names = {item["name"] for item in get_mcp_registry().tools()}
+        expected = {
+            "isaac.query_memory",
+            "isaac.goal_list",
+            "isaac.goal_get",
+            "isaac.goal_update",
+            "isaac.permission_check",
+            "isaac.safety_check",
+            "isaac.action_request",
+            "isaac.notification_send",
+        }
+        self.assertTrue(expected.issubset(names))
+        self.assertNotIn("isaac.memory_search", names)
+
+    def test_action_request_never_executes_requested_action(self):
+        from mcp_registry import get_mcp_registry
+
+        result = get_mcp_registry().invoke_tool(
+            "isaac.action_request",
+            {"action": "system_command", "reason": "test request"},
+            caller="MCP-HTTP",
+            caller_level=Level.TASK,
+            allow_owner_override=False,
+        )
+        self.assertTrue(result["ok"])
+        self.assertFalse(result["output"]["request"]["executed"])
+
+
 class TestMCPHTTPBoundary(unittest.TestCase):
     def test_remote_http_requires_api_key(self):
         from app import app
