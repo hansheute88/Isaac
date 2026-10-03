@@ -30,7 +30,7 @@ class TestIsaacAutonomyControlPlane(unittest.TestCase):
             caller_level=Level.TASK,
         )
         self.assertTrue(result["ok"])
-        decision = result["decision"]
+        decision = result["output"]["decision"]
         self.assertFalse(decision["execution_authorized"])
         self.assertFalse(decision["proposal"]["executed"])
         self.assertTrue(decision["proposal"]["requires_executor"])
@@ -59,7 +59,7 @@ class TestIsaacAutonomyControlPlane(unittest.TestCase):
                 caller_level=Level.TASK,
             )
         self.assertTrue(result["ok"])
-        decision = result["decision"]
+        decision = result["output"]["decision"]
         self.assertEqual(decision["status"], "pending_confirmation")
         self.assertEqual(decision["confirmation"]["queue_id"], "REV-TEST")
         self.assertFalse(decision["execution_authorized"])
