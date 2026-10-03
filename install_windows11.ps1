@@ -26,7 +26,7 @@ if(-not(Test-Path $VenvPython)){Fail "Virtuelle Umgebung konnte nicht erstellt w
 Step "Installiere Isaac-Abhängigkeiten"
 & $VenvPython -m pip install --upgrade pip setuptools wheel
 & $VenvPython -m pip install -r (Join-Path $RepoRoot "requirements.txt")
-if(-not $SkipOptionalMemory){Write-Host "Optionale Memory-Adapter bleiben standardmäßig deaktiviert."}
+if(-not $SkipOptionalMemory){Write-Host "Optionale Memory-Adapter bleiben deaktiviert; Isaac Core benötigt sie nicht."}
 if(-not $SkipPlaywright){Step "Installiere Playwright Chromium";& $VenvPython -m playwright install chromium}
 Step "Erzeuge Runtime-Verzeichnisse"
 foreach($d in @("data","logs","runtime","workspace","traces")){New-Item -ItemType Directory -Force -Path (Join-Path $RepoRoot $d)|Out-Null}
@@ -48,8 +48,9 @@ Step "Validiere Isaac"
 & $VenvPython -c "import flask, aiohttp, websockets, dotenv; import app; print('Isaac Python-Import: OK')"
 & $VenvPython -m py_compile isaac_core.py executor.py low_complexity.py memory.py relay.py logic.py watchdog.py task_checkpoint.py
 $env:ISAAC_DISABLE_VECTOR_MEMORY="1"
-& $VenvPython -m unittest tests_phase_a_stabilization tests_state_io tests_provider_configuration -q
-Write-Host "Isaac Setup erfolgreich abgeschlossen." -ForegroundColor Green
+& $VenvPython -m unittest tests_provider_configuration -q
+Write-Host "Windows-spezifische Basisvalidierung erfolgreich." -ForegroundColor Green
+Write-Host "Hinweis: plattformgebundene Unix-Permission-Tests laufen weiterhin in der Linux-CI."
 Write-Host "Start: .\start_isaac_windows.cmd"
 Write-Host "API:   http://127.0.0.1:5000"
 Write-Host "UI:    http://127.0.0.1:8766"
