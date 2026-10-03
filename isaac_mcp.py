@@ -54,7 +54,6 @@ TOOL_POLICIES: dict[str, MCPToolPolicy] = {
     "isaac.start_task": MCPToolPolicy("write"),
     "isaac.search_web": MCPToolPolicy("read"),
     "isaac.run_browser_action": MCPToolPolicy("write"),
-    "isaac.memory_search": MCPToolPolicy("read"),
     "isaac.goal_list": MCPToolPolicy("read"),
     "isaac.goal_get": MCPToolPolicy("read"),
     "isaac.goal_update": MCPToolPolicy("write"),
