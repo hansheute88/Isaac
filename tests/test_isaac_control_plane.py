@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from config import Level
 from isaac_control_plane import IsaacAutonomyControlPlane
-from mcp_registry import MCPRegistry, MCP_TOOL_PRIVILEGES
+from mcp_registry import MCPRegistry
 
 
 class _FakeConfirmationPolicy:
@@ -74,7 +74,7 @@ class TestIsaacAutonomyControlPlane(unittest.TestCase):
             trusted_internal=False,
         )
         self.assertTrue(result["ok"])
-        self.assertEqual(result["decision"]["permission"]["caller_level"], Level.TASK)
+        self.assertEqual(result["output"]["decision"]["permission"]["caller_level"], Level.TASK)
 
     def test_empty_action_is_rejected(self):
         result = IsaacAutonomyControlPlane().evaluate(action="")
