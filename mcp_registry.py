@@ -357,23 +357,39 @@ def _action_request(
     outside_effect: bool = True,
     **kwargs,
 ) -> Dict[str, Any]:
-    """Create a governed action proposal; it never executes the requested action."""
+    """Create a full autonomy-gated action proposal; it never executes."""
     action = (action or "").strip()
     reason = (reason or "").strip()
     if not action:
         return {"ok": False, "error": "action fehlt"}
-    safety = _safety_check(action=action, risk=risk, outside_effect=outside_effect)
+
+    from isaac_control_plane import get_autonomy_control_plane
+
+    evaluated = get_autonomy_control_plane().evaluate(
+        action=action,
+        reason=reason,
+        risk=risk,
+        outside_effect=outside_effect,
+        destructive=bool(kwargs.get("destructive", False)),
+        goal=str(kwargs.get("goal", "") or ""),
+        memory_query=str(kwargs.get("memory_query", "") or ""),
+        caller=str(kwargs.get("_caller", "MCP")),
+        caller_level=int(kwargs.get("_caller_level", Level.TASK)),
+        trusted_internal=bool(kwargs.get("_trusted_internal", False)),
+    )
+    decision = evaluated.get("output", {}).get("decision", {})
     return {
-        "ok": True,
+        "ok": bool(evaluated.get("ok")),
         "request": {
-            "action": action,
-            "reason": reason[:500],
-            "risk": str(risk or "normal"),
-            "outside_effect": bool(outside_effect),
-            "safety": safety,
-            "requires_execution_by": "Isaac governance/executor",
-            "executed": False,
-        }
+            **decision.get("proposal", {
+                "action": action,
+                "reason": reason[:500],
+                "risk": str(risk or "normal"),
+                "outside_effect": bool(outside_effect),
+                "executed": False,
+            }),
+            "decision": decision,
+        },
     }
 
 
