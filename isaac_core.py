@@ -29,6 +29,7 @@ import re
 import time
 import hashlib
 import logging
+import sys
 from typing import Optional, Any
 
 from config         import get_config, Level, WORKSPACE, is_owner_equivalent_mode
@@ -4377,7 +4378,19 @@ class IsaacKernel:
 
 
 # ── Entry Point ───────────────────────────────────────────────────────────────
+def _configure_console_encoding() -> None:
+    """Keep Isaac's Unicode startup banner usable on Windows cp1252 consoles."""
+    if sys.platform != "win32":
+        return
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
+
 async def main():
+    _configure_console_encoding()
     logging.basicConfig(
         level   = logging.DEBUG if __import__('os').getenv(
             "ISAAC_DEBUG", "false").lower() == "true" else logging.INFO,
