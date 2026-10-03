@@ -152,7 +152,7 @@ class IsaacAutonomyControlPlane:
                     confirmation=confirmation,
                     proposal=proposal,
                     context=context,
-                ).__dict__,
+                ).__dict__},
             },
             source="isaac_control_plane",
         )
