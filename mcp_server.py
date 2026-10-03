@@ -9,6 +9,9 @@ import sys
 
 from flask import Blueprint, jsonify, request
 
+from audit import AuditLog
+from config import Level
+from isaac_mcp import get_isaac_mcp_service
 from mcp_jsonrpc import get_jsonrpc_handler
 from mcp_registry import get_mcp_registry
 
@@ -19,15 +22,38 @@ def _registry():
     return get_mcp_registry()
 
 
+def _service():
+    return get_isaac_mcp_service(_registry())
+
+
+@mcp_api.before_request
+def _mcp_guard():
+    content_length = request.content_length or 0
+    service = _service()
+    if content_length > service.max_body_bytes():
+        AuditLog.action("MCP", "request_blocked", "body_too_large", erfolg=False)
+        return jsonify({
+            "ok": False,
+            "error": "MCP request body exceeds configured limit",
+        }), 413
+
+    ok, reason = service.authenticate_http(request.headers, request.remote_addr)
+    if not ok:
+        AuditLog.action("MCP", "authentication_failed", "invalid_or_missing_credentials", erfolg=False)
+        return jsonify({"ok": False, "error": reason}), 401
+    return None
+
+
 @mcp_api.get("/")
 def root():
     reg = _registry()
+    service = _service()
     return jsonify({
         "ok": True,
-        "transport": ["rest", "jsonrpc"],
+        "transport": ["rest", "jsonrpc", "stdio"],
         "jsonrpc_endpoint": "/api/mcp/jsonrpc",
-        "capabilities": reg.capabilities(),
-        "tools": reg.tools(),
+        "capabilities": service.capabilities(caller_level=Level.TASK),
+        "tools": service.list_tools(caller_level=Level.TASK),
         "resources": reg.resources(),
         "prompts": reg.prompts(),
     })
@@ -43,7 +69,13 @@ def jsonrpc():
             "error": {"code": -32700, "message": "Parse error"},
         }), 400
     try:
-        result = get_jsonrpc_handler(_registry()).handle_payload(payload)
+        result = get_jsonrpc_handler(
+            _registry(),
+            service=_service(),
+            caller="MCP-HTTP",
+            caller_level=Level.TASK,
+            trusted_internal=False,
+        ).handle_payload(payload)
     except Exception as exc:
         return jsonify({
             "jsonrpc": "2.0",
@@ -92,8 +124,7 @@ def get_prompt():
 
 @mcp_api.get("/tools")
 def tools():
-    reg = _registry()
-    return jsonify({"ok": True, "tools": reg.tools()})
+    return jsonify({"ok": True, "tools": _service().list_tools(caller_level=Level.TASK)})
 
 
 @mcp_api.post("/tools/invoke")
@@ -101,13 +132,25 @@ def invoke_tool():
     data = request.get_json(silent=True) or {}
     name = (data.get("name") or "").strip()
     args = dict(data.get("arguments") or {})
-    result = _registry().invoke_tool(name, args)
+    result = _service().invoke(
+        name,
+        args,
+        caller="MCP-HTTP",
+        caller_level=Level.TASK,
+        trusted_internal=False,
+    )
     return jsonify(result), (200 if result.get("ok") else 400)
 
 
 def run_stdio_transport() -> int:
     """Newline-delimited JSON-RPC über stdin/stdout (MCP-stdio-Transport)."""
-    handler = get_jsonrpc_handler(_registry())
+    handler = get_jsonrpc_handler(
+        _registry(),
+        service=_service(),
+        caller="MCP-STDIO",
+        caller_level=Level.TASK,
+        trusted_internal=False,
+    )
     for line in sys.stdin:
         line = line.strip()
         if not line:
