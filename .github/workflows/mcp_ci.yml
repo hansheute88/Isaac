@@ -33,4 +33,5 @@ jobs:
       env:
         ISAAC_DISABLE_VECTOR_MEMORY: "1"
       run: |
-        python -m unittest tests/test_mcp_integration.py
+        python -m py_compile isaac_mcp.py mcp_registry.py mcp_jsonrpc.py mcp_server.py
+        python -m unittest tests/test_mcp_integration.py tests/test_isaac_mcp.py
