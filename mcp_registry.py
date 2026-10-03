@@ -226,8 +226,11 @@ def _extract_override_context(
 ):
     from constitution_override import build_override_context
 
-    owner_override = bool(args.pop("owner_override", False)) if allow_owner_override else False
-    override_reason = str(args.pop("override_reason", "") or "") if allow_owner_override else ""
+    owner_override = bool(args.pop("owner_override", False))
+    override_reason = str(args.pop("override_reason", "") or "")
+    if not allow_owner_override:
+        owner_override = False
+        override_reason = ""
     return build_override_context(
         owner_override=owner_override,
         override_reason=override_reason,
