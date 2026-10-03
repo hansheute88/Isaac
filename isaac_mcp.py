@@ -328,5 +328,14 @@ class IsaacMCPService:
         )
 
 
+_service: IsaacMCPService | None = None
+_service_registry: MCPRegistry | None = None
+
+
 def get_isaac_mcp_service(registry: MCPRegistry | None = None) -> IsaacMCPService:
-    return IsaacMCPService(registry or get_mcp_registry())
+    global _service, _service_registry
+    selected = registry or get_mcp_registry()
+    if _service is None or _service_registry is not selected:
+        _service = IsaacMCPService(selected)
+        _service_registry = selected
+    return _service
