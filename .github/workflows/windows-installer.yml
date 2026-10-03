@@ -32,6 +32,21 @@ jobs:
           .\.venv\Scripts\python.exe -m py_compile isaac_core.py executor.py low_complexity.py memory.py relay.py logic.py watchdog.py task_checkpoint.py
           .\.venv\Scripts\python.exe -c "import app; print('Flask entrypoint OK')"
           .\.venv\Scripts\python.exe -m unittest tests_provider_configuration -q
+          $stdout = Join-Path $env:RUNNER_TEMP 'isaac-startup.stdout.log'
+          $stderr = Join-Path $env:RUNNER_TEMP 'isaac-startup.stderr.log'
+          $proc = Start-Process -FilePath '.\\.venv\\Scripts\\python.exe' -ArgumentList 'isaac_core.py' -WorkingDirectory $PWD -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
+          Start-Sleep -Seconds 12
+          if ($proc.HasExited) {
+            $out = if (Test-Path $stdout) { Get-Content $stdout -Raw } else { '' }
+            $err = if (Test-Path $stderr) { Get-Content $stderr -Raw } else { '' }
+            Write-Host "Isaac exited during startup with code $($proc.ExitCode)"
+            Write-Host $out
+            Write-Host $err
+            if ($proc.ExitCode -ne 0) { throw "Isaac startup smoke test failed with exit code $($proc.ExitCode)." }
+          } else {
+            Write-Host 'Isaac core stayed alive for the startup smoke test window.'
+            Stop-Process -Id $proc.Id -Force
+          }
       - name: Install Inno Setup
         shell: pwsh
         run: choco install innosetup --no-progress -y
