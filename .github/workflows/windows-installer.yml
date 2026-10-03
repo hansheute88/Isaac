@@ -57,6 +57,32 @@ jobs:
           $iscc = Join-Path ([Environment]::GetEnvironmentVariable('ProgramFiles(x86)')) 'Inno Setup 6\ISCC.exe'
           & $iscc 'installer\windows\Isaac.iss'
           if (-not (Test-Path 'dist\IsaacSetup.exe')) { throw 'IsaacSetup.exe was not created.' }
+      - name: Install and smoke test packaged installer
+        shell: pwsh
+        env:
+          ISAAC_DISABLE_VECTOR_MEMORY: "1"
+        run: |
+          $installRoot = Join-Path $env:LOCALAPPDATA 'Isaac'
+          if (Test-Path $installRoot) { Remove-Item $installRoot -Recurse -Force }
+          $installer = Join-Path $PWD 'dist\\IsaacSetup.exe'
+          $install = Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-',('/DIR="' + $installRoot + '"')) -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "IsaacSetup.exe exited with code $($install.ExitCode)." }
+          $launcher = Join-Path $installRoot 'start_isaac_windows.cmd'
+          if (-not (Test-Path $launcher)) { throw "Installed launcher not found: $launcher" }
+          $stdout = Join-Path $env:RUNNER_TEMP 'installed-isaac.stdout.log'
+          $stderr = Join-Path $env:RUNNER_TEMP 'installed-isaac.stderr.log'
+          $proc = Start-Process -FilePath 'cmd.exe' -ArgumentList '/c', $launcher -WorkingDirectory $installRoot -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
+          Start-Sleep -Seconds 12
+          if ($proc.HasExited) {
+            $out = if (Test-Path $stdout) { Get-Content $stdout -Raw } else { '' }
+            $err = if (Test-Path $stderr) { Get-Content $stderr -Raw } else { '' }
+            Write-Host $out
+            Write-Host $err
+            if ($proc.ExitCode -ne 0) { throw "Installed Isaac launcher failed with exit code $($proc.ExitCode)." }
+          } else {
+            Write-Host 'Packaged installer smoke test passed: installed Isaac stayed alive.'
+            Stop-Process -Id $proc.Id -Force
+          }
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
