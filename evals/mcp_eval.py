@@ -36,6 +36,7 @@ EXPECTED_TOOLS = frozenset({
     "isaac.permission_check",
     "isaac.safety_check",
     "isaac.action_request",
+    "isaac.autonomy_evaluate",
     "isaac.notification_send",
 })
 
