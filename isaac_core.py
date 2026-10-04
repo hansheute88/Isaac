@@ -4382,11 +4382,19 @@ def _configure_console_encoding() -> None:
     """Keep Isaac's Unicode startup banner usable on Windows cp1252 consoles."""
     if sys.platform != "win32":
         return
+    try:
+        import ctypes
+        ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+        ctypes.windll.kernel32.SetConsoleCP(65001)
+    except Exception:
+        pass
     for stream in (sys.stdout, sys.stderr):
         try:
             stream.reconfigure(encoding="utf-8", errors="replace")
         except (AttributeError, ValueError):
             pass
+
+_configure_console_encoding()
 
 
 async def main():
