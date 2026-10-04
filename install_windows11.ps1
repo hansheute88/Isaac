@@ -65,8 +65,18 @@ Write-Host "Python: $((& $python --version).Trim()) ($python)"
 
 $VenvPath = Join-Path $RepoRoot ".venv"
 $VenvPython = Join-Path $VenvPath "Scripts\python.exe"
+# Never reuse a packaged/foreign venv (for example a GitHub Actions hostedtoolcache path).
+$RecreateVenv = $false
+if(Test-Path $VenvPython){
+  try { & $VenvPython -c "import sys; print(sys.executable)" *> $null; if($LASTEXITCODE -ne 0){$RecreateVenv=$true} } catch {$RecreateVenv=$true}
+}
+if($RecreateVenv){
+  Step "Entferne inkompatible virtuelle Umgebung"
+  Remove-Item -Recurse -Force $VenvPath
+}
 if(-not(Test-Path $VenvPath)){& $python -m venv $VenvPath}
 if(-not(Test-Path $VenvPython)){Write-Host "ERROR: Virtuelle Umgebung konnte nicht erstellt werden." -ForegroundColor Red; exit}
+try { & $VenvPython -c "import sys; print(sys.executable)" *> $null; if($LASTEXITCODE -ne 0){Write-Host "ERROR: Virtuelle Umgebung ist nicht lauffähig." -ForegroundColor Red; exit} } catch {Write-Host "ERROR: Virtuelle Umgebung ist nicht lauffähig." -ForegroundColor Red; exit}
 
 Step "Installiere Isaac-Abhängigkeiten"
 & $VenvPython -m pip install --upgrade pip setuptools wheel
