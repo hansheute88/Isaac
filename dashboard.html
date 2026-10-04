@@ -1165,7 +1165,21 @@ function addMsg(who, text) {
 /* ═══ WEBSOCKET COMMUNICATION ═══ */
 function connect() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const url = proto + '//' + location.host + '/ws';
+  const params = new URLSearchParams(location.search);
+  const remote = (params.get('ws') || localStorage.getItem('isaac_ws_host') || '').trim();
+  let url;
+  if (remote) {
+    const base = remote.replace(/\/$/, '');
+    if (base.startsWith('ws://') || base.startsWith('wss://')) {
+      url = base.endsWith('/ws') ? base : base + '/ws';
+    } else {
+      url = base.replace(/^http/, 'ws') + (base.endsWith('/ws') ? '' : '/ws');
+    }
+  } else if (/\.vercel\.app$/i.test(location.hostname)) {
+    url = 'wss://isaac-free.onrender.com/ws';
+  } else {
+    url = proto + '//' + location.host + '/ws';
+  }
 
   const ws = new WebSocket(url);
 

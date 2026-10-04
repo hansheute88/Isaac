@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "service": "isaac",
+  "host": "vercel",
+  "kernel": "render",
+  "kernel_url": "https://isaac-free.onrender.com",
+  "note": "Vercel serves the dashboard. Chat/WebSocket uses the Render free kernel unless ?ws= is set."
+}
