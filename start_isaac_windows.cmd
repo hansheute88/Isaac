@@ -3,6 +3,10 @@ setlocal EnableExtensions
 cd /d "%~dp0"
 title Isaac - Windows 11
 
+chcp 65001 >nul
+set "PYTHONUTF8=1"
+set "PYTHONIOENCODING=utf-8"
+
 echo.
 echo ==============================================
 echo  Isaac - Windows 11
@@ -11,11 +15,14 @@ echo  Arbeitsverzeichnis: %CD%
 echo.
 
 if not exist ".venv\Scripts\python.exe" (
-  echo [FEHLER] Isaac ist noch nicht eingerichtet.
-  echo Bitte IsaacSetup.exe erneut ausfuehren.
-  echo.
-  pause
-  exit /b 1
+  echo [HINWEIS] Isaac ist noch nicht eingerichtet. Starte Setup-Skript...
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "install_windows11.ps1" -NoStart
+  if not exist ".venv\Scripts\python.exe" (
+    echo [FEHLER] Einrichtung fehlgeschlagen. Bitte install_windows11.ps1 manuell pruefen.
+    echo.
+    pause
+    goto :end
+  )
 )
 
 call ".venv\Scripts\activate.bat"
@@ -46,4 +53,4 @@ if "%ISAAC_EXIT_CODE%"=="0" (
 echo ==============================================
 echo.
 pause
-exit /b %ISAAC_EXIT_CODE%
+:end
