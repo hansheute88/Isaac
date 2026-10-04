@@ -51,6 +51,9 @@ jobs:
       - name: Install Inno Setup
         shell: pwsh
         run: choco install innosetup --no-progress -y
+      - name: Remove build-only virtualenv before packaging
+        shell: pwsh
+        run: Remove-Item -Recurse -Force .venv -ErrorAction SilentlyContinue
       - name: Build IsaacSetup.exe
         shell: pwsh
         run: |
