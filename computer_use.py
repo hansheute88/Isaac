@@ -856,7 +856,7 @@ class ComputerUseRuntime:
             from windows_desktop import key
             result = await key(str(params.get("code") or ""))
             if result.get("ok"):
-                audit_ui_action("ui_key", f"code={params.get("code","")}")
+                audit_ui_action("ui_key", f"code={params.get('code', '')}")
             return result
 
         if not _command_exists("input") and not await self._termux_bridge_available():
