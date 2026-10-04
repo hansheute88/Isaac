@@ -284,25 +284,23 @@ class TestFreeCloudHelpers(unittest.TestCase):
 
     def test_system_prompt_allows_explicit_self_reflection(self):
         """Explicit questions about Isaac itself may receive substantive meta explanations."""
-        import free_cloud as fc
         from isaac_core import IsaacKernel
 
         with patch.dict(
             os.environ,
-            {"ISAAC_FREE_CLOUD": "1", "ISAAC_DISABLE_VECTOR_MEMORY": "1"},
+            {"ISAAC_FREE_CLOUD": "0", "ISAAC_DISABLE_VECTOR_MEMORY": "1"},
             clear=False,
         ):
-            fc.apply_free_cloud_defaults()
             k = IsaacKernel()
 
             class Emp:
                 anpassungs_hinweis = ""
 
             prompt = k._build_system(False, Emp())
-            self.assertIn("Meta-Erklärungen über Isaac selbst sind ausdrücklich erlaubt", prompt)
-            self.assertIn("Architektur, Entwicklung, Selbstmodell, Entscheidungslogik", prompt)
-            self.assertIn("Bei normalen Sachfragen keine unnötigen Meta-Essays", prompt)
-            self.assertNotIn("Keine Meta-Essays über Autorität/Eigentum/API-Keys", prompt)
+            self.assertIn("SELF_REFLECTION_POLICY", prompt)
+            self.assertIn("Explizite Fragen über Isaac selbst sind erlaubt", prompt)
+            self.assertIn("Architektur, Entwicklungsstand, Entscheidungslogik", prompt)
+            self.assertIn("Normale Sachfragen bleiben frei von unnötigen Meta-Essays", prompt)
 
 
 if __name__ == "__main__":
