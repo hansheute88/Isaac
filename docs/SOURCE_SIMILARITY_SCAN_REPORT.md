@@ -138,3 +138,17 @@ The previous preliminary statement "no material third-party source in historical
 The technically accurate conclusion is:
 
 > One exact historical third-party source artifact was identified: aiohttp v3.13.3's `web_urldispatcher.py`. It was subsequently archived/removed and is absent from the current active tree. No second comparable vendored runtime source was identified in the reviewed historical release bundle. The active Isaac cognitive/governance/autonomy core remains a strong H2 candidate, subject to the general limitations of source-similarity analysis and the separate third-party/template boundaries already documented.
+
+## Supplied historical ZIP evidence — 2026-10-05 follow-up
+
+The supplied working artifact `Isaac-main (12).zip` was independently inspected in addition to the Git-object scan.
+
+- SHA-256: `ed3fe5f2bc2acbda64133311f4ca8f2b48df911472eb6884ca14030612e88f23`
+- 682 extracted files
+- 157 Python files
+- nested `.github/instructions/Isaac-main (4).zip`: SHA-256 `4efc3c79cf4112115db32ab528955133afa1ddadfe421d99fcd157e74094a7e2`, 188 extracted files / 75 Python files
+- VS Code Docker extension `ms-azuretools.vscode-docker-2.0.0.vsix`: external Microsoft artifact, MIT licensed with third-party notices
+- `openapi_letta.json`: Letta API OpenAPI 3.1 schema, version 0.16.8; classify as third-party API/reference material
+- `owner_action.py`: runtime `curl | python3` execution of the public `sivel/speedtest-cli` source; classify as external runtime/supply-chain dependency, not Isaac-original source
+
+The exact historical aiohttp finding remains the decisive source-code-copy finding: `web_urldispatcher.py` is byte-identical to aiohttp v3.13.3. The supplied ZIP inspection did not identify a second comparable vendored runtime source artifact.
