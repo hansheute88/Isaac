@@ -9,6 +9,9 @@ on:
 env:
   ISAAC_DISABLE_VECTOR_MEMORY: "1"
 
+permissions:
+  contents: read
+
 jobs:
   isaac20:
     runs-on: ubuntu-latest
