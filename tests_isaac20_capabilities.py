@@ -102,6 +102,54 @@ class TestIsaac20Capabilities(unittest.TestCase):
             for entry in task.decision_trace.entries
         ))
 
+    def test_tool_execution_boundary_denies_without_explicit_policy(self):
+        from executor import Executor, Task, TaskType
+
+        executor = object.__new__(Executor)
+        executor.rwx_registry = RWXRegistry()
+        task = Task(
+            id="tool-rwx-deny",
+            typ=TaskType.CODE,
+            prompt="use protected tool",
+            beschreibung="tool execution boundary",
+            required_capabilities=[
+                {"resource": "tool:protected-tool", "capability": "execute"}
+            ],
+        )
+        error = executor._check_tool_execution_capability(
+            task,
+            {"identifier": "protected-tool", "name": "Protected"},
+        )
+        self.assertIn("R/W/X blockiert", error)
+        self.assertTrue(any(
+            entry.event == "tool_execution_capability"
+            for entry in task.decision_trace.entries
+        ))
+
+    def test_tool_execution_boundary_allows_explicit_policy(self):
+        from executor import Executor, Task, TaskType
+
+        executor = object.__new__(Executor)
+        executor.rwx_registry = RWXRegistry()
+        executor.set_capability_policy(
+            RWXPolicy("tool:protected-tool", execute=True, source="tool-policy")
+        )
+        task = Task(
+            id="tool-rwx-allow",
+            typ=TaskType.CODE,
+            prompt="use protected tool",
+            beschreibung="tool execution boundary",
+            required_capabilities=[
+                {"resource": "tool:protected-tool", "capability": "execute"}
+            ],
+        )
+        self.assertIsNone(
+            executor._check_tool_execution_capability(
+                task,
+                {"identifier": "protected-tool", "name": "Protected"},
+            )
+        )
+
     def test_legacy_mapping_is_additive(self):
         self.assertEqual(capability_from_legacy_action("file_read"), Capability.READ)
         self.assertEqual(capability_from_legacy_action("file_write"), Capability.WRITE)
