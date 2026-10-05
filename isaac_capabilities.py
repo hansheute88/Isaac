@@ -122,6 +122,15 @@ class RWXRegistry:
         )
 
 
+def evaluate_with_audit(registry: RWXRegistry, request: CapabilityRequest) -> CapabilityDecision:
+    """Evaluate R/W/X and emit an immutable audit event; no legacy gate is bypassed."""
+    decision = registry.evaluate(request)
+    from audit import AuditLog
+
+    AuditLog._record("capability", decision.as_dict())
+    return decision
+
+
 def capability_from_legacy_action(action: str) -> Capability:
     """Map existing privileged actions to R/W/X without changing their gates."""
     normalized = (action or "").strip().lower()
