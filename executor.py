@@ -53,6 +53,7 @@ from decision_trace import (
 )
 from result_contract import ensure_result_contract
 from isaac_capabilities import (
+    Capability,
     CapabilityRequest,
     RWXPolicy,
     RWXRegistry,
