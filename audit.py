@@ -84,7 +84,7 @@ class AuditLog:
     @classmethod
     def action(cls, caller: str, aktion: str, detail: str = "",
                level: int = 0, erfolg: bool = True):
-        cls._record("action", {
+        return cls._record("action", {
             "caller": caller, "aktion": aktion,
             "detail": detail[:200], "level": level, "erfolg": erfolg
         })
@@ -92,7 +92,7 @@ class AuditLog:
     @classmethod
     def task(cls, task_id: str, status: str, detail: str = "",
              score: float = 0.0, iteration: int = 0):
-        cls._record("task", {
+        return cls._record("task", {
             "task_id": task_id, "status": status,
             "detail": detail[:300], "score": score, "iteration": iteration
         })
@@ -120,10 +120,11 @@ class AuditLog:
 
     @classmethod
     def error(cls, caller: str, fehler: str, detail: str = ""):
-        cls._record("error", {
+        entry = cls._record("error", {
             "caller": caller, "fehler": fehler[:200], "detail": detail[:300]
         })
         log.error(f"[{caller}] {fehler}")
+        return entry
 
     @classmethod
     def steffen_input(cls, text: str):
@@ -159,7 +160,7 @@ class AuditLog:
     @classmethod
     def system_cmd(cls, caller: str, cmd: str, returncode: int = 0):
         # Systembefehl immer voll loggen
-        cls._record("system_cmd", {
+        return cls._record("system_cmd", {
             "caller": caller, "cmd": cmd[:300], "returncode": returncode
         })
 
