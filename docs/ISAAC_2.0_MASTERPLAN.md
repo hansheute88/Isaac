@@ -541,7 +541,7 @@ DoD:
 
 ## Track C — Causal Memory
 
-Status: **B3.2 in progress**
+Status: **B3.3 implementation in progress**
 
 Deliverables:
 - causal node/edge schema
@@ -554,9 +554,13 @@ Deliverables:
 Completed:
 - **B3.1:** normalized event schema with immutable source preservation
 - **B3.2:** deterministic explicit relationship edges for `derived_from`, `depends_on`, `caused_by`, `triggered`, `authorized_by`, `blocked_by`, `corrected_by`, `verified_by`
+- **B3.2.2:** runtime lineage is now emitted with persisted AuditLog/DecisionTrace event IDs for task creation, capability authorization, tool execution and provider switches
+- **B3.3 foundation:** causal predecessor/successor queries and root-cause candidate ranking distinguish explicit evidence from temporal observation
 - temporal adjacency remains `OBSERVED` only
 - cross-task explicit references are rejected
 - unknown event references are ignored rather than inferred
+- root-cause candidates are never labeled verified solely from temporal adjacency
+- end-to-end authorization → action → failure → recovery → verification evaluation exists
 
 DoD:
 - a failed task can produce a reproducible causal trace from recorded events
@@ -570,6 +574,12 @@ Deliverables:
 - quarantine state machine
 - watchdog integration
 - recovery verification
+
+Implementation foundation:
+- conservative guardrail decision primitives
+- explicit quarantine for safety-critical failures
+- verification remains mandatory after intervention
+- no guardrail primitive can escalate privileges or replace existing authorization gates
 
 DoD:
 - failing provider loses W/X according to policy
