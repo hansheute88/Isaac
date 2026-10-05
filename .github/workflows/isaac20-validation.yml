@@ -23,9 +23,9 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Compile Isaac 2.0 modules
         run: |
-          python -m py_compile isaac_capabilities.py isaac_causal.py executor.py audit.py
+          python -m py_compile isaac_capabilities.py isaac_causal.py isaac_causal_query.py isaac_guardrails.py executor.py audit.py
       - name: Run Isaac 2.0 tests
         run: |
-          python -m unittest tests_isaac20_capabilities tests_isaac20_causal
+          python -m unittest tests_isaac20_capabilities tests_isaac20_causal tests_isaac20_causal_query tests_isaac20_runtime_lineage tests_isaac20_e2e
       - name: Run core sanity check
         run: python sanity_check.py
