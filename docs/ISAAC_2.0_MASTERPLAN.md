@@ -556,6 +556,7 @@ Completed:
 - **B3.2:** deterministic explicit relationship edges for `derived_from`, `depends_on`, `caused_by`, `triggered`, `authorized_by`, `blocked_by`, `corrected_by`, `verified_by`
 - **B3.2.2:** runtime lineage is now emitted with persisted AuditLog/DecisionTrace event IDs for task creation, capability authorization, tool execution and provider switches
 - **B3.3 foundation:** causal predecessor/successor queries and root-cause candidate ranking distinguish explicit evidence from temporal observation
+- **B2 runtime enforcement step:** explicitly protected `tool:*` resources are now checked at the real `run_selected_tool(...)` execution boundary; missing authorization produces an audited/traceable R/W/X block before tool execution
 - temporal adjacency remains `OBSERVED` only
 - cross-task explicit references are rejected
 - unknown event references are ignored rather than inferred
