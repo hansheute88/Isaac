@@ -40,6 +40,9 @@ class ProviderStats:
     blacklist_bis:  float = 0.0    # time.monotonic()
     avg_latenz:     float = 0.0    # Sekunden
     _latenz_n:      int   = 0
+    guardrail_quarantined: bool = False
+    guardrail_reason: str = ""
+    guardrail_event_id: str = ""
 
     @property
     def fehlerquote(self) -> float:
@@ -48,6 +51,8 @@ class ProviderStats:
 
     @property
     def verfuegbar(self) -> bool:
+        if self.guardrail_quarantined:
+            return False
         if not self.blacklisted:
             return True
         # Blacklist abgelaufen?
@@ -88,6 +93,8 @@ class ProviderStats:
             "avg_latenz":  round(self.avg_latenz, 2),
             "score":       round(self.score(), 2),
             "verfuegbar":  self.verfuegbar,
+            "guardrail_quarantined": self.guardrail_quarantined,
+            "guardrail_reason": self.guardrail_reason,
         }
 
 
@@ -148,6 +155,30 @@ class ProviderBlacklist:
                 "Watchdog", f"blacklist:{provider}",
                 f"quote={s.fehlerquote:.1%} dauer={int(dauer)}s"
             )
+
+    def quarantine(self, provider: str, *, reason: str = "", source_event_id: str = ""):
+        """Safety quarantine using the existing ProviderBlacklist authority."""
+        s = self._get(provider)
+        s.guardrail_quarantined = True
+        s.guardrail_reason = (reason or "guardrail_quarantine")[:250]
+        s.guardrail_event_id = source_event_id or ""
+        s.blacklisted = True
+        s.blacklist_bis = max(s.blacklist_bis, time.monotonic() + self.BLACKLIST_MAX)
+        AuditLog.action("Watchdog", "provider_quarantine", provider, erfolg=False)
+
+    def verify_quarantine(self, provider: str) -> bool:
+        """Release safety quarantine only after explicit verification."""
+        s = self._get(provider)
+        s.guardrail_quarantined = False
+        s.guardrail_reason = ""
+        s.guardrail_event_id = ""
+        s.blacklisted = False
+        s.blacklist_bis = 0.0
+        AuditLog.action("Watchdog", "provider_quarantine_released", provider, erfolg=True)
+        return True
+
+    def is_quarantined(self, provider: str) -> bool:
+        return self._get(provider).guardrail_quarantined
 
     def ranked_providers(self, preferred: Optional[str] = None) -> list[str]:
         """
