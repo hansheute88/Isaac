@@ -18,6 +18,16 @@ Runtime-Reihenfolge:
 6. Registry-Handler
 7. Result Contract + Audit
 
+## Autonomy Control Plane
+
+Isaac exposes `isaac.autonomy_evaluate` as a governed, read-only decision tool. It composes the existing governance primitives without executing the requested action:
+
+`intent -> memory -> goal -> permission -> safety -> confirmation -> proposal -> separate executor -> audit`
+
+The result always contains `execution_authorized: false` at this boundary. A high-risk action can create a persistent confirmation review through the existing ConfirmationPolicy. The executor is deliberately outside the MCP registry.
+
+Remote MCP callers are clamped to TASK privilege and cannot supply an owner override. The control plane therefore acts as a single decision point rather than a second executor.
+
 ## Exponierte Werkzeuge
 
 | Tool | Scope | Funktion |
@@ -30,6 +40,7 @@ Runtime-Reihenfolge:
 | 'isaac.permission_check' | read | Privilege-Gate prüfen |
 | 'isaac.safety_check' | read | Constitution prüfen |
 | 'isaac.action_request' | read | Aktion vorschlagen, niemals ausführen |
+| 'isaac.autonomy_evaluate' | read | Vollständige Autonomieprüfung ohne Ausführung |
 | 'isaac.search_web' | read | Websuche |
 | 'isaac.start_task' | write | Task anlegen |
 | 'isaac.goal_update' | write | Zielstatus ändern |
