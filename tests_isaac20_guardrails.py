@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from isaac_guardrails import (
     GuardrailController,
@@ -108,6 +109,57 @@ class TestIsaac20Guardrails(unittest.TestCase):
             controller.state("provider:test-provider"),
             GuardrailState.RECOVERING,
         )
+
+    def test_watchdog_high_risk_hang_routes_to_quarantine(self):
+        from executor import Task, TaskType
+        from watchdog import TaskWatchdog
+
+        class FakeController:
+            def __init__(self):
+                self.calls = []
+
+            def intervene_provider(self, **kwargs):
+                self.calls.append(kwargs)
+                from isaac_guardrails import GuardrailDecision
+                return GuardrailDecision(
+                    GuardrailState.QUARANTINED,
+                    InterventionType.QUARANTINE,
+                    "safety_critical_failure",
+                    kwargs.get("failed_event_id", ""),
+                    True,
+                )
+
+        class FakeExecutor:
+            def __init__(self):
+                self._running = set()
+
+            async def submit(self, task):
+                return True
+
+            def resume_task(self, task_id):
+                return False
+
+        fake_controller = FakeController()
+        task = Task(
+            id="watchdog-critical",
+            typ=TaskType.CODE,
+            prompt="critical task",
+            beschreibung="watchdog guardrail",
+            provider="unsafe-provider",
+            risk_level="critical",
+        )
+        watchdog = TaskWatchdog()
+        watchdog.set_executor(FakeExecutor())
+
+        with patch("memory.get_memory") as get_memory,              patch("task_checkpoint.is_resumable_state", return_value=False),              patch("isaac_guardrails.get_guardrail_controller", return_value=fake_controller):
+            get_memory.return_value.get_latest_checkpoint.return_value = None
+            import asyncio
+            asyncio.run(watchdog._handle_hang(task, 301.0))
+
+        self.assertEqual(len(fake_controller.calls), 1)
+        self.assertEqual(fake_controller.calls[0]["provider"], "unsafe-provider")
+        self.assertTrue(fake_controller.calls[0]["safety_critical"])
+        self.assertEqual(task.causal_refs.get("guardrail_source_event_id") != "", True)
 
 
 if __name__ == "__main__":
