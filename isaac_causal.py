@@ -179,6 +179,62 @@ def normalize_trace_entries(
     return out
 
 
+
+# Explicit relationships require an event-id reference in the evidence.
+_EXPLICIT_RELATION_KEYS = {
+    "derived_from": CausalEdgeType.DERIVED_FROM,
+    "derived_from_event_id": CausalEdgeType.DERIVED_FROM,
+    "depends_on": CausalEdgeType.DEPENDS_ON,
+    "depends_on_event_id": CausalEdgeType.DEPENDS_ON,
+    "caused_by": CausalEdgeType.CAUSED_BY,
+    "caused_by_event_id": CausalEdgeType.CAUSED_BY,
+    "triggered_by": CausalEdgeType.TRIGGERED,
+    "triggered_by_event_id": CausalEdgeType.TRIGGERED,
+    "authorized_by": CausalEdgeType.AUTHORIZED_BY,
+    "authorized_by_event_id": CausalEdgeType.AUTHORIZED_BY,
+    "blocked_by": CausalEdgeType.BLOCKED_BY,
+    "blocked_by_event_id": CausalEdgeType.BLOCKED_BY,
+    "corrected_by": CausalEdgeType.CORRECTED_BY,
+    "corrected_by_event_id": CausalEdgeType.CORRECTED_BY,
+    "verified_by": CausalEdgeType.VERIFIED_BY,
+    "verified_by_event_id": CausalEdgeType.VERIFIED_BY,
+}
+
+def build_explicit_relationship_edges(events: Iterable[CausalEvent]) -> tuple[CausalEdge, ...]:
+    """Build only relationships explicitly declared by event evidence."""
+    ordered = tuple(events)
+    by_id = {event.event_id: event for event in ordered}
+    edges: list[CausalEdge] = []
+    for target in ordered:
+        for key, edge_type in _EXPLICIT_RELATION_KEYS.items():
+            reference = target.data.get(key)
+            if not isinstance(reference, str):
+                continue
+            reference = reference.strip()
+            if not reference or reference not in by_id:
+                continue
+            source = by_id[reference]
+            if source.event_id == target.event_id:
+                continue
+            if source.task_id and target.task_id and source.task_id != target.task_id:
+                continue
+            edges.append(CausalEdge(
+                source_event_id=source.event_id,
+                target_event_id=target.event_id,
+                edge_type=edge_type,
+                evidence=f"explicit:{key}",
+            ))
+    unique = {(e.source_event_id, e.target_event_id, e.edge_type.value): e for e in edges}
+    return tuple(unique[key] for key in sorted(unique))
+
+def build_causal_graph(events: Iterable[CausalEvent]) -> CausalGraph:
+    """Combine temporal observations with explicit evidence relationships."""
+    ordered = tuple(sorted(events, key=lambda e: (e.timestamp_ms, e.sequence, e.event_id)))
+    sequence_graph = build_sequence_graph(ordered)
+    explicit = build_explicit_relationship_edges(ordered)
+    edges = sequence_graph.edges + tuple(edge for edge in explicit if edge not in sequence_graph.edges)
+    return CausalGraph(events=ordered, edges=edges)
+
 def build_sequence_graph(events: Iterable[CausalEvent]) -> CausalGraph:
     """Build evidence-backed temporal edges, not proven causal claims."""
     ordered = tuple(sorted(
