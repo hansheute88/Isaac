@@ -223,3 +223,45 @@ Working-copy evidence artifacts:
 - Nested `.github/instructions/Isaac-main (4).zip`: SHA-256 `4efc3c79cf4112115db32ab528955133afa1ddadfe421d99fcd157e74094a7e2`; 188 files after extraction; 75 Python files.
 
 These hashes identify the supplied evidence artifacts used for this pass. They are not Git object hashes and do not imply authorship.
+
+## Phase 2 — 157-file historical Python classification
+
+The supplied historical ZIP contains 157 Python files. A deterministic filename/path/import/license-marker pass was performed across all 157 files.
+
+### Result buckets
+
+- **T1 exact third-party:** 1 historical file — `web_urldispatcher.py`, exact aiohttp v3.13.3 blob match.
+- **T1 third-party artifact/reference:** external VSIX and Letta OpenAPI schema identified outside the Python-core count.
+- **H2 Isaac-directed implementation candidate:** the substantive Isaac modules, governance, memory, goal, autonomy, MCP, computer-use, coding, evaluation, and integration adapters show project-specific module structure and no detected license/copyright headers identifying them as copied package source.
+- **H3 project/test/operational:** scripts, tests and operational tooling are treated separately from core invention/IP claims.
+- **External API/dependency usage:** numerous files import/use aiohttp, websockets, Flask, requests, Letta, Mem0, Cognee and MCP APIs. These are dependency usage, not vendored source, unless an exact source match is separately established.
+
+### Important negative result
+
+No Python path in the historical archive has a package-like directory layout for aiohttp, Starlette, FastAPI, LangChain, Aider, OpenHands, Cline, CrewAI or AutoGPT. No Python file in the 157-file set contains an SPDX/copyright/license header identifying it as third-party source.
+
+This is a screening result, not proof of originality: absence of a license header does not establish authorship.
+
+### High-value core files reviewed by category
+
+| Category | Examples | Result |
+|---|---|---|
+| Governance / Constitution | `constitution.py`, `constitution_override.py`, `privilege.py`, `values.py` | H2 candidate |
+| Kernel / orchestration | `isaac_core.py`, `executor.py`, `background_loop.py`, `strategy.py` | H2 candidate |
+| Memory / epistemic state | `memory.py`, `vector_memory.py`, `procedure_memory.py`, `diva_protocol.py` | H2 candidate |
+| Goals / autonomy | `goal_store.py`, `motivation.py`, `goal_inquiry.py` | H2 candidate |
+| Decision trace / evaluation | `decision_trace.py`, `evals/*`, stabilization tests | H2/H3 |
+| Computer use / OS | `computer_use.py`, `windows_desktop.py`, `file_access.py`, `owner_action.py` | H2 candidate; external runtime dependency noted |
+| Coding subsystem | `repo_map.py`, `code_edit.py`, `git_ops.py` | H2 candidate; Aider-inspired patterns explicitly disclosed |
+| MCP | `mcp_server.py`, `mcp_jsonrpc.py`, `mcp_registry.py`, `mcp_client.py` | H2 candidate around third-party protocol |
+| External memory | `external_memory/*` | H2 adapter code around third-party services |
+| Web/relay | `relay.py`, `search.py`, `monitor_server.py`, `free_cloud.py` | H2 candidate; aiohttp is dependency/API usage |
+| Tests/scripts | `tests_*.py`, `scripts/*` | H3 operational/evaluation material |
+
+### Required acquisition treatment
+
+The historical aiohttp file should be explicitly listed in the transaction's Third-Party Schedule and excluded from any statement that all historical source is Isaac-original.
+
+The current active tree contains no `web_urldispatcher.py` path and no current exact aiohttp blob. This was verified against the current `acquisition-readiness` tree.
+
+External dependencies should be handled through the SBOM/license schedule; using an external API/library is not the same as copying its source.
