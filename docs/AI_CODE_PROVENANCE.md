@@ -1,72 +1,48 @@
 # Isaac — AI Code Provenance
 
-## Purpose
+## Ownership and authorship
 
-Document how AI coding systems were used without representing them as independent owners of the Isaac project.
+**Hans Heute is the project owner and the author of the underlying Isaac concept, theoretical framework, architecture, requirements and product direction.**
 
-## Development model
+AI systems/agents — including Jules, Copilot, Codex, Claude and other coding assistants used during development — were used as **coding and engineering tools**.
 
-AI systems were used as engineering tools for:
+Their role included:
 
-- implementation
-- test creation
+- implementation of requested functionality
 - debugging
 - refactoring
-- documentation
-- code review / analysis
+- test creation and repair
+- documentation assistance
+- repository inspection
+- implementation of explicitly specified changes
 
-The project owner remained responsible for:
+They were not the source of the project's underlying product concept, theoretical framework or ownership.
 
-- product concept
-- theoretical foundation
-- architecture
-- requirements
-- system boundaries
-- governance model
-- goals and priorities
-- acceptance criteria
-- deciding which generated changes were retained
-- runtime validation and integration
+## Provenance model
 
-## Agent/tool families used
+For acquisition diligence, use this distinction:
 
-The project history contains work associated with, among others:
+| Layer | Primary provenance |
+|---|---|
+| *Mensch & KI / Evolution 2.0* theory | **Hans Heute** |
+| Isaac concept / vision | **Hans Heute** |
+| Isaac architecture and system model | **Hans Heute** |
+| Governance / autonomy principles | **Hans Heute** |
+| Requirements / acceptance criteria | **Hans Heute** |
+| Engineering implementation | **Hans Heute-directed, partly AI-assisted** |
+| Tests / debugging / refactoring | **Hans Heute-directed, partly AI-assisted** |
+| Third-party libraries/templates | **Their respective authors/licensors** |
 
-- Google Jules
-- GitHub Copilot
-- Codex
-- Claude
-- other coding assistants as used during development
+## Important limitation
 
-Per-commit attribution should be treated as an engineering provenance signal, not as an ownership statement.
+This document records project provenance and ownership assertions. It is not a legal opinion on copyrightability of AI-generated code.
 
-## Human-controlled architecture
+Individual source files may also contain third-party or template-derived material. Those files must be classified separately.
 
-The repository's `AGENTS.md` establishes the repository as the operative architectural authority and defines strict boundaries between Registry, Strategy and Executor. It also states that the AI model is a tool for execution rather than the authoritative source of architecture or system logic.
+## Acquisition statement
 
-## Validation
+The defensible project-level description is:
 
-Generated or AI-assisted changes are accepted only through project-controlled processes such as:
+> Hans Heute independently developed the underlying theory, product concept, architecture, requirements and system design for Isaac. AI coding agents were subsequently used as engineering tools to assist with implementation, testing, debugging and refactoring. Third-party components remain separately licensed.
 
-- tests
-- regression checks
-- smoke tests
-- runtime verification
-- code review
-- Git history
-- architectural constraints
-
-## Security
-
-Do not place the following into this document:
-
-- API keys
-- OAuth tokens
-- passwords
-- private prompts containing secrets
-- authentication exports
-- private customer data
-
-## Acquisition diligence note
-
-A buyer should receive the provenance policy and relevant Git history, but not private account credentials or unrelated personal conversation data.
+This is the intended provenance statement for acquisition diligence.
