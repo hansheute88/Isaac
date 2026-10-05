@@ -669,6 +669,76 @@ class Executor:
                 )
         return None
 
+    def _check_tool_execution_capability(self, task: Task, selection: dict) -> Optional[str]:
+        """Enforce an explicitly declared execute capability at the real tool boundary.
+
+        Compatibility rule: tasks that do not declare a tool:* capability keep the
+        existing path. Once a tool capability is declared, the selected tool must
+        be explicitly authorized for execution.
+        """
+        identifier = str(selection.get("identifier") or "").strip()
+        if not identifier:
+            return "R/W/X tool resource fehlt"
+
+        declared = []
+        for required in getattr(task, "required_capabilities", []) or []:
+            if not isinstance(required, dict):
+                continue
+            resource = str(required.get("resource") or "").strip()
+            if resource.startswith("tool:"):
+                declared.append(required)
+
+        if not declared:
+            return None
+
+        resource = f"tool:{identifier}"
+        matching = [
+            item for item in declared
+            if str(item.get("resource") or "").strip() == resource
+        ]
+        if not matching:
+            decision = evaluate_with_audit(
+                self.rwx_registry,
+                CapabilityRequest(
+                    resource=resource,
+                    capability=Capability.EXECUTE,
+                    principal="isaac-task",
+                    reason="selected tool execution",
+                    task_id=task.id,
+                ),
+            )
+        else:
+            item = matching[0]
+            decision = evaluate_with_audit(
+                self.rwx_registry,
+                CapabilityRequest(
+                    resource=resource,
+                    capability=Capability.EXECUTE,
+                    principal="isaac-task",
+                    reason=str(item.get("reason") or "selected tool execution"),
+                    task_id=task.id,
+                ),
+            )
+
+        trace_entry = task.decision_trace.add(
+            TracePhase.GOVERNANCE,
+            "tool_execution_capability",
+            {
+                **decision.as_dict(),
+                "tool_identifier": identifier,
+            },
+        )
+        task.causal_refs["tool_capability_trace_event_id"] = trace_entry.event_id
+        if decision.audit_event_id:
+            task.causal_refs["tool_capability_audit_event_id"] = decision.audit_event_id
+
+        if not decision.allowed:
+            return (
+                f"R/W/X blockiert: execute auf {resource} "
+                f"({decision.reason})"
+            )
+        return None
+
     def _preflight(self, task: Task) -> Optional[str]:
         """
         Prüft einen Task bevor er ausgeführt wird.
@@ -926,7 +996,13 @@ class Executor:
             blocked = constitution_gate_for_tool(
                 selection, prompt, override_ctx=override_ctx,
             )
-            if blocked:
+            capability_block = self._check_tool_execution_capability(task, selection)
+            if capability_block:
+                result = ensure_result_contract(
+                    {"ok": False, "error": capability_block, "via": "rwx"},
+                    source="rwx_capability",
+                )
+            elif blocked:
                 result = ensure_result_contract(blocked, source="constitution")
             else:
                 result = ensure_result_contract(
