@@ -139,15 +139,16 @@ class GuardrailController:
         return entry.get("event_id", "") if isinstance(entry, dict) else ""
 
     def verify_provider(self, *, provider: str, intervention_event_id: str,
-                        verified: bool, reason: str = "", task_id: str = "") -> GuardrailDecision:
+                        verified: bool, reason: str = "", task_id: str = "",
+                        causal_refs: Optional[dict] = None) -> GuardrailDecision:
+        """Record controlled verification; release quarantine only on success."""
         decision = verification_result(
             intervention_event_id=intervention_event_id,
             verified=verified, reason=reason,
         )
         resource = f"provider:{provider}"
         self._states[resource] = decision.state
-        if verified:
-            self._blacklist().verify_quarantine(provider)
+
         entry = AuditLog.action(
             "Guardrail", InterventionType.VERIFY.value,
             f"resource={resource} source={intervention_event_id} "
@@ -157,7 +158,74 @@ class GuardrailController:
         event_id = entry.get("event_id", "") if isinstance(entry, dict) else ""
         if event_id:
             self._last_intervention[resource] = event_id
+
+        if causal_refs is not None:
+            causal_refs["guardrail_verification_event_id"] = event_id
+            causal_refs["guardrail_verification_source_event_id"] = intervention_event_id
+
+        # Critical invariant: a failed verification never releases a quarantine.
+        if verified:
+            self._blacklist().verify_quarantine(provider)
         return decision
+
+    def recover_and_verify_provider(
+        self,
+        *,
+        provider: str,
+        source_event_id: str,
+        reason: str,
+        recovery_action,
+        verification_probe,
+        task_id: str = "",
+        causal_refs: Optional[dict] = None,
+    ) -> GuardrailDecision:
+        """Execute one explicit recovery action and one controlled verification probe.
+
+        Recovery itself never restores provider availability. The provider is
+        released only when the probe returns a truthy result. Exceptions or a
+        failed probe leave an existing quarantine in force and produce an
+        explicit FAILED state.
+        """
+        resource = f"provider:{provider}"
+        recovery_event_id = self.begin_recovery(
+            resource=resource,
+            source_event_id=source_event_id,
+            reason=reason,
+            task_id=task_id,
+        )
+        if causal_refs is not None:
+            causal_refs["guardrail_recovery_event_id"] = recovery_event_id
+            causal_refs["guardrail_recovery_source_event_id"] = source_event_id
+
+        try:
+            recovery_action()
+        except Exception as exc:
+            failure_reason = f"recovery_failed:{type(exc).__name__}:{exc}"[:250]
+            return self.verify_provider(
+                provider=provider,
+                intervention_event_id=recovery_event_id,
+                verified=False,
+                reason=failure_reason,
+                task_id=task_id,
+                causal_refs=causal_refs,
+            )
+
+        try:
+            verified = bool(verification_probe())
+        except Exception as exc:
+            verified = False
+            probe_reason = f"verification_probe_failed:{type(exc).__name__}:{exc}"[:250]
+        else:
+            probe_reason = "controlled_probe_passed" if verified else "controlled_probe_failed"
+
+        return self.verify_provider(
+            provider=provider,
+            intervention_event_id=recovery_event_id,
+            verified=verified,
+            reason=probe_reason,
+            task_id=task_id,
+            causal_refs=causal_refs,
+        )
 
     def last_intervention_event_id(self, resource: str) -> str:
         return self._last_intervention.get(resource, "")
