@@ -509,5 +509,6 @@ Isaac läuft hier via `docker compose -f docker-compose.base44.yml up -d`:
 - Free-Cloud-Modus: `ISAAC_FREE_CLOUD=1 ISAAC_UNIFIED_PORT=1 PORT=3000` → HTTP + WS (`/ws`) auf einem Port, Web-Entry ist Host-Port 3000.
 - Verifizieren: `curl http://localhost:3000/healthz` → `ok:true`, `has_groq_key` prüfen.
 - Secrets (GROQ_API_KEY, optional OPENROUTER_API_KEY / GOOGLE_API_KEY) kommen aus `/run/base44/app.env` (überschreibt `.env.base44-defaults`).
+- Provider-Kette (Stand 2026-10-05): `GROQ_API_KEY` ist ungültig (401) → Groq in `data/provider_settings.json` deaktiviert (`enabled: false`); OpenRouter-Env-Modell-Slug ist tot → in `provider_settings.json` auf `openai/gpt-4o-mini` gesetzt, Key in `data/secrets_store.json` (gitignored) geseedet. Primary = `openrouter`, Fallback `gemini` (beide verifiziert). Neue gültige Keys/Modelle via Base44-Secrets-Seite setzen — Compose `environment:` darf USER-Werte wie `ACTIVE_PROVIDER` nie überschreiben.
 - aiohttp hat kein Hot-Reload: Nach Code-Änderungen `docker compose -f docker-compose.base44.yml restart isaac` (bzw. reload_preview).
 - Validierung in der Sandbox (kein venv nötig): `docker compose -f docker-compose.base44.yml exec -T isaac sh -c "ISAAC_DISABLE_VECTOR_MEMORY=1 python -m unittest tests_phase_a_stabilization tests_state_io tests_provider_configuration -q"`

@@ -19,7 +19,6 @@ services:
       - ISAAC_DISABLE_VECTOR_MEMORY=1
       - PORT=3000
       - ISAAC_OWNER=Steffen
-      - ACTIVE_PROVIDER=groq
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
     # Install slim deps from lockfile, then start the kernel.
