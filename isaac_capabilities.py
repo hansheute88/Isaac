@@ -127,7 +127,7 @@ def evaluate_with_audit(registry: RWXRegistry, request: CapabilityRequest) -> Ca
     decision = registry.evaluate(request)
     from audit import AuditLog
 
-    AuditLog._record("capability", decision.as_dict())
+    AuditLog.capability(decision.as_dict())
     return decision
 
 
