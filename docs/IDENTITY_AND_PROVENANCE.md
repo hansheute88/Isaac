@@ -1,35 +1,56 @@
-# Isaac — Identity & Historical Provenance
+# Isaac — Identity and Provenance
 
-## Ownership statement
+## Legal / project owner
 
-The GitHub identities appearing in the Isaac development history, including:
+**Hans Heute is the project owner and the author of the underlying conceptual work.**
 
-- `hansheute88`
-- `glinkasteffen075-bit` / Sc0rP
+All historical GitHub identities used for the Isaac project — including `hansheute88`, `glinkasteffen075-bit`, and `Sc0rP` — refer to the same person: Hans Heute. Account changes were made for account/trial/subscription reasons and do not represent separate contributors or separate rights holders.
 
-are controlled by the same project owner.
+## Authorship boundary
 
-The owner changed GitHub accounts for trial/subscription purposes. The identities do not represent separate project contributors or separate claims of ownership.
+Hans Heute personally developed the following substantive project material:
 
-## Why this file exists
+- the underlying theoretical work *Mensch & KI / Evolution 2.0*
+- the conceptual model and core ideas
+- the Isaac product concept
+- the system goals and intended behavior
+- the architecture and control-flow concepts
+- governance and autonomy principles
+- memory/provenance concepts
+- security and permission requirements
+- computer-use requirements
+- acceptance criteria and project direction
+- decisions about what should be implemented, changed, rejected or retained
 
-The Git history contains commits authored under more than one account identity. A buyer performing diligence could otherwise interpret those identities as unrelated contributors.
+AI coding systems and agents were used as **implementation tools** for coding, testing, debugging, refactoring and documentation assistance.
 
-This document records the owner's explanation so the history can be reconciled with the ownership chain.
+AI assistance in writing code does **not** mean that the AI systems are project owners, co-authors of the underlying theory, or independent rights holders.
 
-## Evidence to retain privately
+## Coding provenance
 
-If required for diligence, retain:
+Where an AI system generated or modified source code, that fact should be recorded as implementation provenance where practical.
 
-- GitHub account ownership evidence
-- account creation / subscription records
-- relevant email addresses
-- repository ownership records
-- pull request history
-- local Git configuration history where available
+The intended provenance distinction is:
 
-Do not publish credentials or private authentication material.
+**Hans Heute — concept / theory / architecture / requirements / ownership**  
+→ **AI coding tools — implementation assistance**  
+→ **Isaac repository — resulting software**
 
-## Copyright
+This is an authorship/provenance record, not a claim that every individual generated line is legally protected by Hans Heute personally. Exact copyright status of individual code fragments can depend on applicable law and third-party source material.
 
-The repository's copyright notice is maintained under the project owner's name. Historical pseudonyms/account names are provenance identifiers, not separate rights holders.
+## Runtime identifier
+
+Some existing Isaac runtime code contains the internal identifier `Steffen`. For acquisition documentation, this identifier must not be treated as a separate owner or contributor.
+
+It is to be reconciled as an internal/project identity with the legal/project owner **Hans Heute**. A future implementation cleanup may normalize the runtime identifier, but this acquisition branch intentionally does not alter functional runtime code.
+
+## Third-party boundary
+
+Third-party libraries, templates and external assets remain subject to their own licenses. This ownership statement does not claim third-party material as original Isaac IP.
+
+See:
+
+- `docs/IP_AND_THIRD_PARTY.md`
+- `docs/WEB_PROVENANCE.md`
+- `docs/AI_CODE_PROVENANCE.md`
+- `docs/EVOLUTION2_TRACEABILITY.md`
