@@ -120,6 +120,49 @@ The clean technical boundary is:
 
 This is substantially stronger than claiming the whole repository is original.
 
+## 9. Deep provenance of `web/packages/ai/lib/telemetry.ts`
+
+The file's Git history is now resolved.
+
+- **Introduced:** commit `4bb8318aa502298c7bd62e85b92ff6989640cf95`
+- **Commit date:** 2026-07-24
+- **Commit message:** `Add Sentry AI monitoring, Grok companion, auto agent selection`
+- **File status in that commit:** added, **34 lines**
+- **File blob:** `2d2c04ea5a4a1417ffeb3dce09dfc78913d3d8f`
+- **Parent:** the file did not exist at parent commit `341bdfb070e3bf43a6596a75ea4626e9fed3f936`.
+- **Git author recorded for the commit:** `sco0rp` (unsigned commit).
+
+The same commit adds the surrounding integration: exports from `packages/ai/index.ts`, an `aiTelemetry` re-export/documentation addition in `packages/ai/lib/models.ts`, and Sentry Vercel-AI integration changes in the observability package. This establishes that the telemetry file was introduced as part of the Isaac web Sentry/AI-monitoring feature, rather than being an old next-forge scaffold file.
+
+### Source/code lineage assessment
+
+The file is **not byte-identical to next-forge** and has no upstream counterpart. Its implementation is a small adapter around the public Vercel AI SDK telemetry configuration:
+
+- `isEnabled`
+- `recordInputs`
+- `recordOutputs`
+- `functionId`
+- `metadata`
+
+The current AI SDK documentation independently documents these same `experimental_telemetry` fields and their semantics, including that input/output recording is enabled by default and can be disabled for privacy. citeturn1search0turn1search1
+
+The file also explicitly references Sentry's Vercel-AI integration. Sentry documents LLM monitoring through its Vercel AI integration, confirming the external technology lineage used by this implementation. citeturn1search15
+
+A targeted exact-phrase web search found no evidence that the file's distinctive comments or implementation were copied verbatim from an unrelated public repository. This is **not proof of originality**; it only means no matching public copy was found in the search performed.
+
+### Provenance conclusion
+
+The strongest evidence supports the following classification:
+
+**H2 — Isaac-specific implementation candidate, built around documented third-party APIs.**
+
+More precisely:
+
+> The *API concepts and semantics* come from third-party technologies (Vercel AI SDK / Sentry); the repository's specific 34-line wrapper, naming (`aiTelemetry`), defaults, override mechanism and integration wiring were introduced in Isaac commit `4bb8318...`.
+
+This should **not** be described as wholly independent/original technology. It is a project-specific integration layer built on third-party APIs.
+
+The Git author string `sco0rp` is an engineering provenance fact. It is not, by itself, a legal authorship or ownership conclusion. The project ownership record should continue to be handled separately from Git account identity.
 ## 8. Remaining provenance work
 
 The web hash audit and the section-level review of all 40 T1-M files are now complete against the verified 6.0.2 baseline.
