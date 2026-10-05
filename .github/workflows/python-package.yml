@@ -54,6 +54,7 @@ jobs:
             tests_phase_a_stabilization \
             tests_state_io \
             tests_provider_configuration \
+            tests_isaac20_capabilities \
             tests_jules_agent
 
       - name: Run eval harness
