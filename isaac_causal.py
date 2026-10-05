@@ -164,10 +164,16 @@ def normalize_trace_entries(
     for index, entry in enumerate(entries, 1):
         event = str(entry.get("event") or "unknown")
         data = dict(entry.get("data") or {})
+        # A trace capability decision may carry the persisted AuditLog event ID;
+        # normalize that cross-source link into the canonical relationship field.
+        audit_event_id = str(data.get("audit_event_id") or "").strip()
+        if audit_event_id and "derived_from_event_id" not in data:
+            data["derived_from_event_id"] = audit_event_id
         sequence = int(entry.get("sequence") or index)
         ts = float(entry.get("ts") or 0.0)
+        event_id = str(entry.get("event_id") or f"trace-{task_id or 'unknown'}-{sequence}")
         out.append(CausalEvent(
-            event_id=f"trace-{task_id or 'unknown'}-{sequence}",
+            event_id=event_id,
             task_id=task_id,
             node_type=_node_type("decision_trace", event),
             timestamp_ms=int(ts * 1000),
