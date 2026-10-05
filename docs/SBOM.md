@@ -6,7 +6,7 @@
 
 ## Scope
 
-This is the first acquisition-readiness SBOM inventory generated from the repository's checked-in dependency manifests.
+This acquisition-readiness SBOM inventory is generated from checked-in dependency manifests.
 
 Sources:
 
@@ -21,37 +21,57 @@ Sources:
 - Python direct dependency specifications inventoried: **9**
 - CycloneDX components emitted: **2289**
 
+## License status
+
+The initial direct-dependency license pass is now documented in:
+
+`docs/DEPENDENCY_LICENSE_AUDIT.md`
+
+Verified direct packages in that pass are currently classified as permissive licenses:
+
+- aiohttp — Apache-2.0 AND MIT
+- websockets — BSD-3-Clause
+- python-dotenv — BSD-3-Clause
+- playwright — Apache-2.0
+- chromadb — Apache-2.0
+- Flask — BSD-3-Clause
+- sentry-sdk — MIT
+- mem0ai — Apache-2.0
+- cognee — Apache-2.0
+- root web packages @clack/prompts / commander / nypm — MIT
+
 ## Important limitation
 
-The inventory is **not yet license-complete**. The CycloneDX components deliberately carry `isaac:license-status = not-enriched` until each dependency's authoritative license metadata is verified.
+The SBOM is **not yet license-complete**.
 
-Likewise, Python transitive dependencies are not fully resolved because the repository does not currently contain a Python lockfile covering the complete runtime dependency graph.
+The CycloneDX components currently use `isaac:license-status = not-enriched` until exact dependency metadata is verified.
 
-Therefore this file is an **SBOM inventory baseline**, not the final legal sign-off for an acquisition.
+Python transitive dependencies are also not fully resolved because the repository does not currently contain a complete Python lockfile for the runtime dependency graph.
 
-## Direct Python manifests
+Therefore this file remains an **SBOM inventory baseline**, not final legal sign-off.
 
-```text
-aiohttp >=3.9.0
-websockets >=12.0
-python-dotenv >=1.0.0
-playwright >=1.40.0
-chromadb >=0.4.0
-Flask >=3.0.0
-sentry-sdk >=2.60.0
-mem0ai >=0.1.0
-cognee >=1.0.0
-```
+## Web/template provenance
 
-## Web/template finding
+The web workspace is now audited against the exact next-forge 6.0.2 Git tree.
 
-The web workspace identifies itself as `next-forge` 6.0.2 and its README describes the Vercel next-forge template. The upstream project is MIT licensed. The Isaac web workspace therefore remains explicitly classified as third-party/template-derived until file-level provenance is completed. See `docs/WEB_PROVENANCE.md`.
+Current result:
+
+- **423** web files
+- **380** exact upstream blob matches
+- **40** modified upstream/template files
+- **1** Isaac-local implementation candidate
+- **2** local dependency/workspace metadata files
+
+See:
+
+- `docs/WEB_PROVENANCE.md`
+- `docs/WEB_FILE_PROVENANCE_MANIFEST.md`
 
 ## Next diligence pass
 
-1. Enrich every component with authoritative license information.
-2. Detect copyleft / source-disclosure obligations.
-3. Generate vulnerability findings for exact resolved versions.
-4. Resolve Python transitive dependencies with a lockfile or reproducible environment export.
-5. Produce a file-level provenance map for `web/`.
-6. Verify third-party NOTICE/attribution requirements.
+1. Enrich all 2,280 npm/pnpm components with authoritative exact-version license metadata.
+2. Resolve Python transitive dependencies reproducibly.
+3. Detect reciprocal/copy-left licenses.
+4. Verify NOTICE/attribution obligations.
+5. Produce a final license/notice bundle.
+6. Run an exact-version vulnerability scan separately from the license audit.
