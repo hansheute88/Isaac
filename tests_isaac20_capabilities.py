@@ -8,6 +8,7 @@ from isaac_capabilities import (
     RWXPolicy,
     RWXRegistry,
     capability_from_legacy_action,
+    evaluate_with_audit,
 )
 
 
@@ -65,6 +66,16 @@ class TestIsaac20Capabilities(unittest.TestCase):
         self.assertEqual(data["policy_source"], "owner-policy")
         self.assertEqual(data["policy_version"], 3)
         self.assertEqual(data["task_id"], "123")
+
+    def test_evaluate_with_audit_returns_same_decision(self):
+        registry = RWXRegistry()
+        registry.set_policy(RWXPolicy("tool:browser", execute=True, source="test"))
+        decision = evaluate_with_audit(
+            registry,
+            CapabilityRequest("tool:browser", "execute", task_id="audit-test"),
+        )
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.task_id, "audit-test")
 
     def test_legacy_mapping_is_additive(self):
         self.assertEqual(capability_from_legacy_action("file_read"), Capability.READ)
