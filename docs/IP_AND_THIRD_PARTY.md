@@ -94,9 +94,9 @@ This statement should be supported by private account records if a buyer request
 
 ## 9. Outstanding diligence
 
-- Complete file-level provenance map.
+- Complete file-level provenance map for the repository, with the web layer tracked separately in `docs/WEB_PROVENANCE.md`.
 - Complete license/SBOM enrichment.
 - Historical secret scan.
 - Dependency vulnerability scan.
 - Verify third-party notices and attribution requirements.
-- Verify all web/template licenses and notices.
+- Verify all web/template licenses and notices; the current conservative classification is documented in `docs/WEB_PROVENANCE.md`.
