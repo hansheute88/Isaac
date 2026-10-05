@@ -14,12 +14,17 @@
 - [x] Third-party replacement strategy documented
 - [x] Web layer identified as next-forge-derived
 - [x] Conservative web provenance classification added
+- [x] File-level web provenance audit completed
+- [x] Historical Python source set screened
+- [x] Exact historical third-party source finding documented (aiohttp v3.13.3)
+- [x] Deep targeted source-similarity audit completed for Aider, MCP Python SDK, OpenParallax, Letta and Mem0 comparison boundaries
+- [x] Historical archive hashes and provenance boundaries recorded
 
 ## Important identity reconciliation
 
 The acquisition documents identify the owner as Hans Heute, while the current runtime contains the internal owner identifier `Steffen` (for example in `constitution.py` and memory source markers). This may be a project alias, but it must **not** be silently equated with the legal owner in diligence documents. Reconcile the identifier with private ownership evidence before a transaction.
 
-## In progress / not yet legal sign-off
+## Remaining diligence items
 
 ### 1. License enrichment
 
@@ -34,17 +39,7 @@ Required:
 - retain notices for redistributed third-party code
 - resolve Python transitive dependency closure
 
-### 2. Web provenance
-
-**Status:** upstream/template lineage established; file-level diff pending.
-
-Required:
-- compare the checked-in web files against the relevant next-forge release
-- classify unchanged vs modified files
-- identify Isaac-original additions
-- preserve or restore required upstream notices
-
-### 3. Historical secrets
+### 2. Historical secrets
 
 **Status:** current-tree pattern scan found no obvious real credentials in the patterns checked.
 
@@ -56,7 +51,7 @@ Required:
 - rotate any credential ever exposed if a real secret is found
 - record remediation without publishing the secret
 
-### 4. Dependency vulnerabilities
+### 3. Dependency vulnerabilities
 
 **Status:** not yet a complete vulnerability assessment.
 
@@ -65,7 +60,11 @@ Required:
 - separate runtime vulnerabilities from development-only dependencies
 - prioritize remotely exploitable and credential-impacting findings
 
-## Acquisition boundary
+## Provenance conclusion
+
+The technical provenance audit now supports a conservative acquisition representation:
+
+**Hans Heute — concept/theory/architecture/product direction and owner requirements → human-directed engineering with AI coding-agent assistance → Isaac implementation**, with explicit third-party/template/dependency boundaries documented separately.
 
 The strongest claimed asset is not the third-party dependency set.
 
@@ -75,14 +74,23 @@ The strongest asset is:
 
 The supplied theoretical work explicitly frames Evolution 2.0 around root transparency, controlled write access, auditability/reversibility and controlled development. This document treats those as the project's conceptual provenance, not as independently validated scientific results.
 
+### Confirmed third-party boundaries
+
+1. The `web/` layer contains a large next-forge-derived scaffold and modified descendants.
+2. A historical `web_urldispatcher.py` was verified byte-identical to aiohttp v3.13.3 and is no longer in the active tree.
+3. Isaac's coding subsystem is explicitly documented as Aider-inspired, but the targeted source-level audit found no exact Aider source match.
+4. Isaac's MCP layer implements a third-party protocol; the targeted comparison found no exact MCP Python SDK source match.
+5. Letta/Mem0/Cognee are treated as external integrations/adapters rather than assumed Isaac-owned implementations.
+
 ## Current risk rating
 
 | Area | Status |
 |---|---|
 | Ownership identity chain | **Documented; private evidence should be retained** |
 | Root license scope | **Clarified by documentation; third-party exclusions must be respected** |
-| Core Isaac provenance | **Strong project-level claim; file-level AI attribution remains incomplete** |
-| Web provenance | **Conservative / pending file-level diff** |
+| Core Isaac provenance | **Strong project-level technical provenance; not a legal opinion** |
+| Web provenance | **Upstream lineage and file-level classification completed** |
+| Historical source similarity | **Targeted deep audit completed; global corpus proof not claimed** |
 | SBOM inventory | **Complete baseline** |
 | License compliance | **Pending enrichment** |
 | Historical secret audit | **Pending** |
