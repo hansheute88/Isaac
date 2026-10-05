@@ -7,7 +7,7 @@
 
 The `web/` workspace is **not currently treated as wholly Isaac-original IP**.
 
-The repository itself identifies the web workspace as `next-forge` 6.0.2, points its repository metadata at `vercel/next-forge`, and its README describes the next-forge Turborepo template. The upstream next-forge repository is publicly identified as an MIT-licensed template. citeturn0search0
+The repository itself identifies the web workspace as `next-forge` 6.0.2, points its repository metadata at `vercel/next-forge`, and its README describes the next-forge Turborepo template. The upstream next-forge repository is publicly identified as an MIT-licensed template: https://github.com/vercel/next-forge
 
 ## Current classification
 
@@ -38,7 +38,7 @@ Search results also show next-forge-specific implementation artifacts in the wor
 
 The fact that a file is based on an MIT-licensed template does **not** make the file unusable for a commercial acquisition. It means the provenance and applicable license must be preserved and the file must not be represented as exclusively founder-created code.
 
-The upstream next-forge project is MIT licensed. The actual Isaac dependency graph contains many additional third-party packages whose individual licenses still require enrichment. citeturn0search0
+The upstream next-forge project is MIT licensed. The actual Isaac dependency graph contains many additional third-party packages whose individual licenses still require enrichment.
 
 ## Recommended acquisition treatment
 
