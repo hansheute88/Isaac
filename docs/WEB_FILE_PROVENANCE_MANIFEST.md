@@ -428,7 +428,7 @@ This manifest compares Git blob SHAs. Identical SHA means identical file content
 | `packages/seo/package.json` | **T1-M** | differs from upstream 6.0.2; template lineage retained |
 | `packages/storage/keys.ts` | **T1-M** | differs from upstream 6.0.2; template lineage retained |
 | `packages/webhooks/keys.ts` | **T1-M** | differs from upstream 6.0.2; template lineage retained |
-| `packages/ai/lib/telemetry.ts` | **H2** | Isaac tree only; added after scaffold; provenance/source review retained |
+| `packages/ai/lib/telemetry.ts` | **H2** | Isaac tree only; introduced in `4bb8318aa502298c7bd62e85b92ff6989640cf95` as a 34-line project-specific adapter around Vercel AI SDK/Sentry telemetry APIs; no upstream counterpart |
 | `pnpm-lock.yaml` | **G1** | Isaac-specific workspace/dependency metadata |
 | `pnpm-workspace.yaml` | **G1** | Isaac-specific workspace/dependency metadata |
 
