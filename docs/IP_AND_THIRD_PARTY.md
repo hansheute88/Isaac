@@ -44,3 +44,12 @@ The dependency set and template-derived web layer are supporting/replaceable com
 - do not represent third-party/template code as founder-original
 
 See `docs/IDENTITY_AND_PROVENANCE.md`, `docs/AI_CODE_PROVENANCE.md`, and `docs/WEB_PROVENANCE.md`.
+
+
+## Historical vendored-source finding
+
+The historical 2026-03-27 release bundle contained a byte-identical copy of `aiohttp/web_urldispatcher.py` from aiohttp v3.13.3 (Git blob `cfa57a310046c78636d1872f6e4c2e27b6a18a76`). The same blob also appeared at the historical Isaac repository root.
+
+This artifact is classified **T1 third-party source**, not Isaac-original IP. It was subsequently archived and removed and is not present in the current active tree. The transaction package should disclose this historical artifact and its applicable aiohttp license/notice requirements separately from the Isaac H2 core.
+
+The broader current `web/` next-forge/template boundary remains independently classified as third-party/template-derived.
