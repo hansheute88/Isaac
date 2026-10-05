@@ -77,6 +77,31 @@ class TestIsaac20Capabilities(unittest.TestCase):
         self.assertTrue(decision.allowed)
         self.assertEqual(decision.task_id, "audit-test")
 
+    def test_executor_enforces_declared_capability(self):
+        from executor import Executor, Task, TaskType
+
+        executor = object.__new__(Executor)
+        executor.rwx_registry = RWXRegistry()
+        task = Task(
+            id="rwx-test",
+            typ=TaskType.FILE,
+            prompt="write test file",
+            beschreibung="R/W/X regression",
+            required_capabilities=[
+                {"resource": "filesystem:/workspace", "capability": "write"}
+            ],
+        )
+        self.assertIn("R/W/X blockiert", executor._check_required_capabilities(task))
+
+        executor.set_capability_policy(
+            RWXPolicy("filesystem:/workspace", write=True, source="test")
+        )
+        self.assertIsNone(executor._check_required_capabilities(task))
+        self.assertTrue(any(
+            entry.event == "capability_decision"
+            for entry in task.decision_trace.entries
+        ))
+
     def test_legacy_mapping_is_additive(self):
         self.assertEqual(capability_from_legacy_action("file_read"), Capability.READ)
         self.assertEqual(capability_from_legacy_action("file_write"), Capability.WRITE)
