@@ -214,3 +214,12 @@ The strongest defensible conclusion is:
 6. Audit all third-party artifacts and generated API schemas for license/notice obligations.
 7. Remove or replace runtime `curl | python3` dependencies before an acquisition package.
 8. Keep the pre-GitHub archive provenance explicitly marked as an evidence gap rather than filling it with assumptions.
+
+## Evidence artifact hashes
+
+Working-copy evidence artifacts:
+
+- `Isaac-main (12).zip`: SHA-256 `ed3fe5f2bc2acbda64133311f4ca8f2b48df911472eb6884ca14030612e88f23`; 682 files after extraction; 157 Python files.
+- Nested `.github/instructions/Isaac-main (4).zip`: SHA-256 `4efc3c79cf4112115db32ab528955133afa1ddadfe421d99fcd157e74094a7e2`; 188 files after extraction; 75 Python files.
+
+These hashes identify the supplied evidence artifacts used for this pass. They are not Git object hashes and do not imply authorship.
