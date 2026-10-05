@@ -6,7 +6,7 @@ security_policy.py or constitution.py. Those remain authoritative gates.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from typing import Any, Mapping
 
@@ -69,6 +69,7 @@ class CapabilityDecision:
     policy_source: str
     policy_version: int
     task_id: str = ""
+    audit_event_id: str = ""
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -80,6 +81,7 @@ class CapabilityDecision:
             "policy_source": self.policy_source,
             "policy_version": self.policy_version,
             "task_id": self.task_id,
+            "audit_event_id": self.audit_event_id,
         }
 
 
@@ -127,8 +129,8 @@ def evaluate_with_audit(registry: RWXRegistry, request: CapabilityRequest) -> Ca
     decision = registry.evaluate(request)
     from audit import AuditLog
 
-    AuditLog.capability(decision.as_dict())
-    return decision
+    audit_entry = AuditLog.capability(decision.as_dict())
+    return replace(decision, audit_event_id=str(audit_entry.get("event_id") or ""))
 
 
 def capability_from_legacy_action(action: str) -> Capability:
