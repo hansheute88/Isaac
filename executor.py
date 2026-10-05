@@ -52,6 +52,12 @@ from decision_trace import (
     maybe_export_portable_trace,
 )
 from result_contract import ensure_result_contract
+from isaac_capabilities import (
+    CapabilityRequest,
+    RWXPolicy,
+    RWXRegistry,
+    evaluate_with_audit,
+)
 from tool_policy import (
     ToolPolicy,
     ToolDecisionReason,
@@ -404,6 +410,7 @@ class Executor:
         self.logic      = get_logic()
         self.relay      = get_relay()
         self.gate       = get_gate()
+        self.rwx_registry = RWXRegistry()
         self._watchdog  = None   # lazy
         self._dispatcher= None   # lazy
         self._search    = None   # lazy
@@ -517,7 +524,8 @@ class Executor:
                     allow_followup: Optional[bool] = None,
                     allow_provider_switch: Optional[bool] = None,
                     tool_policy: Optional[ToolPolicy] = None,
-                    retrieved_context: Optional[dict] = None) -> Task:
+                    retrieved_context: Optional[dict] = None,
+                    required_capabilities: Optional[list] = None) -> Task:
         if strategy is None:
             strategy = Strategy(
                 allow_tools=True if allow_tools is None else allow_tools,
@@ -541,6 +549,7 @@ class Executor:
             interaction_class = interaction_class,
             classification = classification,
             retrieved_context = retrieved_context or {},
+            required_capabilities = list(required_capabilities or []),
         )
         self._tasks[task.id] = task
         AuditLog.task(task.id, "created", task.beschreibung[:100])
@@ -607,6 +616,50 @@ class Executor:
                 self.resume_task(task.id)
 
     # ── Pre-Flight-Validation ─────────────────────────────────────────────────
+    def set_capability_policy(self, policy: RWXPolicy) -> RWXPolicy:
+        """Register an explicit Isaac 2.0 R/W/X policy without replacing legacy gates."""
+        return self.rwx_registry.set_policy(policy)
+
+    def _check_required_capabilities(self, task: Task) -> Optional[str]:
+        """Enforce only capabilities explicitly declared by the task contract."""
+        for required in getattr(task, "required_capabilities", []) or []:
+            if isinstance(required, dict):
+                resource = str(required.get("resource") or "").strip()
+                capability = required.get("capability")
+                reason = str(required.get("reason") or "task-declared capability")
+            else:
+                raw = str(required or "").strip()
+                if ":" not in raw:
+                    return f"Ungültige R/W/X-Anforderung: {raw!r}"
+                capability, resource = raw.split(":", 1)
+                capability = capability.strip()
+                resource = resource.strip()
+                reason = "task-declared capability"
+            if not resource:
+                return "R/W/X resource fehlt"
+            try:
+                request = CapabilityRequest(
+                    resource=resource,
+                    capability=capability,
+                    principal="isaac-task",
+                    reason=reason,
+                    task_id=task.id,
+                )
+                decision = evaluate_with_audit(self.rwx_registry, request)
+            except (TypeError, ValueError) as exc:
+                return f"Ungültige R/W/X-Anforderung: {exc}"
+            task.decision_trace.add(
+                TracePhase.GOVERNANCE,
+                "capability_decision",
+                decision.as_dict(),
+            )
+            if not decision.allowed:
+                return (
+                    f"R/W/X blockiert: {decision.capability.value} "
+                    f"auf {decision.resource} ({decision.reason})"
+                )
+        return None
+
     def _preflight(self, task: Task) -> Optional[str]:
         """
         Prüft einen Task bevor er ausgeführt wird.
@@ -619,6 +672,10 @@ class Executor:
         wortanzahl = len(task.prompt.split())
         if wortanzahl < 1:
             return "Leerer Prompt"
+
+        capability_error = self._check_required_capabilities(task)
+        if capability_error:
+            return capability_error
 
         return None
 
