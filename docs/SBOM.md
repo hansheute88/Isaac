@@ -45,7 +45,7 @@ cognee >=1.0.0
 
 ## Web/template finding
 
-The web workspace identifies itself as `next-forge` 6.0.2 and its README describes the Vercel next-forge template. This must remain explicitly classified as third-party/template-derived until file-level provenance is completed.
+The web workspace identifies itself as `next-forge` 6.0.2 and its README describes the Vercel next-forge template. The upstream project is MIT licensed. The Isaac web workspace therefore remains explicitly classified as third-party/template-derived until file-level provenance is completed. See `docs/WEB_PROVENANCE.md`.
 
 ## Next diligence pass
 
