@@ -541,15 +541,26 @@ DoD:
 
 ## Track C — Causal Memory
 
+Status: **B3.2 in progress**
+
 Deliverables:
 - causal node/edge schema
-- event-to-graph adapter
+- normalized AuditLog + DecisionTrace event adapter
+- evidence-backed relationship inference
 - graph query API
 - root-cause candidate engine
 - verification state
 
+Completed:
+- **B3.1:** normalized event schema with immutable source preservation
+- **B3.2:** deterministic explicit relationship edges for `derived_from`, `depends_on`, `caused_by`, `triggered`, `authorized_by`, `blocked_by`, `corrected_by`, `verified_by`
+- temporal adjacency remains `OBSERVED` only
+- cross-task explicit references are rejected
+- unknown event references are ignored rather than inferred
+
 DoD:
 - a failed task can produce a reproducible causal trace from recorded events
+- every non-observational causal edge has explicit evidence
 
 ## Track D — Cybernetic Guardrail
 
