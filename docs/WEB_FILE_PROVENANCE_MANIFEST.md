@@ -2,7 +2,7 @@
 
 **Baseline:** 2026-10-05
 **Branch:** `acquisition-readiness`
-**Upstream baseline:** `vercel/next-forge` commit `998484ccd88dcd75c70c2294982c78f3d9f3437e` (version 6.0.2)
+**Upstream baseline:** `vercel/next-forge` commit `9aad7123ef8accc79d6ece399f249c46bdb6b138` (version 6.0.2)
 
 This manifest compares Git blob SHAs. Identical SHA means identical file content. A differing SHA means the file changed and retains upstream/template lineage unless separately proven otherwise.
 
@@ -431,6 +431,64 @@ This manifest compares Git blob SHAs. Identical SHA means identical file content
 | `packages/ai/lib/telemetry.ts` | **H2** | Isaac tree only; added after scaffold; provenance/source review retained |
 | `pnpm-lock.yaml` | **G1** | Isaac-specific workspace/dependency metadata |
 | `pnpm-workspace.yaml` | **G1** | Isaac-specific workspace/dependency metadata |
+
+## Section-level delta audit of the 40 T1-M files
+
+The 40 modified shared paths were compared against the exact **next-forge 6.0.2** tree at commit `9aad7123ef8accc79d6ece399f249c46bdb6b138`. The summaries below describe the observed content delta; they do not by themselves establish legal ownership of any changed material.
+
+| Path | Observed Isaac-side delta | Provenance treatment |
+|---|---|---|
+| `apps/api/.env.example` | Adds Sentry configuration examples: DSN, org, project and traces sample-rate variables. | T1-M; upstream env scaffold retained, Isaac/Sentry additions mixed. |
+| `apps/api/env.ts` | Adds `SKIP_ENV_VALIDATION` handling. | T1-M; small project/runtime modification. |
+| `apps/api/package.json` | Bumps `@sentry/nextjs` 10.42.0→10.61.0 and Next.js 16.1.6→16.3.4. | T1-M; dependency evolution on upstream manifest. |
+| `apps/app/.env.example` | Adds Sentry DSN/org/project/traces environment examples. | T1-M; mixed template + project configuration. |
+| `apps/app/env.ts` | Adds `SKIP_ENV_VALIDATION` handling. | T1-M; small project/runtime modification. |
+| `apps/app/package.json` | Bumps `@sentry/nextjs` 10.42.0→10.61.0 and Next.js 16.1.6→16.3.4. | T1-M; dependency evolution on upstream manifest. |
+| `apps/email/package.json` | Bumps Next.js 16.1.6→16.3.4. | T1-M; dependency update only. |
+| `apps/storybook/package.json` | Bumps Next.js 16.1.6→16.3.4. | T1-M; dependency update only. |
+| `apps/web/.env.example` | Adds Sentry DSN/org/project/traces environment examples. | T1-M; mixed template + project configuration. |
+| `apps/web/env.ts` | Adds `SKIP_ENV_VALIDATION` handling. | T1-M; small project/runtime modification. |
+| `apps/web/package.json` | Bumps `@sentry/nextjs` 10.42.0→10.61.0, Next.js 16.1.6→16.3.4, and sharp 0.34.5→0.35.4. | T1-M; dependency evolution on upstream manifest. |
+| `package.json` | Switches package manager metadata from Bun 1.3.10 to pnpm 10.31.0 and removes the explicit npm-workspaces array. | T1-M; repository-level package-management modification. |
+| `packages/ai/index.ts` | Adds exports for `models` plus `aiTelemetry`/telemetry options. | T1-M; AI/Sentry integration layered onto upstream AI package. |
+| `packages/ai/keys.ts` | Adds `SKIP_ENV_VALIDATION` handling. | T1-M; small project/runtime modification. |
+| `packages/ai/lib/models.ts` | Adds Sentry AI-monitoring documentation and re-exports `aiTelemetry` from the local telemetry implementation. | T1-M; integration change; implementation source is separately H2. |
+| `packages/analytics/keys.ts` | Adds `SKIP_ENV_VALIDATION` handling. | T1-M; small project/runtime modification. |
+| `packages/auth/keys.ts` | Adds `SKIP_ENV_VALIDATION` handling. | T1-M; small project/runtime modification. |
+| `packages/cms/keys.ts` | Adds `SKIP_ENV_VALIDATION` handling. | T1-M; small project/runtime modification. |
+| `packages/cms/package.json` | Bumps Next.js 16.1.6→16.3.4. | T1-M; dependency update only. |
+| `packages/collaboration/keys.ts` | Adds `SKIP_ENV_VALIDATION` handling. | T1-M; small project/runtime modification. |
+| `packages/database/keys.ts` | Adds `SKIP_ENV_VALIDATION` handling. | T1-M; small project/runtime modification. |
+| `packages/database/package.json` | Bumps `undici` ^7.22.0→^7.29.1. | T1-M; dependency update only. |
+| `packages/design-system/package.json` | Bumps postcss ^8.5.8→^8.5.24. | T1-M; dependency update only. |
+| `packages/email/keys.ts` | Adds `SKIP_ENV_VALIDATION` handling. | T1-M; small project/runtime modification. |
+| `packages/feature-flags/keys.ts` | Adds `SKIP_ENV_VALIDATION` handling. | T1-M; small project/runtime modification. |
+| `packages/internationalization/package.json` | Bumps Next.js 16.1.6→16.3.4. | T1-M; dependency update only. |
+| `packages/next-config/keys.ts` | Adds `SKIP_ENV_VALIDATION` handling. | T1-M; small project/runtime modification. |
+| `packages/next-config/package.json` | Bumps Next.js 16.1.6→16.3.4. | T1-M; dependency update only. |
+| `packages/notifications/keys.ts` | Adds `SKIP_ENV_VALIDATION` handling. | T1-M; small project/runtime modification. |
+| `packages/observability/client.ts` | Adds production-aware trace sampling, environment selection and default PII capture while retaining replay/logging. | T1-M; materially modified upstream Sentry integration. |
+| `packages/observability/edge.ts` | Adds production-aware trace sampling, gen_ai span streaming, default PII capture, environment selection and explicit Vercel AI integration. | T1-M; materially modified upstream Sentry integration. |
+| `packages/observability/keys.ts` | Adds `SKIP_ENV_VALIDATION` handling. | T1-M; small project/runtime modification. |
+| `packages/observability/package.json` | Bumps `@sentry/nextjs` 10.42.0→10.61.0. | T1-M; dependency update only. |
+| `packages/observability/server.ts` | Adds production-aware trace sampling, gen_ai span streaming, default PII capture, environment selection and forced Vercel AI integration; retains local-variable capture. | T1-M; materially modified upstream Sentry integration. |
+| `packages/payments/keys.ts` | Adds `SKIP_ENV_VALIDATION` handling. | T1-M; small project/runtime modification. |
+| `packages/rate-limit/keys.ts` | Adds `SKIP_ENV_VALIDATION` handling. | T1-M; small project/runtime modification. |
+| `packages/security/keys.ts` | Adds `SKIP_ENV_VALIDATION` handling. | T1-M; small project/runtime modification. |
+| `packages/seo/package.json` | Bumps Next.js 16.1.6→16.3.4. | T1-M; dependency update only. |
+| `packages/storage/keys.ts` | Adds `SKIP_ENV_VALIDATION` handling. | T1-M; small project/runtime modification. |
+| `packages/webhooks/keys.ts` | Adds `SKIP_ENV_VALIDATION` handling. | T1-M; small project/runtime modification. |
+
+### Delta categories
+
+The 40 modifications cluster into four technical categories:
+
+1. **Environment validation:** 19 `keys.ts` / `env.ts` files add the same `SKIP_ENV_VALIDATION` switch.
+2. **Dependency/package-manager maintenance:** 13 package manifests/root metadata files update Next.js, Sentry, sharp, undici, postcss, or the workspace package manager.
+3. **Sentry/AI observability integration:** 5 AI/observability files add AI telemetry and Sentry configuration.
+4. **Configuration examples:** 3 application `.env.example` files add Sentry settings.
+
+The largest project-specific runtime delta is concentrated in **Sentry/AI observability**, while most other T1-M changes are configuration or dependency maintenance.
 
 ## Totals
 - **423** current web files
