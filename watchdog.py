@@ -313,10 +313,47 @@ class TaskWatchdog:
             f"Task {task_id} hängt seit {int(inaktiv)}s "
             f"(Restarts: {restarts}/{self.MAX_RESTARTS})"
         )
-        AuditLog.action(
+        hang_entry = AuditLog.action(
             "Watchdog", "hang_detected", task_id,
             erfolg=False
         )
+        # D2: reuse the existing provider blacklist as the enforcement authority.
+        # Only high/critical-risk tasks trigger a safety quarantine; ordinary hangs
+        # keep the established checkpoint/resume and provider-fallback behavior.
+        try:
+            from isaac_guardrails import get_guardrail_controller
+            risk = str(getattr(task, "risk_level", "low") or "low").lower()
+            safety_critical = risk in {"high", "critical"}
+            provider = str(getattr(task, "provider", "") or getattr(task, "provider_used", "") or "").strip()
+            if provider:
+                source_event_id = hang_entry.get("event_id", "") if isinstance(hang_entry, dict) else ""
+                decision = get_guardrail_controller().intervene_provider(
+                    provider=provider,
+                    failed_event_id=source_event_id,
+                    error=f"Watchdog: Task hängt seit {int(inaktiv)}s",
+                    safety_critical=safety_critical,
+                    task_id=task_id,
+                )
+                trace = getattr(task, "decision_trace", None)
+                if trace is not None:
+                    from decision_trace import TracePhase
+                    trace_entry = trace.add(
+                        TracePhase.GOVERNANCE,
+                        "guardrail_intervention",
+                        {
+                            **decision.as_dict(),
+                            "watchdog_event_id": source_event_id,
+                            "provider": provider,
+                            "risk_level": risk,
+                        },
+                    )
+                    task.causal_refs["guardrail_trace_event_id"] = trace_entry.event_id
+                    if source_event_id:
+                        task.causal_refs["guardrail_source_event_id"] = source_event_id
+                if safety_critical:
+                    task.log(f"Guardrail: Provider {provider} quarantänisiert (Risiko={risk})")
+        except Exception as exc:
+            log.debug("Watchdog guardrail integration skipped: %s", exc)
 
         cp = get_memory().get_latest_checkpoint(task_id)
         cp_state = normalize_state((cp or {}).get("state_name", ""))
