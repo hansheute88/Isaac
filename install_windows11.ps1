@@ -88,7 +88,8 @@ Step "Erzeuge Runtime-Verzeichnisse"
 foreach($d in @("data","logs","runtime","workspace","traces")){New-Item -ItemType Directory -Force -Path (Join-Path $RepoRoot $d)|Out-Null}
 
 $EnvPath = Join-Path $RepoRoot ".env"
-if(-not(Test-Path $EnvPath)){@"
+if(-not(Test-Path $EnvPath)){
+  $EnvContent = @'
 # Isaac – lokale Windows-Konfiguration
 ISAAC_BIND_HOST=127.0.0.1
 PORT=5000
@@ -105,7 +106,9 @@ ISAAC_PRIVILEGE_MODE=user
 # OPENROUTER_API_KEY=
 # GROQ_API_KEY=
 # GOOGLE_API_KEY=
-"@|Set-Content $EnvPath -Encoding UTF8}
+'@
+  Set-Content -Path $EnvPath -Value $EnvContent -Encoding UTF8
+}
 
 Step "Validiere Isaac"
 & $VenvPython -c "import flask, aiohttp, websockets, dotenv; import app; print('Isaac Python-Import: OK')"
