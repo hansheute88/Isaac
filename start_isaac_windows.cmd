@@ -14,15 +14,35 @@ echo ==============================================
 echo  Arbeitsverzeichnis: %CD%
 echo.
 
-if not exist ".venv\Scripts\python.exe" (
-  echo [HINWEIS] Isaac ist noch nicht eingerichtet. Starte Setup-Skript...
+set "VENV_PY=.venv\Scripts\python.exe"
+set "NEEDS_SETUP=0"
+if not exist "%VENV_PY%" set "NEEDS_SETUP=1"
+if "%NEEDS_SETUP%"=="0" (
+  "%VENV_PY%" -c "import sys; print(sys.executable)" >nul 2>&1
+  if errorlevel 1 set "NEEDS_SETUP=1"
+)
+if "%NEEDS_SETUP%"=="1" (
+  echo [HINWEIS] Isaac richtet seine lokale Python-Umgebung ein...
   powershell.exe -NoProfile -ExecutionPolicy Bypass -File "install_windows11.ps1" -NoStart
-  if not exist ".venv\Scripts\python.exe" (
-    echo [FEHLER] Einrichtung fehlgeschlagen. Bitte install_windows11.ps1 manuell pruefen.
+  if errorlevel 1 (
+    echo [FEHLER] Einrichtung fehlgeschlagen.
     echo.
     pause
     goto :end
   )
+)
+if not exist "%VENV_PY%" (
+  echo [FEHLER] Lokales Python wurde nicht erstellt.
+  echo.
+  pause
+  goto :end
+)
+"%VENV_PY%" -c "import sys; print(sys.executable)" >nul 2>&1
+if errorlevel 1 (
+  echo [FEHLER] Lokales Python ist weiterhin nicht lauffaehig.
+  echo.
+  pause
+  goto :end
 )
 
 call ".venv\Scripts\activate.bat"
