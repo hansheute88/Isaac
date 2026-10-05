@@ -339,3 +339,18 @@ The strongest proprietary asset is not a dependency, web template or single Pyth
 → audit/evaluation evidence**
 
 That chain should be the center of technical/IP diligence.
+
+
+## 18. Historical third-party source exception: aiohttp
+
+A historical release artifact requires an explicit **T1** classification:
+
+- `isaac_complete_release_2026-03-27/web_urldispatcher.py`
+- historical root copy: `web_urldispatcher.py`
+- Git blob: `cfa57a310046c78636d1872f6e4c2e27b6a18a76`
+- exact upstream: `aio-libs/aiohttp` tag `v3.13.3`, file `aiohttp/web_urldispatcher.py`
+- upstream blob SHA is identical.
+
+This artifact is **not Isaac-original IP**. It was subsequently archived/removed and is absent from the current active tree. Its historical presence must nevertheless remain visible in the transaction provenance package.
+
+The historical release bundle did not contain a separate aiohttp license/notice file; preserve this as a historical compliance finding and do not silently fold the artifact into the Isaac H2 boundary.
