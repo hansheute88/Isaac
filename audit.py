@@ -162,6 +162,11 @@ class AuditLog:
 
 
     @classmethod
+    def capability(cls, decision: dict):
+        """Record an Isaac 2.0 R/W/X capability decision."""
+        cls._record("capability", dict(decision or {}))
+
+    @classmethod
     def confirmation(cls, status: str, aktion: str, queue_id: str, reason: str = ""):
         cls._record("confirmation", {
             "status": status, "aktion": aktion, "queue_id": queue_id, "reason": reason[:300]
