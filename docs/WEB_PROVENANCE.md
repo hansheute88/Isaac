@@ -13,7 +13,7 @@ The historical scaffold commit `403536c964ecee90522bfbe5da5b134749ca3d64` identi
 
 The matching upstream version is **next-forge 6.0.2**, represented by upstream commit:
 
-`998484ccd88dcd75c70c2294982c78f3d9f3437e`
+`9aad7123ef8accc79d6ece399f249c46bdb6b138`
 
 This gives us an exact Git-tree baseline instead of a speculative comparison against current upstream.
 
@@ -122,13 +122,21 @@ This is substantially stronger than claiming the whole repository is original.
 
 ## 8. Remaining provenance work
 
-The web hash audit is now complete at the file-content level against the resolved 6.0.2 baseline.
+The web hash audit and the section-level review of all 40 T1-M files are now complete against the verified 6.0.2 baseline.
+
+The detailed file-by-file delta table is recorded in `docs/WEB_FILE_PROVENANCE_MANIFEST.md`. The 40 changes cluster into:
+
+1. **19 environment-validation changes** adding `SKIP_ENV_VALIDATION` handling.
+2. **13 dependency/package-manager changes** covering Next.js, Sentry, sharp, undici, postcss and the Bun→pnpm workspace transition.
+3. **5 Sentry/AI observability changes**, which are the largest project-specific runtime modifications in the web layer.
+4. **3 Sentry configuration-example changes** in application `.env.example` files.
+
+The single H2 candidate `web/packages/ai/lib/telemetry.ts` remains the clearest Isaac-specific web implementation because it has no upstream counterpart.
 
 Remaining work is narrower:
 
-1. Review the **40 T1-M files** section-by-section where acquisition-level precision is required.
-2. Preserve/verify all third-party notices and licenses.
-3. Review the source/provenance of the single H2 candidate `web/packages/ai/lib/telemetry.ts`.
-4. Continue the independent dependency-license and historical-secret audits.
+1. Preserve/verify all third-party notices and licenses.
+2. Review the source/provenance of the H2 telemetry file at author/commit level if acquisition precision requires it.
+3. Continue the independent dependency-license and historical-secret audits.
 
-**No runtime code was changed by this audit.**
+**No runtime Isaac code was changed by this audit.**
