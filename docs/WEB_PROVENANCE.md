@@ -5,45 +5,82 @@
 **Classification date:** 2026-10-05  
 **Branch:** `acquisition-readiness`
 
-The `web/` workspace is **not treated as wholly Isaac-original IP**.
+The `web/` workspace is **mixed-provenance and is not wholly Isaac-original IP**.
 
-## Historical provenance
+## 1. Exact upstream baseline resolved
 
-The strongest evidence is Git history.
+The historical scaffold commit `403536c964ecee90522bfbe5da5b134749ca3d64` identifies the imported material as **next-forge v6**.
 
-Commit `403536c964ecee90522bfbe5da5b134749ca3d64` is titled **“Add next-forge SaaS monorepo scaffold in web/”**. It introduced the web workspace as a single scaffold commit with **47,979 additions and 0 deletions**. Its commit message explicitly identifies the material as a **next-forge v6 production Turborepo template**.
+The matching upstream version is **next-forge 6.0.2**, represented by upstream commit:
 
-Current inventory is **423 tracked files**: 192 under `apps/`, 198 under `packages/`, plus configuration/scripts/skills/metadata.
+`998484ccd88dcd75c70c2294982c78f3d9f3437e`
 
-## Direct upstream evidence
+This gives us an exact Git-tree baseline instead of a speculative comparison against current upstream.
 
-The current repository identifies the web layer as next-forge:
+## 2. Exact Git blob comparison
 
-- `web/package.json`: `next-forge` 6.0.2, upstream `vercel/next-forge`
-- `web/README.md`: explicitly describes next-forge as the template and states MIT licensing
-- `web/.autorc`: explicit Vercel/next-forge metadata
+Current Isaac `web/` tree:
 
-Direct comparisons performed against upstream `main`:
+- **423 tracked files**
 
-| File | Result | Classification |
-|---|---|---|
-| `web/package.json` | differs | **T1-M** |
-| `web/apps/web/app/[locale]/(home)/page.tsx` | **identical content hash** | **T1** |
-| `web/packages/ai/index.ts` | differs | **T1-M** |
-| `web/packages/ai/lib/models.ts` | differs | **T1-M** |
-| `web/packages/ai/lib/telemetry.ts` | no upstream counterpart at current path | **U1 / local addition pending provenance review** |
-| `web/packages/observability/client.ts` | differs | **T1-M** |
-| `web/packages/observability/edge.ts` | differs | **T1-M** |
-| `web/packages/observability/package.json` | differs | **T1-M** |
-| `web/packages/observability/server.ts` | differs | **T1-M** |
+Upstream next-forge 6.0.2 files sharing paths with Isaac were compared by Git blob SHA.
 
-A differing file is **not** automatically proprietary. It normally means upstream/template material plus project-specific modifications.
+### Result
 
-## Post-scaffold history
+| Classification | Count | Meaning |
+|---|---:|---|
+| **T1** | **380** | exact byte-identical upstream/template content |
+| **T1-M** | **40** | same upstream path, but content modified |
+| **H2** | **1** | Isaac-only implementation candidate |
+| **G1** | **2** | Isaac-only workspace/dependency metadata |
+| **U1** | **0** | unresolved at content/hash level |
 
-### AI/Sentry integration
+This is the key finding of the web audit:
 
-Commit `4bb8318aa502298c7bd62e85b92ff6989640cf95` modified/added web files including:
+> **380 of 423 web files are exact upstream next-forge 6.0.2 content.**
+
+Therefore the majority of the web layer can be confidently treated as template/third-party lineage rather than exclusive Isaac-original code.
+
+## 3. Isaac-only files
+
+Exactly three current web files have no matching upstream path:
+
+### H2 candidate
+
+`web/packages/ai/lib/telemetry.ts`
+
+This was added during Isaac's Sentry/AI-monitoring work. It is currently classified as **H2 candidate** because it appears to be project-specific implementation.
+
+This classification is still a provenance classification, **not a legal conclusion about copyrightability**.
+
+### G1 metadata
+
+- `web/pnpm-lock.yaml`
+- `web/pnpm-workspace.yaml`
+
+These are local package-manager/workspace metadata and should not be treated as core proprietary IP.
+
+## 4. Modified upstream files
+
+The 40 T1-M files are descendants of next-forge files with changed content. The full list is recorded in:
+
+`docs/WEB_FILE_PROVENANCE_MANIFEST.md`
+
+Important examples include:
+
+- app environment/configuration files
+- app/package manifests
+- `package.json`
+- AI model integration
+- AI keys
+- observability integration
+- CMS/database/design-system/internationalization/SEO package manifests
+
+A changed SHA does **not** automatically make a file proprietary. These files retain upstream/template provenance and should be treated as **mixed provenance** until section-level review is completed.
+
+## 5. Historical modification evidence
+
+Commit `4bb8318aa502298c7bd62e85b92ff6989640cf95` added/modified the web AI/Sentry integration, including:
 
 - `web/packages/ai/index.ts`
 - `web/packages/ai/lib/models.ts`
@@ -51,43 +88,29 @@ Commit `4bb8318aa502298c7bd62e85b92ff6989640cf95` modified/added web files inclu
 - `web/packages/observability/client.ts`
 - `web/packages/observability/edge.ts`
 - `web/packages/observability/server.ts`
-- related app/package manifests
+- related package manifests
 
-These are **mixed-provenance** files unless a section-level review proves otherwise.
+Dependency update commits subsequently changed package manifests and the pnpm lockfile.
 
-### Dependency updates
+This history is consistent with:
 
-Dependabot/package-update commits modified multiple package manifests and `web/pnpm-lock.yaml`. These are dependency metadata changes, not evidence that template source became Isaac-original.
+**next-forge scaffold → Isaac-directed modifications/integrations → current mixed web layer**
 
-### Sentry hardening
+## 6. Classification rules
 
-Commit `d0f38a96dd95dd382f1a363e05dec245d812e647` modified Sentry integration and environment examples.
+| Label | Meaning | Treatment |
+|---|---|---|
+| **T1** | exact upstream/template match | preserve upstream license/attribution |
+| **T1-M** | modified upstream/template | preserve upstream provenance + identify project changes |
+| **H2** | Isaac-specific implementation candidate | candidate project asset; retain engineering provenance |
+| **G1** | workspace/dependency/generated metadata | supporting infrastructure, not core IP |
+| **U1** | unresolved | no exclusive ownership claim |
 
-## Classification scheme
+## 7. Acquisition conclusion
 
-| Label | Meaning |
-|---|---|
-| **T1** | confirmed unmodified third-party/template |
-| **T1-M** | modified third-party/template; upstream provenance remains |
-| **H2** | Isaac-specific implementation; verify no copied third-party material |
-| **G1** | generated/dependency/build metadata |
-| **U1** | unresolved; no exclusive-IP claim yet |
+The web layer should **not** be presented as the main proprietary Isaac asset.
 
-## Current conservative boundary
-
-**T1:** files proven identical to upstream, next-forge README/metadata, upstream skills/reference material, and other confirmed matches.
-
-**T1-M:** files modified after the scaffold, including the identified AI/Sentry integration files and affected package manifests.
-
-**G1:** `web/pnpm-lock.yaml` and generated/package-manager metadata.
-
-**U1:** all remaining files not yet individually compared against the matching upstream release.
-
-## Acquisition conclusion
-
-The web layer should **not** be presented as the core proprietary Isaac asset.
-
-The clean boundary is:
+The clean technical boundary is:
 
 **Isaac cognitive kernel / Python runtime / governance / memory / autonomy / execution**  
 → **core project asset**
@@ -95,14 +118,17 @@ The clean boundary is:
 **next-forge-derived web layer + dependencies**  
 → **supporting, separately licensed, partially modified infrastructure**
 
-This is more defensible than claiming the entire repository as original.
+This is substantially stronger than claiming the whole repository is original.
 
-## Remaining work
+## 8. Remaining provenance work
 
-1. Resolve the exact upstream next-forge release corresponding to the 2026-07-12 scaffold.
-2. Compare all 423 current web files against that release.
-3. Produce a final per-file T1/T1-M/H2/G1/U1 manifest.
-4. For each T1-M file, record the Isaac-specific modifications.
-5. Preserve all applicable third-party notices/licenses.
+The web hash audit is now complete at the file-content level against the resolved 6.0.2 baseline.
 
-**No runtime code is changed by this provenance review.**
+Remaining work is narrower:
+
+1. Review the **40 T1-M files** section-by-section where acquisition-level precision is required.
+2. Preserve/verify all third-party notices and licenses.
+3. Review the source/provenance of the single H2 candidate `web/packages/ai/lib/telemetry.ts`.
+4. Continue the independent dependency-license and historical-secret audits.
+
+**No runtime code was changed by this audit.**
