@@ -43,3 +43,55 @@ The normalized representation is schema version "isaac.causal_graph.v1".
 - Cross-task events never receive temporal edges.
 - No inferred causal relationship is presented as proven.
 - Dedicated unit tests execute in CI.
+
+
+## B3.2 — Evidenzbasierte Beziehungen
+
+B3.2 ergänzt die reine Normalisierung um eine deterministische Relationship-Schicht.
+
+### Grundregel
+
+Eine gerichtete Beziehung wie `authorized_by`, `blocked_by`, `triggered`, `corrected_by` oder `verified_by` entsteht **nur**, wenn das Ziel-Event explizit auf eine bekannte Event-ID verweist.
+
+Beispiel:
+
+```json
+{
+  "event_id": "action-1",
+  "task_id": "t1",
+  "typ": "action",
+  "authorized_by_event_id": "decision-1"
+}
+```
+
+Daraus darf die Normalisierung erzeugen:
+
+```text
+decision-1 --authorized_by--> action-1
+evidence = explicit:authorized_by_event_id
+```
+
+### Unterstützte explizite Beziehungen
+
+- `derived_from`
+- `depends_on`
+- `caused_by`
+- `triggered_by`
+- `authorized_by`
+- `blocked_by`
+- `corrected_by`
+- `verified_by`
+
+Für jede Beziehung sind sowohl ein semantischer Schlüssel (z. B. `authorized_by`) als auch ein expliziter `*_event_id`-Schlüssel akzeptiert; der Wert muss eine vorhandene Event-ID sein.
+
+### Sicherheits- und Evidenzregeln
+
+1. Unbekannte Event-IDs erzeugen **keine** Kante.
+2. Selbstreferenzen erzeugen **keine** Kante.
+3. Events aus unterschiedlichen Tasks werden nicht kausal verbunden.
+4. Zeitliche Nachbarschaft erzeugt weiterhin ausschließlich `OBSERVED`.
+5. `OBSERVED` ist keine Behauptung über Ursache und Wirkung.
+6. Die explizite Relationship-Schicht verändert weder AuditLog noch DecisionTrace.
+7. Kanten werden deterministisch dedupliziert und sortiert.
+
+Damit kann Isaac erstmals Aussagen wie „Aktion X war durch Policy-Entscheidung Y autorisiert“ aus expliziter Evidenz ableiten, ohne aus bloßer Reihenfolge eine Ursache zu erfinden.
