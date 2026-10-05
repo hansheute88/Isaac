@@ -13,6 +13,7 @@ import time
 import logging
 import asyncio
 import threading
+import uuid
 from pathlib import Path
 from typing import Any, Optional
 
@@ -27,6 +28,7 @@ _write_lock = threading.Lock()
 # ── Audit-Eintrag ──────────────────────────────────────────────────────────────
 def _make_entry(typ: str, data: dict) -> dict:
     return {
+        "event_id": str(uuid.uuid4()),
         "ts":   time.strftime("%Y-%m-%dT%H:%M:%S"),
         "ms":   int(time.time() * 1000),
         "typ":  typ,
@@ -55,7 +57,7 @@ class AuditLog:
     _callbacks:  list       = []   # WebSocket-Callbacks
 
     @classmethod
-    def _record(cls, typ: str, data: dict):
+    def _record(cls, typ: str, data: dict) -> dict:
         entry = _make_entry(typ, data)
         _write(entry)
         cls._buffer.append(entry)
@@ -67,6 +69,7 @@ class AuditLog:
                 cb(entry)
             except Exception:
                 pass
+        return entry
 
     @classmethod
     def register_callback(cls, fn):
@@ -164,7 +167,7 @@ class AuditLog:
     @classmethod
     def capability(cls, decision: dict):
         """Record an Isaac 2.0 R/W/X capability decision."""
-        cls._record("capability", dict(decision or {}))
+        return cls._record("capability", dict(decision or {}))
 
     @classmethod
     def confirmation(cls, status: str, aktion: str, queue_id: str, reason: str = ""):
