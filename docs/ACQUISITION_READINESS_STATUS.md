@@ -15,6 +15,10 @@
 - [x] Web layer identified as next-forge-derived
 - [x] Conservative web provenance classification added
 
+## Important identity reconciliation
+
+The acquisition documents identify the owner as Hans Heute, while the current runtime contains the internal owner identifier `Steffen` (for example in `constitution.py` and memory source markers). This may be a project alias, but it must **not** be silently equated with the legal owner in diligence documents. Reconcile the identifier with private ownership evidence before a transaction.
+
 ## In progress / not yet legal sign-off
 
 ### 1. License enrichment
