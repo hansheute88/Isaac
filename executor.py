@@ -225,6 +225,9 @@ class Task:
     outcome: dict = field(default_factory=dict)
     learned_from: list = field(default_factory=list)
 
+    # Runtime causal lineage: populated only with explicit, persisted event IDs.
+    causal_refs: dict = field(default_factory=dict)
+
     @property
     def task_id(self) -> str:
         return self.id
@@ -282,6 +285,7 @@ class Task:
             "outcome": dict(self.outcome),
             "errors": [self.fehler] if self.fehler else [],
             "learned_from": list(self.learned_from),
+            "causal_refs": dict(self.causal_refs),
             "decision_trace": self.decision_trace.to_list(),
             "timestamps": {
                 "created_at": self.erstellt,
@@ -552,7 +556,9 @@ class Executor:
             required_capabilities = list(required_capabilities or []),
         )
         self._tasks[task.id] = task
-        AuditLog.task(task.id, "created", task.beschreibung[:100])
+        created_audit = AuditLog.task(task.id, "created", task.beschreibung[:100])
+        if created_audit:
+            task.causal_refs["task_created_audit_event_id"] = created_audit.get("event_id", "")
         return task
 
 
@@ -648,11 +654,14 @@ class Executor:
                 decision = evaluate_with_audit(self.rwx_registry, request)
             except (TypeError, ValueError) as exc:
                 return f"Ungültige R/W/X-Anforderung: {exc}"
-            task.decision_trace.add(
+            capability_entry = task.decision_trace.add(
                 TracePhase.GOVERNANCE,
                 "capability_decision",
                 decision.as_dict(),
             )
+            task.causal_refs["capability_trace_event_id"] = capability_entry.event_id
+            if decision.audit_event_id:
+                task.causal_refs["capability_audit_event_id"] = decision.audit_event_id
             if not decision.allowed:
                 return (
                     f"R/W/X blockiert: {decision.capability.value} "
@@ -879,7 +888,7 @@ class Executor:
             )
             task.log(f"Tool-Auswahl: {selection.get('name')} [{selection.get('kind')}/{selection.get('category')}]")
             self._notify(task)
-            task.decision_trace.add(
+            execution_started = task.decision_trace.add(
                 TracePhase.EXECUTION,
                 "execution_started",
                 {
@@ -887,8 +896,13 @@ class Executor:
                     "name": selection.get("name", ""),
                     "iteration": iteration,
                     "run_index": tool_runs + 1,
+                    **(
+                        {"authorized_by_event_id": task.causal_refs["capability_trace_event_id"]}
+                        if task.causal_refs.get("capability_trace_event_id") else {}
+                    ),
                 },
             )
+            task.causal_refs["last_action_trace_event_id"] = execution_started.event_id
             self._checkpoint(
                 task,
                 CheckpointState.TOOL_PENDING,
@@ -966,6 +980,7 @@ class Executor:
                         "error": result.get("error", ""),
                         "blocked_by": list(meta.get("blocked_by") or []),
                         "source": meta.get("source") or via,
+                        "caused_by_event_id": execution_started.event_id,
                     },
                 )
                 task.decision_trace.add(
@@ -987,6 +1002,7 @@ class Executor:
                     "name": name,
                     "via": via,
                     "status_code": result.get("status_code"),
+                    "caused_by_event_id": execution_started.event_id,
                 },
             )
             used_tool_ids.add(identifier)
@@ -1002,7 +1018,9 @@ class Executor:
             task.used_tools.append(tool_note)
             task.used_tools = task.used_tools[-12:]
             task.log(f"Tool genutzt: {name}")
-            AuditLog.action("Executor", "tool_used", f"task={task.id} tool={name}", Level.ISAAC)
+            audit_action = AuditLog.action("Executor", "tool_used", f"task={task.id} tool={name}", Level.ISAAC)
+            if audit_action:
+                task.causal_refs["last_action_audit_event_id"] = audit_action.get("event_id", "")
             context_blocks.append(self._tool_context_block(name, kind, via, result))
             task.decision_trace.add(
                 TracePhase.CONTEXT_INTEGRATION,
@@ -1011,6 +1029,10 @@ class Executor:
                     "identifier": identifier,
                     "name": name,
                     "via": via,
+                    **(
+                        {"derived_from_event_id": task.causal_refs["last_action_audit_event_id"]}
+                        if task.causal_refs.get("last_action_audit_event_id") else {}
+                    ),
                 },
             )
             successful_outputs.append(f"{name}:\n{str(result.get('output') or result.get('error') or '').strip()[:1600]}")
@@ -1264,8 +1286,24 @@ class Executor:
             if task.allow_provider_switch and (decision.switch_provider or stale_rounds >= 1):
                 next_prov = self._pick_followup_provider(prov)
                 if next_prov and next_prov != prov:
+                    previous_prov = prov
                     current_prov = next_prov
                     task.log(f"Provider: {prov} → {current_prov}")
+                    switch_audit = AuditLog.action(
+                        "Executor", "provider_switch",
+                        f"task={task.id} {previous_prov} -> {current_prov}", Level.ISAAC
+                    )
+                    switch_data = {
+                        "from_provider": previous_prov or "",
+                        "to_provider": current_prov or "",
+                        "iteration": iteration,
+                    }
+                    if switch_audit:
+                        switch_data["audit_event_id"] = switch_audit.get("event_id", "")
+                    switch_entry = task.decision_trace.add(
+                        TracePhase.FOLLOWUP, "provider_switched", switch_data
+                    )
+                    task.causal_refs["provider_switch_trace_event_id"] = switch_entry.event_id
                 elif decision.switch_provider:
                     task.log(f"Provider-Switch übersprungen (kein gesunder Fallback für {prov})")
 
