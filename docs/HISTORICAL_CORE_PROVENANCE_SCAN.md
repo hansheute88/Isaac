@@ -49,3 +49,41 @@ Transaction-grade follow-up: full Git object/blob inventory including deleted fi
 No material evidence of wholesale third-party agent-framework code in the Isaac core was found in this pass.
 The strongest confirmed third-party boundary remains the web/next-forge layer plus dependencies and generated/provider material.
 The core cognitive/governance/autonomy implementation remains a strong H2 candidate: Hans-directed implementation with AI coding assistance, subject to exhaustive checks.
+
+### 8. Definitive historical vendored-source finding: aiohttp 3.13.3
+
+A dedicated historical-blob comparison found a byte-identical third-party source file:
+
+- Historical Isaac path: `isaac_complete_release_2026-03-27/web_urldispatcher.py`
+- Also present at the historical repository root as `web_urldispatcher.py`
+- Historical Git blob SHA: `cfa57a310046c78636d1872f6e4c2e27b6a18a76`
+- Upstream repository: `aio-libs/aiohttp`
+- Upstream tag: `v3.13.3`
+- Upstream file: `aiohttp/web_urldispatcher.py`
+- Upstream Git blob SHA: `cfa57a310046c78636d1872f6e4c2e27b6a18a76`
+- Result: **exact byte-identical blob**
+- Size: 44,290 bytes
+- The file was introduced by the 2026-04-01 `Initial Isaac GitHub base import` commit and was later moved into `archive/unused/` and ultimately removed from the active tree.
+
+The historical file is therefore **T1 third-party source**, not H2 Isaac-original implementation.
+
+The historical release bundle did not contain a separate aiohttp license/notice file. This is a historical license-compliance diligence item. aiohttp is officially identified as Apache-2 licensed; current PyPI metadata reports Apache-2.0 AND MIT for the package's broader dependency/license metadata. The exact historical source file itself is from aiohttp v3.13.3 and should be treated under aiohttp's applicable license/notice requirements.
+
+This finding does **not** establish that current Isaac runtime code contains the vendored file: the exact file is absent from the current `main` tree.
+
+### 9. Broader historical bundle scan
+
+The 2026-03-27 release bundle contained 58 Python files. Review of their import/marker signatures found no second embedded package source comparable to the exact aiohttp blob. References to aiohttp in `relay.py`, `search.py` and health/monitor code are dependency/API usage, not evidence of vendored aiohttp source.
+
+The root `web_urldispatcher.py` and release-bundle copy are the same Git blob, so they represent one underlying third-party source artifact rather than two independent findings.
+
+### 10. Revised conclusion
+
+The previous statement that no material third-party source had been found in historical Core/release material is superseded.
+
+The corrected conclusion is:
+
+- **One definitive historical third-party source artifact has been identified: aiohttp v3.13.3's `web_urldispatcher.py`.**
+- No second comparable vendored runtime source was identified in the reviewed 2026-03-27 release bundle.
+- The active/current Isaac tree does not contain this exact vendored file.
+- The web/next-forge boundary remains a separate, much larger confirmed third-party/template area.
