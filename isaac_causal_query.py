@@ -59,21 +59,25 @@ def _event_map(graph: CausalGraph) -> dict[str, CausalEvent]:
 
 def predecessors(graph: CausalGraph, event_id: str) -> tuple[CausalEvent, ...]:
     """Return explicit/observational predecessors of an event."""
-    ids = [
-        edge.source_event_id
-        for edge in graph.edges
-        if edge.target_event_id == event_id
-    ]
+    ids = []
+    seen: set[str] = set()
+    for edge in graph.edges:
+        if edge.target_event_id != event_id or edge.source_event_id in seen:
+            continue
+        seen.add(edge.source_event_id)
+        ids.append(edge.source_event_id)
     events = _event_map(graph)
     return tuple(events[event_id] for event_id in ids if event_id in events)
 
 
 def successors(graph: CausalGraph, event_id: str) -> tuple[CausalEvent, ...]:
-    ids = [
-        edge.target_event_id
-        for edge in graph.edges
-        if edge.source_event_id == event_id
-    ]
+    ids = []
+    seen: set[str] = set()
+    for edge in graph.edges:
+        if edge.source_event_id != event_id or edge.target_event_id in seen:
+            continue
+        seen.add(edge.target_event_id)
+        ids.append(edge.target_event_id)
     events = _event_map(graph)
     return tuple(events[event_id] for event_id in ids if event_id in events)
 
