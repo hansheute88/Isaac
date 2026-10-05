@@ -95,3 +95,53 @@ Für jede Beziehung sind sowohl ein semantischer Schlüssel (z. B. `authorized_b
 7. Kanten werden deterministisch dedupliziert und sortiert.
 
 Damit kann Isaac erstmals Aussagen wie „Aktion X war durch Policy-Entscheidung Y autorisiert“ aus expliziter Evidenz ableiten, ohne aus bloßer Reihenfolge eine Ursache zu erfinden.
+
+
+## B3.2.1 — Reale Quellen-Verknüpfung
+
+Die Normalisierung verwendet jetzt persistierte Event-IDs aus den tatsächlichen Quellen:
+
+### AuditLog
+
+Jeder **neu geschriebene** Audit-Eintrag erhält beim Schreiben eine UUID in:
+
+```json
+{
+  "event_id": "..."
+}
+```
+
+Die ID wird zusammen mit dem unveränderlichen Audit-Ereignis persistiert. Sie wird bei späterer Normalisierung nicht neu erzeugt.
+
+### DecisionTrace
+
+Jeder neu erzeugte `TraceEntry` erhält ebenfalls eine persistierte UUID:
+
+```json
+{
+  "event_id": "...",
+  "sequence": 1
+}
+```
+
+Der `DecisionTrace` besitzt zusätzlich eine `trace_id`.
+
+### Audit → DecisionTrace
+
+R/W/X-Entscheidungen schreiben zunächst ihr Audit-Ereignis. Die zurückgegebene Audit-ID wird anschließend im Capability-Decision-Payload als `audit_event_id` mitgeführt.
+
+Bei der Normalisierung wird daraus:
+
+```text
+Audit capability event
+        │
+        │ derived_from
+        ▼
+DecisionTrace capability_decision
+```
+
+Die Beziehung ist damit **explizite Lineage**, nicht zeitliche Vermutung.
+
+### Rückwärtskompatibilität
+
+Alte Audit-/Trace-Daten ohne gespeicherte Event-ID bleiben lesbar. Für diese Daten verwendet die Normalisierung weiterhin deterministische Fallback-IDs innerhalb des eingelesenen Datenfensters. Neue Ereignisse verwenden dagegen persistierte IDs.
