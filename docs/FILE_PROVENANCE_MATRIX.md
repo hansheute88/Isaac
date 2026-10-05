@@ -354,3 +354,12 @@ A historical release artifact requires an explicit **T1** classification:
 This artifact is **not Isaac-original IP**. It was subsequently archived/removed and is absent from the current active tree. Its historical presence must nevertheless remain visible in the transaction provenance package.
 
 The historical release bundle did not contain a separate aiohttp license/notice file; preserve this as a historical compliance finding and do not silently fold the artifact into the Isaac H2 boundary.
+
+
+## Historical exact Third-Party source findings
+
+The historical source scan identified one exact vendored source file:
+
+- `web_urldispatcher.py` — **T1 Third-Party** — byte-identical to `aio-libs/aiohttp` v3.13.3 `aiohttp/web_urldispatcher.py`; Git blob SHA `cfa57a310046c78636d1872f6e4c2e27b6a18a76`; historical only; absent from the current active tree.
+
+This row supersedes any earlier assumption that the historical Python set contained no exact third-party source. The finding is disclosed rather than silently reclassified.
