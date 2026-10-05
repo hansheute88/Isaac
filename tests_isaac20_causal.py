@@ -109,5 +109,60 @@ class TestIsaac20CausalSchema(unittest.TestCase):
         )
 
 
+    def test_trace_event_id_is_persisted_and_reused(self):
+        entry = {
+            "event_id": "trace-event-1",
+            "sequence": 1,
+            "ts": 2.5,
+            "phase": "governance",
+            "event": "capability_decision",
+            "data": {"allowed": True},
+        }
+        events = normalize_trace_entries([entry], task_id="t2")
+        self.assertEqual(events[0].event_id, "trace-event-1")
+
+    def test_trace_capability_links_back_to_audit_event(self):
+        events = normalize_trace_entries([
+            {
+                "event_id": "trace-event-1",
+                "sequence": 1,
+                "ts": 2.5,
+                "phase": "governance",
+                "event": "capability_decision",
+                "data": {
+                    "allowed": True,
+                    "audit_event_id": "audit-cap-1",
+                },
+            },
+        ], task_id="t2")
+        self.assertEqual(events[0].data["derived_from_event_id"], "audit-cap-1")
+
+    def test_audit_and_trace_events_can_share_explicit_lineage(self):
+        events = normalize_audit_events([
+            {
+                "event_id": "audit-cap-1",
+                "typ": "capability",
+                "ms": 1000,
+                "task_id": "t2",
+                "allowed": True,
+            },
+        ])
+        trace_events = normalize_trace_entries([
+            {
+                "event_id": "trace-event-1",
+                "sequence": 1,
+                "ts": 1.1,
+                "event": "capability_decision",
+                "data": {"audit_event_id": "audit-cap-1"},
+            },
+        ], task_id="t2")
+        edges = build_explicit_relationship_edges(events + trace_events)
+        self.assertTrue(any(
+            edge.source_event_id == "audit-cap-1"
+            and edge.target_event_id == "trace-event-1"
+            and edge.edge_type == CausalEdgeType.DERIVED_FROM
+            for edge in edges
+        ))
+
 if __name__ == "__main__":
     unittest.main()
