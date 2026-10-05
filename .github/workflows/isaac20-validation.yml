@@ -1,0 +1,31 @@
+name: Isaac 2.0 Validation
+
+on:
+  push:
+    branches: ["isaac-2.0/masterplan"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  ISAAC_DISABLE_VECTOR_MEMORY: "1"
+
+jobs:
+  isaac20:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Compile Isaac 2.0 modules
+        run: |
+          python -m py_compile isaac_capabilities.py isaac_causal.py executor.py audit.py
+      - name: Run Isaac 2.0 tests
+        run: |
+          python -m unittest tests_isaac20_capabilities tests_isaac20_causal
+      - name: Run core sanity check
+        run: python sanity_check.py
