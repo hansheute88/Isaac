@@ -2,6 +2,12 @@ MIT License
 
 Copyright (c) 2026 Hans Heute
 
+Scope:
+This root license applies to Isaac-original material owned by Hans Heute.
+Third-party components, dependencies, templates, generated artifacts, and external
+assets remain subject to their own applicable licenses and notices. See
+docs/IP_AND_THIRD_PARTY.md and docs/WEB_PROVENANCE.md for the provenance boundary.
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
