@@ -569,23 +569,33 @@ DoD:
 
 ## Track D — Cybernetic Guardrail
 
+Status: D3 runtime lifecycle implemented
+
 Deliverables:
 - provider trust state
 - capability degradation
 - quarantine state machine
 - watchdog integration
-- recovery verification
+- explicit recovery lifecycle
+- controlled verification probe
+- evidence-linked release from quarantine
 
-Implementation foundation:
-- conservative guardrail decision primitives
-- explicit quarantine for safety-critical failures
-- verification remains mandatory after intervention
+Completed:
+- D1: conservative guardrail decision primitives and provider degradation state
+- D2: watchdog/relay failures route into the existing ProviderBlacklist enforcement authority
+- D3: recovery is now an explicit lifecycle: QUARANTINED -> RECOVERING -> VERIFY -> VERIFIED/FAILED
+- recovery never releases provider availability by itself
+- release occurs only after a controlled verification probe returns success
+- failed recovery/probe produces an explicit FAILED state and does not release an existing quarantine
+- recovery and verification event IDs can be attached to Task.causal_refs
 - no guardrail primitive can escalate privileges or replace existing authorization gates
 
 DoD:
-- failing provider loses W/X according to policy
-- diagnostic R access remains available where policy permits
-- restoration requires verification
+- failing provider loses availability according to policy
+- diagnostic access remains available where policy permits
+- restoration requires successful controlled verification
+- failed verification is auditable and cannot silently restore access
+- success and failure paths have executable tests
 
 ## Track E — Metrics
 
@@ -716,6 +726,9 @@ Implement provider capability degradation.
 ### Milestone 2.0-D2
 Connect degradation to watchdog and quarantine.
 
+### Milestone 2.0-D3
+Implement explicit recovery, controlled verification and evidence-linked release.
+
 ### Milestone 2.0-E1
 Implement first benchmark scenarios.
 
@@ -733,24 +746,26 @@ Build investor demonstration.
 
 ---
 
-# 20. Immediate Next Action
+# 20. Current Implementation Position
 
-The next coding step is **A0**, not implementation of R/W/X yet.
+A0-C foundations and the initial B2 runtime enforcement work are complete on isaac-2.0/masterplan.
 
-A0 must:
+Current position:
+- B2: explicit tool:* execution capability is enforced at the real tool boundary.
+- B3: immutable audit/decision events can be reconstructed into an evidence-backed causal graph.
+- D2: watchdog/relay failures can trigger provider quarantine through the existing enforcement authority.
+- D3: explicit recovery + controlled verification lifecycle is implemented and covered by tests.
 
-1. capture the current baseline commit;
-2. inventory relevant modules;
-3. map the runtime flow;
-4. identify existing event/trace schemas;
-5. identify integration points;
-6. define compatibility constraints;
-7. create the first 2.0 architecture/evidence tests;
-8. record the baseline validation commands and results.
+Next implementation step:
+E1 — fault-injection benchmark harness.
 
-Only after A0 is complete may B1 begin.
-
----
+E1 must measure the D3 lifecycle rather than merely assert that methods execute:
+1. inject a provider failure/hang;
+2. verify intervention and quarantine evidence;
+3. execute controlled recovery;
+4. run the verification probe;
+5. assert verified release or failed quarantine retention;
+6. emit machine-readable benchmark evidence.
 
 ## Strategic positioning
 
