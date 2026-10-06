@@ -110,6 +110,56 @@ class TestIsaac20Guardrails(unittest.TestCase):
             GuardrailState.RECOVERING,
         )
 
+    def test_recovery_requires_controlled_probe_before_release(self):
+        fake = FakeBlacklist()
+        controller = GuardrailController(fake)
+        controller.intervene_provider(
+            provider="test-provider",
+            failed_event_id="failure-d3-success",
+            error="critical fault",
+            safety_critical=True,
+        )
+        refs = {}
+        recovered = []
+        decision = controller.recover_and_verify_provider(
+            provider="test-provider",
+            source_event_id="failure-d3-success",
+            reason="safe provider reset",
+            recovery_action=lambda: recovered.append("reset"),
+            verification_probe=lambda: True,
+            task_id="task-d3-success",
+            causal_refs=refs,
+        )
+        self.assertEqual(recovered, ["reset"])
+        self.assertEqual(decision.state, GuardrailState.VERIFIED)
+        self.assertEqual(fake.verified, ["test-provider"])
+        self.assertTrue(refs["guardrail_recovery_event_id"])
+        self.assertTrue(refs["guardrail_verification_event_id"])
+
+    def test_failed_probe_keeps_quarantine_and_enters_failed_state(self):
+        fake = FakeBlacklist()
+        controller = GuardrailController(fake)
+        controller.intervene_provider(
+            provider="test-provider",
+            failed_event_id="failure-d3-fail",
+            error="critical fault",
+            safety_critical=True,
+        )
+        refs = {}
+        decision = controller.recover_and_verify_provider(
+            provider="test-provider",
+            source_event_id="failure-d3-fail",
+            reason="safe provider reset",
+            recovery_action=lambda: None,
+            verification_probe=lambda: False,
+            task_id="task-d3-fail",
+            causal_refs=refs,
+        )
+        self.assertEqual(decision.state, GuardrailState.FAILED)
+        self.assertEqual(fake.verified, [])
+        self.assertTrue(refs["guardrail_recovery_event_id"])
+        self.assertTrue(refs["guardrail_verification_event_id"])
+
     def test_watchdog_high_risk_hang_routes_to_quarantine(self):
         from executor import Task, TaskType
         from watchdog import TaskWatchdog
