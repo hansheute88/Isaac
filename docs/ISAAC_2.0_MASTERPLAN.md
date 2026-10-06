@@ -562,6 +562,8 @@ Completed:
 - unknown event references are ignored rather than inferred
 - root-cause candidates are never labeled verified solely from temporal adjacency
 - end-to-end authorization → action → failure → recovery → verification evaluation exists
+- E1: isolated fault-injection benchmark covers provider hang/failure → intervention/quarantine → recovery → controlled verification → VERIFIED release and FAILED quarantine retention
+- E1 emits machine-readable JSON evidence with lifecycle states, event IDs and final quarantine state
 
 DoD:
 - a failed task can produce a reproducible causal trace from recorded events
@@ -598,6 +600,8 @@ DoD:
 - success and failure paths have executable tests
 
 ## Track E — Metrics
+
+Status: E1 fault-injection benchmark implemented
 
 Deliverables:
 - metric definitions
@@ -730,7 +734,7 @@ Connect degradation to watchdog and quarantine.
 Implement explicit recovery, controlled verification and evidence-linked release.
 
 ### Milestone 2.0-E1
-Implement first benchmark scenarios.
+Implement first benchmark scenarios. **Complete:** deterministic D3 fault-injection suite with verified-release and failed-retention scenarios.
 
 ### Milestone 2.0-E2
 Implement ITI experimental metrics.
@@ -755,11 +759,9 @@ Current position:
 - B3: immutable audit/decision events can be reconstructed into an evidence-backed causal graph.
 - D2: watchdog/relay failures can trigger provider quarantine through the existing enforcement authority.
 - D3: explicit recovery + controlled verification lifecycle is implemented and covered by tests.
+- E1: fault-injection benchmark harness is implemented and wired into Isaac 2.0 CI.
 
-Next implementation step:
-E1 — fault-injection benchmark harness.
-
-E1 must measure the D3 lifecycle rather than merely assert that methods execute:
+E1 measures the D3 lifecycle rather than merely asserting that methods execute:
 1. inject a provider failure/hang;
 2. verify intervention and quarantine evidence;
 3. execute controlled recovery;
