@@ -26,9 +26,21 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Compile Isaac 2.0 modules
         run: |
-          python -m py_compile isaac_capabilities.py isaac_causal.py isaac_causal_query.py isaac_guardrails.py executor.py audit.py watchdog.py relay.py
+          python -m py_compile isaac_capabilities.py isaac_causal.py isaac_causal_query.py isaac_guardrails.py executor.py audit.py watchdog.py relay.py benchmarks/isaac20_fault_injection.py
       - name: Run Isaac 2.0 tests
         run: |
-          python -m unittest tests_isaac20_capabilities tests_isaac20_causal tests_isaac20_causal_query tests_isaac20_runtime_lineage tests_isaac20_e2e tests_isaac20_guardrails
+          python -m unittest tests_isaac20_capabilities tests_isaac20_causal tests_isaac20_causal_query tests_isaac20_runtime_lineage tests_isaac20_e2e tests_isaac20_guardrails tests_isaac20_e1
+      - name: Run E1 machine-readable benchmark
+        run: |
+          python -m benchmarks.isaac20_fault_injection > e1_fault_injection_results.json
+          python - <<'PY'
+          import json
+          with open("e1_fault_injection_results.json", encoding="utf-8") as handle:
+              report = json.load(handle)
+          assert report["schema_version"] == "isaac20-e1-suite-v1"
+          assert report["benchmark"] == "fault_injection_d3_lifecycle"
+          assert report["passed"] is True
+          assert {s["evidence"]["final_state"] for s in report["scenarios"]} == {"verified", "failed"}
+          PY
       - name: Run core sanity check
         run: python sanity_check.py
