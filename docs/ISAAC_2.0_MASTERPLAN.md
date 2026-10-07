@@ -601,7 +601,7 @@ DoD:
 
 ## Track E — Metrics
 
-Status: E1 fault-injection benchmark implemented
+Status: E2 experimental ITI metrics implemented
 
 Deliverables:
 - metric definitions
@@ -613,6 +613,9 @@ Deliverables:
 DoD:
 - repeatable benchmark runs
 - machine-readable results
+- E2: experimental ITI dimensions T/C/G/S/R derived from E1 evidence
+- E2: configurable normalized weights and repeatability/stability measurement
+- E2: JSON report is validated in CI
 - no unsupported superiority claims
 
 ## Track F — Governance Evidence
@@ -737,7 +740,7 @@ Implement explicit recovery, controlled verification and evidence-linked release
 Implement first benchmark scenarios. **Complete:** deterministic D3 fault-injection suite with verified-release and failed-retention scenarios.
 
 ### Milestone 2.0-E2
-Implement ITI experimental metrics.
+Implement ITI experimental metrics. **Complete:** reproducible T/C/G/S/R measurement, configurable normalized weights, stability measurement across repeated E1 runs, and machine-readable CI validation.
 
 ### Milestone 2.0-F1
 Generate governance evidence package.
@@ -760,6 +763,7 @@ Current position:
 - D2: watchdog/relay failures can trigger provider quarantine through the existing enforcement authority.
 - D3: explicit recovery + controlled verification lifecycle is implemented and covered by tests.
 - E1: fault-injection benchmark harness is implemented and wired into Isaac 2.0 CI.
+- E2: experimental ITI metrics are implemented, derived from E1 evidence, and wired into Isaac 2.0 CI.
 
 E1 measures the D3 lifecycle rather than merely asserting that methods execute:
 1. inject a provider failure/hang;
@@ -768,6 +772,15 @@ E1 measures the D3 lifecycle rather than merely asserting that methods execute:
 4. run the verification probe;
 5. assert verified release or failed quarantine retention;
 6. emit machine-readable benchmark evidence.
+
+E2 produces five normalized experimental dimensions:
+- **T — Observability:** required failure/intervention/recovery/verification evidence identifiers present.
+- **C — Causal coverage:** complete recovery and verification chain represented in benchmark evidence.
+- **G — Governance:** terminal provider availability matches the verified/failed policy outcome.
+- **S — Stability:** repeated E1 runs reproduce the same scenario outcome signatures.
+- **R — Recovery:** controlled recovery executes and reaches an explicit VERIFIED or FAILED terminal state.
+
+The ITI score is a configurable weighted mean of T/C/G/S/R. Default weights are equal; weights are normalized at runtime. ITI remains an experimental engineering metric, not a scientific standard or proof of superiority.
 
 ## Strategic positioning
 
