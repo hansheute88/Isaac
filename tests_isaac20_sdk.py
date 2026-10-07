@@ -71,10 +71,14 @@ class IsaacSdkTests(unittest.TestCase):
         ]
         trace = self.runtime.trace(events, target_event_id="error-1")
         self.assertEqual(trace["schema"], "isaac.causal_trace.v1")
-        self.assertEqual(trace["root_cause"]["candidate_count"], 1)
+        self.assertEqual(trace["root_cause"]["candidate_count"], 2)
         self.assertEqual(
             trace["root_cause"]["candidates"][0]["confidence"],
             "explicit",
+        )
+        self.assertEqual(
+            trace["root_cause"]["candidates"][1]["confidence"],
+            "observed",
         )
 
     def test_root_cause_does_not_promote_observation_to_cause(self):
