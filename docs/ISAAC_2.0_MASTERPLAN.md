@@ -757,7 +757,7 @@ Generate governance evidence package. **Complete:** machine-readable evidence pa
 Bind governance evidence to reproducible provenance. **In progress:** the F2 manifest binds the F1 evidence hash and benchmark contracts to the source revision and CI workflow run, with tamper detection and CI artifact publication.
 
 ### Milestone 2.0-G1
-Stabilize SDK.
+Stabilize SDK. **Complete:** stable `isaac_sdk.py` facade with versioned runtime, R/W/X policy checks, result envelope and causal trace/root-cause interfaces; contract tests and CI validation are green.
 
 ### Milestone 2.0-H1
 Build investor demonstration.
@@ -778,6 +778,7 @@ Current position:
 - E3: controlled architecture ablation benchmark is implemented and wired into Isaac 2.0 CI.
 - F1: governance evidence package is implemented with integrity verification and CI validation.
 - F2: governance evidence provenance manifest is implemented, binds the F1 evidence hash and benchmark contracts to the source revision/CI run, and is validated in CI.
+- G1: stable SDK facade is implemented with explicit contracts over existing governance primitives and validated by dedicated tests and CI.
 
 E1 measures the D3 lifecycle rather than merely asserting that methods execute:
 1. inject a provider failure/hang;
