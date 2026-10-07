@@ -7,18 +7,12 @@ industry-standard measure and must not be used as an unsupported superiority cla
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping
 
 from benchmarks.isaac20_fault_injection import run_e1_benchmark
 
 
-DEFAULT_WEIGHTS = {
-    "T": 0.20,  # Observability
-    "C": 0.20,  # Causal coverage
-    "G": 0.20,  # Governance
-    "S": 0.20,  # Stability
-    "R": 0.20,  # Recovery
-}
+DEFAULT_WEIGHTS = {"T": 0.20, "C": 0.20, "G": 0.20, "S": 0.20, "R": 0.20}
 
 
 @dataclass(frozen=True)
@@ -60,18 +54,31 @@ def _normalise_weights(weights: Mapping[str, float] | None) -> dict[str, float]:
     return {key: float(value) / total for key, value in selected.items()}
 
 
+def _outcome_signature(report: Mapping[str, Any]) -> list[tuple[Any, ...]]:
+    return [
+        (
+            item.get("scenario"),
+            item.get("evidence", {}).get("final_state"),
+            bool(item.get("evidence", {}).get("provider_quarantined")),
+        )
+        for item in report.get("scenarios", [])
+    ]
+
+
 def measure_e1_evidence(
     report: Mapping[str, Any],
     *,
     repetitions: int = 1,
+    weights: Mapping[str, float] | None = None,
+    stability: float | None = None,
 ) -> ITIReport:
     """Calculate experimental ITI dimensions from E1 JSON-ready evidence.
 
-    T: proportion of scenarios carrying the required event/evidence identifiers.
-    C: proportion of scenarios carrying the required recovery/verification chain.
-    G: proportion whose final quarantine behavior matches its final state.
-    S: repeatability of complete scenario outcomes across requested repetitions.
-    R: proportion of scenarios that reach a valid terminal recovery outcome.
+    T: evidence identifiers present for each scenario.
+    C: complete recovery/verification chain is represented.
+    G: final quarantine behavior matches the terminal state.
+    S: repeatability of complete scenario outcomes across repetitions.
+    R: controlled recovery reaches VERIFIED or explicit FAILED.
     """
     scenarios = list(report.get("scenarios", []))
     if not scenarios:
@@ -89,14 +96,12 @@ def measure_e1_evidence(
         all(str(item.get("evidence", {}).get(key, "")) for key in required_ids)
         for item in scenarios
     )
-
     causal_chain = sum(
         bool(item.get("evidence", {}).get("recovery_event_id"))
         and bool(item.get("evidence", {}).get("verification_event_id"))
         and item.get("lifecycle", [])[-1:] in (["released"], ["quarantine_retained"])
         for item in scenarios
     )
-
     governance_valid = sum(
         (
             item.get("evidence", {}).get("final_state") == "verified"
@@ -108,37 +113,31 @@ def measure_e1_evidence(
         )
         for item in scenarios
     )
-
     recovery_valid = sum(
         item.get("evidence", {}).get("recovery_executed") is True
         and item.get("evidence", {}).get("final_state") in {"verified", "failed"}
         for item in scenarios
     )
 
-    outcome_signature = [
-        (
-            item.get("scenario"),
-            item.get("evidence", {}).get("final_state"),
-            bool(item.get("evidence", {}).get("provider_quarantined")),
-        )
-        for item in scenarios
-    ]
-    stable = 1.0 if report.get("passed") is True and outcome_signature else 0.0
-
+    weights_norm = _normalise_weights(weights)
+    stability_value = (
+        _clamp(stability)
+        if stability is not None
+        else (1.0 if report.get("passed") is True else 0.0)
+    )
     dimensions = {
         "T": _clamp(traceable / len(scenarios)),
         "C": _clamp(causal_chain / len(scenarios)),
         "G": _clamp(governance_valid / len(scenarios)),
-        "S": stable,
+        "S": stability_value,
         "R": _clamp(recovery_valid / len(scenarios)),
     }
-    weights = _normalise_weights(None)
-    iti = _clamp(sum(dimensions[key] * weights[key] for key in dimensions))
+    iti = _clamp(sum(dimensions[key] * weights_norm[key] for key in dimensions))
 
     return ITIReport(
         schema_version="isaac20-iti-v1",
         dimensions=dimensions,
-        weights=weights,
+        weights=weights_norm,
         iti_score=iti,
         sample_count=len(scenarios) * repetitions,
         raw_measurements={
@@ -148,12 +147,16 @@ def measure_e1_evidence(
             "causal_chain_scenarios": causal_chain,
             "governance_valid_scenarios": governance_valid,
             "recovery_valid_scenarios": recovery_valid,
-            "outcome_signature": outcome_signature,
+            "outcome_signature": _outcome_signature(report),
         },
     )
 
 
-def run_e2_metrics(*, repetitions: int = 3) -> dict[str, Any]:
+def run_e2_metrics(
+    *,
+    repetitions: int = 3,
+    weights: Mapping[str, float] | None = None,
+) -> dict[str, Any]:
     """Run E1 repeatedly and return an experimental machine-readable E2 report."""
     if repetitions < 1:
         raise ValueError("repetitions must be >= 1")
@@ -162,16 +165,24 @@ def run_e2_metrics(*, repetitions: int = 3) -> dict[str, Any]:
     if not all(report.get("passed") is True for report in reports):
         raise AssertionError("E1 prerequisite failed during E2 measurement")
 
-    measured = measure_e1_evidence(reports[0], repetitions=repetitions)
-    output = measured.as_dict()
-    output["raw_measurements"]["all_runs_passed"] = all(
-        report.get("passed") is True for report in reports
+    signatures = [_outcome_signature(report) for report in reports]
+    baseline = signatures[0]
+    stable_runs = sum(signature == baseline for signature in signatures)
+    stability = stable_runs / len(signatures)
+
+    measured = measure_e1_evidence(
+        reports[0],
+        repetitions=repetitions,
+        weights=weights,
+        stability=stability,
     )
+    output = measured.as_dict()
+    output["raw_measurements"]["all_runs_passed"] = True
     output["raw_measurements"]["run_count"] = len(reports)
+    output["raw_measurements"]["stable_runs"] = stable_runs
     return output
 
 
 if __name__ == "__main__":
     import json
-
     print(json.dumps(run_e2_metrics(), indent=2, sort_keys=True))
