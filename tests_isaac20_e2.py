@@ -43,7 +43,7 @@ class TestIsaac20E2Metrics(unittest.TestCase):
         )
         self.assertAlmostEqual(report.weights["T"], 2 / 6)
         self.assertAlmostEqual(sum(report.weights.values()), 1.0)
-        self.assertEqual(report.iti_score, 1.0)
+        self.assertAlmostEqual(report.iti_score, 1.0)
 
     def test_invalid_weight_keys_and_values_are_rejected(self):
         report = run_e1_benchmark()
