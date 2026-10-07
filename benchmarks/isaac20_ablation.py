@@ -100,11 +100,11 @@ def run_e3_ablation() -> dict[str, Any]:
 
 def run_e3_benchmark() -> dict[str, Any]:
     """Compatibility entry point for F1 governance packaging and CI."""
-    report = run_e3_benchmark()
+    report = run_e3_ablation()
+    report["passed"] = all(report["pass_criteria"].values())
     return report
 
 
 if __name__ == "__main__":
-    report = run_e3_ablation()
-    report["passed"] = all(report["pass_criteria"].values())
+    report = run_e3_benchmark()
     print(json.dumps(report, indent=2, sort_keys=True))
