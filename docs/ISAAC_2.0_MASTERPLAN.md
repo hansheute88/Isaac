@@ -760,7 +760,7 @@ Bind governance evidence to reproducible provenance. **In progress:** the F2 man
 Stabilize SDK. **Complete:** stable `isaac_sdk.py` facade with versioned runtime, R/W/X policy checks, result envelope and causal trace/root-cause interfaces; contract tests and CI validation are green.
 
 ### Milestone 2.0-H1
-Build investor demonstration.
+Build investor demonstration. **In progress:** reproducible evidence-first demo contract implemented for Observe → Authorize → Execute → Explain → Recover; CI validation is pending.
 
 ---
 
