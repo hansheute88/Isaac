@@ -26,10 +26,10 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Compile Isaac 2.0 modules
         run: |
-          python -m py_compile isaac_capabilities.py isaac_causal.py isaac_causal_query.py isaac_guardrails.py executor.py audit.py watchdog.py relay.py benchmarks/isaac20_fault_injection.py benchmarks/isaac20_metrics.py benchmarks/isaac20_ablation.py benchmarks/isaac20_governance.py
+          python -m py_compile isaac_capabilities.py isaac_causal.py isaac_causal_query.py isaac_guardrails.py executor.py audit.py watchdog.py relay.py benchmarks/isaac20_fault_injection.py benchmarks/isaac20_metrics.py benchmarks/isaac20_ablation.py benchmarks/isaac20_governance.py benchmarks/isaac20_governance_f2.py
       - name: Run Isaac 2.0 tests
         run: |
-          python -m unittest tests_isaac20_capabilities tests_isaac20_causal tests_isaac20_causal_query tests_isaac20_runtime_lineage tests_isaac20_e2e tests_isaac20_guardrails tests_isaac20_e1 tests_isaac20_e2 tests_isaac20_e3 tests_isaac20_f1
+          python -m unittest tests_isaac20_capabilities tests_isaac20_causal tests_isaac20_causal_query tests_isaac20_runtime_lineage tests_isaac20_e2e tests_isaac20_guardrails tests_isaac20_e1 tests_isaac20_e2 tests_isaac20_e3 tests_isaac20_f1 tests_isaac20_f2
       - name: Run E1 machine-readable benchmark
         run: |
           python -m benchmarks.isaac20_fault_injection > e1_fault_injection_results.json
@@ -86,11 +86,39 @@ jobs:
           assert package["benchmarks"]["e1"]["passed"] is True
           assert package["benchmarks"]["e3"]["passed"] is True
           PY
-      - name: Upload F1 governance evidence artifact
+      - name: Build and verify F2 provenance manifest
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from benchmarks.isaac20_governance import verify_governance_evidence
+          from benchmarks.isaac20_governance_f2 import (
+              build_reproducibility_manifest,
+              verify_reproducibility_manifest,
+          )
+          with open("governance_evidence.json", encoding="utf-8") as handle:
+              package = json.load(handle)
+          assert verify_governance_evidence(package)
+          manifest = build_reproducibility_manifest(
+              evidence_package=package,
+              source_revision=os.environ["GITHUB_SHA"],
+              workflow_run_id=os.environ["GITHUB_RUN_ID"],
+              workflow_name=os.environ["GITHUB_WORKFLOW"],
+          )
+          with open("governance_reproducibility.json", "w", encoding="utf-8") as handle:
+              json.dump(manifest, handle, indent=2, sort_keys=True)
+          assert verify_reproducibility_manifest(
+              manifest, evidence_package=package
+          )
+          assert manifest["source_revision"] == os.environ["GITHUB_SHA"]
+          PY
+      - name: Upload Isaac 2.0 governance evidence
         uses: actions/upload-artifact@v4
         with:
           name: isaac20-governance-evidence
-          path: governance_evidence.json
+          path: |
+            governance_evidence.json
+            governance_reproducibility.json
           if-no-files-found: error
 
       - name: Run core sanity check
