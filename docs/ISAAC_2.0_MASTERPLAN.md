@@ -623,6 +623,8 @@ DoD:
 
 ## Track F — Governance Evidence
 
+Status: F1 governance evidence package implemented
+
 Deliverables:
 - evidence schema
 - report generator
@@ -749,7 +751,7 @@ Implement ITI experimental metrics. **Complete:** reproducible T/C/G/S/R measure
 Implement controlled ablation benchmark. **Complete:** deterministic architecture variants, scenario-level control contribution matrix, machine-readable results, and CI validation. E3 is explicitly contract-level evidence and not an empirical superiority claim about arbitrary agents.
 
 ### Milestone 2.0-F1
-Generate governance evidence package.
+Generate governance evidence package. **Complete:** machine-readable evidence package combines E1/E2/E3 benchmark reports with runtime evidence, configuration snapshot and system identity; integrity is protected by canonical SHA-256 hashing and the package carries an explicit legal/compliance disclaimer. F1 is an engineering evidence artifact, not an automatic legal-compliance determination.
 
 ### Milestone 2.0-G1
 Stabilize SDK.
@@ -771,6 +773,7 @@ Current position:
 - E1: fault-injection benchmark harness is implemented and wired into Isaac 2.0 CI.
 - E2: experimental ITI metrics are implemented, derived from E1 evidence, and wired into Isaac 2.0 CI.
 - E3: controlled architecture ablation benchmark is implemented and wired into Isaac 2.0 CI.
+- F1: governance evidence package is implemented with integrity verification and CI validation.
 
 E1 measures the D3 lifecycle rather than merely asserting that methods execute:
 1. inject a provider failure/hang;
