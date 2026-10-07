@@ -601,7 +601,7 @@ DoD:
 
 ## Track E — Metrics
 
-Status: E2 experimental ITI metrics implemented
+Status: E3 controlled ablation benchmark implemented
 
 Deliverables:
 - metric definitions
@@ -616,6 +616,9 @@ DoD:
 - E2: experimental ITI dimensions T/C/G/S/R derived from E1 evidence
 - E2: configurable normalized weights and repeatability/stability measurement
 - E2: JSON report is validated in CI
+- E3: controlled ablation matrix covers Baseline, +R/W/X, +Causal Memory, +Guardrail, +Recovery and Full Isaac 2.0
+- E3: machine-readable contract-level control contribution results are validated in CI
+- E3: Full Isaac 2.0 variant is cross-checked against the E1 verified/failed lifecycle outcomes
 - no unsupported superiority claims
 
 ## Track F — Governance Evidence
@@ -742,6 +745,9 @@ Implement first benchmark scenarios. **Complete:** deterministic D3 fault-inject
 ### Milestone 2.0-E2
 Implement ITI experimental metrics. **Complete:** reproducible T/C/G/S/R measurement, configurable normalized weights, stability measurement across repeated E1 runs, and machine-readable CI validation.
 
+### Milestone 2.0-E3
+Implement controlled ablation benchmark. **Complete:** deterministic architecture variants, scenario-level control contribution matrix, machine-readable results, and CI validation. E3 is explicitly contract-level evidence and not an empirical superiority claim about arbitrary agents.
+
 ### Milestone 2.0-F1
 Generate governance evidence package.
 
@@ -764,6 +770,7 @@ Current position:
 - D3: explicit recovery + controlled verification lifecycle is implemented and covered by tests.
 - E1: fault-injection benchmark harness is implemented and wired into Isaac 2.0 CI.
 - E2: experimental ITI metrics are implemented, derived from E1 evidence, and wired into Isaac 2.0 CI.
+- E3: controlled architecture ablation benchmark is implemented and wired into Isaac 2.0 CI.
 
 E1 measures the D3 lifecycle rather than merely asserting that methods execute:
 1. inject a provider failure/hang;
