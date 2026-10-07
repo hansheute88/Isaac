@@ -26,7 +26,7 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Compile Isaac 2.0 modules
         run: |
-          python -m py_compile isaac_capabilities.py isaac_causal.py isaac_causal_query.py isaac_guardrails.py executor.py audit.py watchdog.py relay.py benchmarks/isaac20_fault_injection.py benchmarks/isaac20_metrics.py benchmarks/isaac20_ablation.py
+          python -m py_compile isaac_capabilities.py isaac_causal.py isaac_causal_query.py isaac_guardrails.py executor.py audit.py watchdog.py relay.py benchmarks/isaac20_fault_injection.py benchmarks/isaac20_metrics.py benchmarks/isaac20_ablation.py benchmarks/isaac20_governance.py
       - name: Run Isaac 2.0 tests
         run: |
           python -m unittest tests_isaac20_capabilities tests_isaac20_causal tests_isaac20_causal_query tests_isaac20_runtime_lineage tests_isaac20_e2e tests_isaac20_guardrails tests_isaac20_e1 tests_isaac20_e2 tests_isaac20_e3 tests_isaac20_f1
@@ -71,5 +71,27 @@ jobs:
           assert report["pass_criteria"]["full_variant_pass_rate"] is True
           assert report["pass_criteria"]["e1_prerequisite"] is True
           PY
+      - name: Build and verify F1 governance evidence package
+        run: |
+          python -m benchmarks.isaac20_governance > governance_evidence.json
+          python - <<'PY'
+          import json
+          from benchmarks.isaac20_governance import verify_governance_evidence
+          with open("governance_evidence.json", encoding="utf-8") as handle:
+              package = json.load(handle)
+          assert package["schema_version"] == "isaac20-governance-evidence-v1"
+          assert package["legal_disclaimer"]
+          assert set(package["benchmarks"]) == {"e1", "e2", "e3"}
+          assert verify_governance_evidence(package)
+          assert package["benchmarks"]["e1"]["passed"] is True
+          assert package["benchmarks"]["e3"]["passed"] is True
+          PY
+      - name: Upload F1 governance evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: isaac20-governance-evidence
+          path: governance_evidence.json
+          if-no-files-found: error
+
       - name: Run core sanity check
         run: python sanity_check.py
