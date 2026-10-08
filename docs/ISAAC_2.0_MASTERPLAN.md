@@ -754,13 +754,13 @@ Implement controlled ablation benchmark. **Complete:** deterministic architectur
 Generate governance evidence package. **Complete:** machine-readable evidence package combines E1/E2/E3 benchmark reports with runtime evidence, configuration snapshot and system identity; integrity is protected by canonical SHA-256 hashing and the package carries an explicit legal/compliance disclaimer. F1 is an engineering evidence artifact, not an automatic legal-compliance determination.
 
 ### Milestone 2.0-F2
-Bind governance evidence to reproducible provenance. **In progress:** the F2 manifest binds the F1 evidence hash and benchmark contracts to the source revision and CI workflow run, with tamper detection and CI artifact publication.
+Bind governance evidence to reproducible provenance. **Complete:** the F2 manifest binds the F1 evidence hash and benchmark contracts to the source revision and CI workflow run, verifies manifest/evidence tampering, and publishes the reproducibility manifest as a CI artifact.
 
 ### Milestone 2.0-G1
 Stabilize SDK. **Complete:** stable `isaac_sdk.py` facade with versioned runtime, R/W/X policy checks, result envelope and causal trace/root-cause interfaces; contract tests and CI validation are green.
 
 ### Milestone 2.0-H1
-Build investor demonstration. **In progress:** reproducible evidence-first demo contract implemented for Observe → Authorize → Execute → Explain → Recover; CI validation is pending.
+Build investor demonstration. **Complete:** reproducible evidence-first demo executes the real E1/E2/E3 benchmark contracts plus a real R/W/X authorization decision, produces Observe → Authorize → Execute → Explain → Recover evidence, verifies governance integrity, and is covered by CI.
 
 ---
 
@@ -777,8 +777,9 @@ Current position:
 - E2: experimental ITI metrics are implemented, derived from E1 evidence, and wired into Isaac 2.0 CI.
 - E3: controlled architecture ablation benchmark is implemented and wired into Isaac 2.0 CI.
 - F1: governance evidence package is implemented with integrity verification and CI validation.
-- F2: governance evidence provenance manifest is implemented, binds the F1 evidence hash and benchmark contracts to the source revision/CI run, and is validated in CI.
+- F2: governance evidence provenance manifest is complete; it binds the F1 evidence hash and benchmark contracts to the source revision/CI run, detects tampering, and is published as a CI artifact.
 - G1: stable SDK facade is implemented with explicit contracts over existing governance primitives and validated by dedicated tests and CI.
+- H1: investor demonstration is complete and validated by an end-to-end CI test over real E1/E2/E3 execution and R/W/X authorization evidence.
 
 E1 measures the D3 lifecycle rather than merely asserting that methods execute:
 1. inject a provider failure/hang;
