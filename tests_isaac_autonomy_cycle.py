@@ -46,6 +46,35 @@ class TestIsaacAutonomyCycle(unittest.TestCase):
         with self.assertRaises(ValueError):
             begin_cycle(DecisionTrace(), intent="")
 
+    def test_whitespace_intent_is_rejected(self):
+        with self.assertRaises(ValueError):
+            begin_cycle(DecisionTrace(), intent="   ")
+
+    def test_cycle_does_not_claim_authorization_or_execution_at_start(self):
+        trace = DecisionTrace()
+        cycle = begin_cycle(trace, intent="observe")
+        result = validate_cycle(cycle)
+        self.assertFalse(result["authorization_observed"])
+        self.assertFalse(result["execution_observed"])
+        self.assertFalse(result["evaluation_observed"])
+        self.assertFalse(result["learning_observed"])
+
+    def test_denied_authorization_is_still_recorded_as_denied(self):
+        trace = DecisionTrace()
+        cycle = begin_cycle(trace, intent="observe")
+        record_authorization(
+            trace, cycle, authorization_event_id="auth-denied", allowed=False
+        )
+        events = trace.to_list()
+        authorization = events[-1]
+        self.assertEqual(authorization["event"], "autonomy_authorization_observed")
+        self.assertFalse(authorization["data"]["allowed"])
+
+    def test_cycle_identity_is_unique(self):
+        first = begin_cycle(DecisionTrace(), intent="observe")
+        second = begin_cycle(DecisionTrace(), intent="observe")
+        self.assertNotEqual(first.cycle_id, second.cycle_id)
+
 
 if __name__ == "__main__":
     unittest.main()
