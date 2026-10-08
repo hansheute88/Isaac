@@ -298,6 +298,22 @@ async def run_goal_motivation_cycle(
                 "source": "goal_autonomy",
             },
         )
+        # 30-day autonomy: create a reconstructable cycle on the existing trace.
+        # This records the cycle boundary only; authorization remains owned by the
+        # existing capability/governance layer.
+        try:
+            from isaac_autonomy_cycle import begin_cycle
+
+            cycle = begin_cycle(
+                task.decision_trace,
+                goal_id=dec.goal_id,
+                subgoal_id=dec.subgoal_id,
+                intent=dec.prompt,
+            )
+            task.retrieved_context["autonomy_cycle_id"] = cycle.cycle_id
+        except Exception as exc:
+            log.debug("autonomy cycle start skipped: %s", exc)
+
         task.decision_trace.add(
             TracePhase.MOTIVATION,
             "selected",
