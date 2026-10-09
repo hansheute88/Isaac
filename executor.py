@@ -2061,8 +2061,6 @@ class Executor:
                 log.debug("Autonomy cycle evidence finalized: %s", cycle_result.get("cycle_id"))
         except Exception as exc:
             log.debug("Autonomy cycle finalization skipped: %s", exc)
-            except Exception as exc:
-                log.debug("Goal-learning skip: %s", exc)
         except Exception as e:
             log.warning(f"Task-Persistenz: {e}")
 
