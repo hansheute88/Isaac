@@ -1,7 +1,7 @@
 """Audit authorization and execution events in a DecisionTrace.
 
 This is an evidence validator, not an authorization engine. It fails closed
-when an execution has no matching allow decision or follows a deny decision.
+when an execution has no matching allow decision or follows any deny decision.
 """
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from decision_trace import DecisionTrace, TracePhase
 
 
 def validate_execution_authorization(trace: DecisionTrace) -> dict[str, Any]:
-    decisions: dict[str, bool] = {}
+    decisions: dict[str, list[bool]] = {}
     violations: list[str] = []
     executions: list[str] = []
 
@@ -22,18 +22,21 @@ def validate_execution_authorization(trace: DecisionTrace) -> dict[str, Any]:
             if not action_id:
                 violations.append("authorization_missing_action_id")
                 continue
-            decisions[action_id] = data.get("allowed") is True
-        if entry.phase == TracePhase.EXECUTION and entry.event == "tool_execution":
+            decisions.setdefault(action_id, []).append(data.get("allowed") is True)
+        elif entry.phase == TracePhase.EXECUTION and entry.event == "tool_execution":
             if not action_id:
                 violations.append("execution_missing_action_id")
             else:
                 executions.append(action_id)
 
     for action_id in executions:
-        if action_id not in decisions:
+        history = decisions.get(action_id, [])
+        if not history:
             violations.append(f"execution_without_authorization:{action_id}")
-        elif decisions[action_id] is False:
+        elif False in history:
             violations.append(f"denied_action_executed:{action_id}")
+        elif history[-1] is not True:
+            violations.append(f"execution_without_current_allow:{action_id}")
 
     return {
         "valid": len(violations) == 0,
