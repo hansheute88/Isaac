@@ -2052,15 +2052,15 @@ class Executor:
                         )
             except Exception as exc:
                 log.debug("Goal-learning skip: %s", exc)
-        # Finalize the cycle from actual executor trace events. This is evidence
-        # collection only and must never authorize an action.
-        try:
-            from isaac_autonomy_cycle import finalize_cycle_from_task
-            cycle_result = finalize_cycle_from_task(task)
-            if cycle_result.get("ok"):
-                log.debug("Autonomy cycle evidence finalized: %s", cycle_result.get("cycle_id"))
-        except Exception as exc:
-            log.debug("Autonomy cycle finalization skipped: %s", exc)
+            # Finalize the cycle from actual executor trace events. This is evidence
+            # collection only and must never authorize an action.
+            try:
+                from isaac_autonomy_cycle import finalize_cycle_from_task
+                cycle_result = finalize_cycle_from_task(task)
+                if cycle_result.get("ok"):
+                    log.debug("Autonomy cycle evidence finalized: %s", cycle_result.get("cycle_id"))
+            except Exception as exc:
+                log.debug("Autonomy cycle finalization skipped: %s", exc)
         except Exception as e:
             log.warning(f"Task-Persistenz: {e}")
 
