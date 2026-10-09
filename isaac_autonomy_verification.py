@@ -54,8 +54,8 @@ class AutonomyRunMetrics:
     interest_derivations: list[dict[str, Any]] = field(default_factory=list)
     unauthorized_actions_count: int = 0
     manual_state_mutations: int = 0
-    has_lifecycle_trace: bool = True
-    has_provenance_manifest: bool = True
+    has_lifecycle_trace: bool = False
+    has_provenance_manifest: bool = False
     report_exportable: bool = True
     independent_validation_passed: bool = False
     preflight_passed: bool = False
@@ -238,6 +238,7 @@ def validate_cycle_data(c: dict[str, Any]) -> dict[str, Any]:
         subgoal_id=str(c.get("subgoal_id") or ""),
         intent=str(c.get("intent") or ""),
         authorization_event_id=str(c.get("authorization_event_id") or ""),
+        authorization_allowed=(c.get("authorization_allowed") if "authorization_allowed" in c else None),
         execution_event_id=str(c.get("execution_event_id") or ""),
         evaluation_event_id=str(c.get("evaluation_event_id") or ""),
         learning_id=str(c.get("learning_id") or ""),
