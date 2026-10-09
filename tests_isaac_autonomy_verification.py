@@ -26,6 +26,10 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
             "intent": "Research optimization",
             "authorization_event_id": "auth-1",
             "authorization_allowed": True,
+            "authorization_action_id": "action:research-optimization",
+            "authorization_scope": "research:goal-1",
+            "execution_action_id": "action:research-optimization",
+            "execution_scope": "research:goal-1",
             "execution_event_id": "exec-1",
             "evaluation_event_id": "eval-1",
             "learning_id": "learn-1",
@@ -188,6 +192,26 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         result = evaluate_autonomy_gates(metrics)
 
         self.assertFalse(result["gate_states"][GATE_CYCLE]["passed"])
+
+    def test_execution_for_different_action_is_rejected(self):
+        mismatched = dict(self.valid_cycle, execution_action_id="action:delete-data")
+        result = evaluate_autonomy_gates(AutonomyRunMetrics(
+            has_lifecycle_trace=True,
+            has_provenance_manifest=True,
+            cycles=[mismatched],
+        ))
+        self.assertFalse(result["gate_states"][GATE_CYCLE]["passed"])
+        self.assertEqual(result["valid_cycles_count"], 0)
+
+    def test_execution_outside_authorized_scope_is_rejected(self):
+        mismatched = dict(self.valid_cycle, execution_scope="filesystem:/")
+        result = evaluate_autonomy_gates(AutonomyRunMetrics(
+            has_lifecycle_trace=True,
+            has_provenance_manifest=True,
+            cycles=[mismatched],
+        ))
+        self.assertFalse(result["gate_states"][GATE_CYCLE]["passed"])
+        self.assertEqual(result["valid_cycles_count"], 0)
 
     def test_execution_before_authorization_is_rejected(self):
         trace = DecisionTrace()
