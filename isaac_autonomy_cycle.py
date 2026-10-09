@@ -234,6 +234,19 @@ def finalize_cycle_from_task(task: Any) -> dict[str, Any]:
     if evaluation is not None:
         record_evaluation(trace, cycle, evaluation_event_id=event_id(evaluation),
                           outcome="success" if bool(event_data(evaluation).get("acceptable", True)) else "unacceptable")
+    else:
+        # A terminal task status is real outcome evidence, but is not mislabeled
+        # as a quality score or as a learning effect.
+        status = str(getattr(getattr(task, "status", None), "value", getattr(task, "status", "")) or "")
+        if status in {"done", "failed", "cancelled"}:
+            outcome_entry = trace.add(
+                TracePhase.EVALUATION,
+                "autonomy_task_outcome_observed",
+                {"cycle_id": cycle.cycle_id, "task_id": str(getattr(task, "id", "") or ""), "status": status},
+            )
+            record_evaluation(
+                trace, cycle, evaluation_event_id=outcome_entry.event_id, outcome=f"task_{status}"
+            )
 
     learning = next((e for e in reversed(entries) if event_name(e) == "goal_learning_recorded"), None)
     if learning is not None:
