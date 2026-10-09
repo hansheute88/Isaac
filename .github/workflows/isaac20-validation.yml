@@ -26,10 +26,10 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Compile Isaac 2.0 modules
         run: |
-          python -m py_compile isaac_capabilities.py isaac_causal.py isaac_causal_query.py isaac_guardrails.py executor.py audit.py watchdog.py relay.py benchmarks/isaac20_fault_injection.py benchmarks/isaac20_metrics.py benchmarks/isaac20_ablation.py benchmarks/isaac20_governance.py benchmarks/isaac20_governance_f2.py isaac_sdk.py benchmarks/isaac20_investor_demo.py
+          python -m py_compile isaac_capabilities.py isaac_causal.py isaac_causal_query.py isaac_guardrails.py executor.py audit.py watchdog.py relay.py benchmarks/isaac20_fault_injection.py benchmarks/isaac20_metrics.py benchmarks/isaac20_ablation.py benchmarks/isaac20_governance.py benchmarks/isaac20_governance_f2.py isaac_sdk.py benchmarks/isaac20_investor_demo.py isaac_governance_gate.py tests_isaac_governance_gate.py
       - name: Run Isaac 2.0 tests
         run: |
-          python -m unittest tests_isaac20_capabilities tests_isaac20_causal tests_isaac20_causal_query tests_isaac20_runtime_lineage tests_isaac20_e2e tests_isaac20_guardrails tests_isaac20_e1 tests_isaac20_e2 tests_isaac20_e3 tests_isaac20_f1 tests_isaac20_f2 tests_isaac20_sdk tests_isaac20_investor_demo
+          python -m unittest tests_isaac20_capabilities tests_isaac20_causal tests_isaac20_causal_query tests_isaac20_runtime_lineage tests_isaac20_e2e tests_isaac20_guardrails tests_isaac20_e1 tests_isaac20_e2 tests_isaac20_e3 tests_isaac20_f1 tests_isaac20_f2 tests_isaac20_sdk tests_isaac20_investor_demo tests_isaac_governance_gate
       - name: Run E1 machine-readable benchmark
         run: |
           python -m benchmarks.isaac20_fault_injection > e1_fault_injection_results.json
