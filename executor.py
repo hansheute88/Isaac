@@ -977,9 +977,20 @@ class Executor:
             self._finalize_execute(task, t0)
 
     def _finalize_execute(self, task: Task, t0: float) -> None:
-        if task.status in (TaskStatus.DONE, TaskStatus.FAILED, TaskStatus.CANCELLED):
-            self._finalize_autonomy_cycle(task)
+        is_autonomy_cycle = bool(
+            isinstance(getattr(task, "retrieved_context", None), dict)
+            and task.retrieved_context.get("autonomy_cycle_id")
+        )
         if task.status == TaskStatus.CANCELLED:
+            self._finalize_autonomy_cycle(task)
+            try:
+                maybe_export_portable_trace(
+                    getattr(task, "decision_trace", None),
+                    request_id=str(task.id or ""),
+                    enabled=is_autonomy_cycle,
+                )
+            except Exception:
+                pass
             return
         if task.status in (TaskStatus.DONE, TaskStatus.FAILED):
             # Bounded learning marker for procedure / score feedback (C4)
@@ -1018,15 +1029,19 @@ class Executor:
                     score_total=task.score.total if task.score else None,
                 ),
             )
-            # C1 residual: optional portable file export (opt-in env)
+            # Persist goal-bound learning before closing the autonomy cycle so the
+            # final trace links only learning evidence that actually exists.
+            self._persist_task(task)
+            self._finalize_autonomy_cycle(task)
+            # Autonomy evidence is always exported; other tasks remain opt-in.
             try:
                 maybe_export_portable_trace(
                     getattr(task, "decision_trace", None),
                     request_id=str(task.id or ""),
+                    enabled=is_autonomy_cycle,
                 )
             except Exception:
                 pass
-            self._persist_task(task)
         elif task.status == TaskStatus.RESUMABLE:
             self._persist_task(task)
         task.dauer_sek = round(time.monotonic() - t0, 2)
