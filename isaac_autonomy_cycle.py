@@ -61,6 +61,9 @@ def begin_cycle(
     )
     if not cycle.intent:
         raise ValueError("intent must not be empty")
+    # Correlate subsequent real DecisionTrace entries with this cycle. This adds
+    # metadata only; it does not change the executor or authorization decisions.
+    trace.autonomy_cycle_id = cycle.cycle_id
     trace.add(
         TracePhase.GOVERNANCE,
         "autonomy_cycle_started",
@@ -191,9 +194,30 @@ def finalize_cycle_from_task(task: Any) -> dict[str, Any]:
     def event_id(entry: Any) -> str:
         return str(getattr(entry, "event_id", "") or "")
 
-    auth = next((e for e in entries if event_name(e) in {
-        "capability_decision", "tool_execution_capability"
-    }), None)
+    # Prefer action-level authorization when a tool/action was proposed. If no
+    # action was attempted, the active-goal scope authorization is still real
+    # evidence that the background task was allowed to pursue its owner goal.
+    action_auths = [e for e in entries if event_name(e) in {
+        "capability_decision", "tool_execution_capability", "tool_authorization_decision"
+    }]
+    successful_executions = [e for e in entries if (
+        event_name(e) == "execution_succeeded"
+        or (event_name(e) == "model_call" and event_data(e).get("ok") is True)
+        or (event_name(e) == "quality_scored" and event_data(e).get("via") == "search")
+    )]
+    auth = None
+    if action_auths:
+        # When execution succeeded, tie authorization to the same selected tool.
+        last_success = successful_executions[-1] if successful_executions else None
+        success_identifier = str(event_data(last_success).get("identifier") or "") if last_success else ""
+        matching = [e for e in action_auths if (
+            not success_identifier
+            or str(event_data(e).get("tool_identifier") or event_data(e).get("identifier") or "") == success_identifier
+        )]
+        auth = matching[-1] if matching else action_auths[-1]
+    else:
+        auth = next((e for e in reversed(entries) if event_name(e) == "goal_scope_authorization_observed"), None)
+
     if auth is not None:
         data = event_data(auth)
         allowed = bool(data.get("allowed", False))
@@ -201,13 +225,9 @@ def finalize_cycle_from_task(task: Any) -> dict[str, Any]:
     else:
         allowed = False
 
-    successful_execution = next((e for e in entries if (
-        event_name(e) == "execution_succeeded"
-        or (event_name(e) == "model_call" and event_data(e).get("ok") is True)
-        or (event_name(e) == "quality_scored" and event_data(e).get("via") == "search")
-    )), None)
+    successful_execution = successful_executions[-1] if successful_executions else None
     denied = auth is not None and not allowed
-    if successful_execution is not None and not denied:
+    if successful_execution is not None and allowed and not denied:
         record_execution(trace, cycle, execution_event_id=event_id(successful_execution))
 
     evaluation = next((e for e in reversed(entries) if event_name(e) == "quality_scored"), None)
