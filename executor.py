@@ -2031,6 +2031,31 @@ class Executor:
                             "inquiries": goal_learn.get("inquiries"),
                         },
                     )
+                    # Preserve stable cycle/goal/subgoal/task references in the
+                    # learning evidence; the autonomy adapter only observes traces.
+                    context = getattr(task, "retrieved_context", None) or {}
+                    if isinstance(context, dict) and context.get("autonomy_cycle_id"):
+                        task.decision_trace.add(
+                            TracePhase.LEARNING,
+                            "autonomy_learning_linked",
+                            {
+                                "cycle_id": context.get("autonomy_cycle_id"),
+                                "task_id": task.id,
+                                "goal_id": goal_learn.get("goal_id"),
+                                "subgoal_id": goal_learn.get("subgoal_id"),
+                            },
+                        )
+            except Exception as exc:
+                log.debug("Goal-learning skip: %s", exc)
+        # Finalize the cycle from actual executor trace events. This is evidence
+        # collection only and must never authorize an action.
+        try:
+            from isaac_autonomy_cycle import finalize_cycle_from_task
+            cycle_result = finalize_cycle_from_task(task)
+            if cycle_result.get("ok"):
+                log.debug("Autonomy cycle evidence finalized: %s", cycle_result.get("cycle_id"))
+        except Exception as exc:
+            log.debug("Autonomy cycle finalization skipped: %s", exc)
             except Exception as exc:
                 log.debug("Goal-learning skip: %s", exc)
         except Exception as e:
