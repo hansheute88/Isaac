@@ -897,6 +897,10 @@ class Executor:
             context["autonomy_cycle_validation"] = {
                 "valid": bool(result.get("valid")),
                 "missing_required": list(result.get("missing_required") or []),
+                "authorization_observed": bool(result.get("authorization_observed")),
+                "execution_observed": bool(result.get("execution_observed")),
+                "evaluation_observed": bool(result.get("evaluation_observed")),
+                "learning_observed": bool(result.get("learning_observed")),
             }
             context["autonomy_cycle_finalized"] = True
         except Exception as exc:
