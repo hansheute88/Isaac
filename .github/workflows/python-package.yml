@@ -49,20 +49,8 @@ jobs:
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
       - name: Run test suite
-        run: |
-          python -m unittest \
-            tests_phase_a_stabilization \
-            tests_state_io \
-            tests_provider_configuration \
-            tests_isaac20_capabilities \
-            tests_isaac20_causal \
-            tests_jules_agent \
-            tests_isaac_background_lifecycle \\
-            tests_isaac_autonomy_cycle \
-            tests_isaac_autonomy_reconstruction \
-            tests_isaac_interest_derivation \
-            tests_isaac_autonomy_verification \
-            tests_isaac_learning_causality
+        run: >-
+          python -m unittest tests_phase_a_stabilization tests_state_io tests_provider_configuration tests_isaac20_capabilities tests_isaac20_causal tests_jules_agent tests_isaac_background_lifecycle tests_isaac_autonomy_cycle tests_isaac_autonomy_reconstruction tests_isaac_interest_derivation tests_isaac_autonomy_verification tests_isaac_learning_causality
 
       - name: Run eval harness
         run: python -m evals.eval_runner
