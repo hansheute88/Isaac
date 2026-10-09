@@ -74,26 +74,29 @@ def validate_interest_derivation(derivation: InterestDerivation | dict[str, Any]
     align = data.get("alignment_check")
     if not isinstance(align, dict) or not align:
         missing.append("alignment_check")
-    elif not align.get("aligned"):
+    elif align.get("aligned") is not True:
         errors.append("alignment_check_failed")
 
     scope = data.get("scope_check")
     if not isinstance(scope, dict) or not scope:
         missing.append("scope_check")
-    elif not scope.get("bounded"):
+    elif scope.get("bounded") is not True:
         errors.append("scope_check_failed")
 
     risk = data.get("risk_check")
     if not isinstance(risk, dict) or not risk:
         missing.append("risk_check")
-    elif not risk.get("acceptable"):
+    elif risk.get("acceptable") is not True:
         errors.append("risk_check_failed")
 
     auth = data.get("authorization")
     if not isinstance(auth, dict) or not auth:
         missing.append("authorization")
-    elif not auth.get("authorized"):
-        errors.append("authorization_failed")
+    else:
+        if auth.get("authorized") is not True:
+            errors.append("authorization_failed")
+        if not str(auth.get("authorization_event_id") or "").strip():
+            missing.append("authorization.authorization_event_id")
 
     is_valid = (len(missing) == 0) and (len(errors) == 0)
     return {
