@@ -160,3 +160,77 @@ def validate_cycle(cycle: AutonomyCycle) -> dict[str, Any]:
         "evaluation_observed": bool(cycle.evaluation_event_id),
         "learning_observed": bool(cycle.learning_id),
     }
+
+
+
+def finalize_cycle_from_task(task: Any) -> dict[str, Any]:
+    """Link observed executor evidence to the cycle without making governance decisions.
+
+    Only real trace entries are accepted as evidence. Missing authorization,
+    execution, evaluation, or learning remains missing rather than being inferred.
+    """
+    context = getattr(task, "retrieved_context", None) or {}
+    if not isinstance(context, dict):
+        return {"ok": False, "reason": "missing_task_context"}
+    cycle_id = str(context.get("autonomy_cycle_id") or "").strip()
+    goal_id = str(context.get("goal_id") or "").strip()
+    subgoal_id = str(context.get("subgoal_id") or "").strip()
+    if not cycle_id:
+        return {"ok": False, "reason": "missing_cycle_id"}
+    trace = getattr(task, "decision_trace", None)
+    if trace is None or not hasattr(trace, "entries"):
+        return {"ok": False, "reason": "missing_decision_trace"}
+
+    cycle = AutonomyCycle(cycle_id=cycle_id, goal_id=goal_id, subgoal_id=subgoal_id,
+                          intent=str(getattr(task, "prompt", "") or "")[:1000])
+    entries = list(trace.entries)
+    def event_data(entry: Any) -> dict[str, Any]:
+        return dict(getattr(entry, "data", {}) or {})
+    def event_name(entry: Any) -> str:
+        return str(getattr(entry, "event", "") or "")
+    def event_id(entry: Any) -> str:
+        return str(getattr(entry, "event_id", "") or "")
+
+    auth = next((e for e in entries if event_name(e) in {
+        "capability_decision", "tool_execution_capability"
+    }), None)
+    if auth is not None:
+        data = event_data(auth)
+        allowed = bool(data.get("allowed", False))
+        record_authorization(trace, cycle, authorization_event_id=event_id(auth), allowed=allowed)
+    else:
+        allowed = False
+
+    successful_execution = next((e for e in entries if (
+        event_name(e) == "execution_succeeded"
+        or (event_name(e) == "model_call" and event_data(e).get("ok") is True)
+        or (event_name(e) == "quality_scored" and event_data(e).get("via") == "search")
+    )), None)
+    denied = auth is not None and not allowed
+    if successful_execution is not None and not denied:
+        record_execution(trace, cycle, execution_event_id=event_id(successful_execution))
+
+    evaluation = next((e for e in reversed(entries) if event_name(e) == "quality_scored"), None)
+    if evaluation is not None:
+        record_evaluation(trace, cycle, evaluation_event_id=event_id(evaluation),
+                          outcome="success" if bool(event_data(evaluation).get("acceptable", True)) else "unacceptable")
+
+    learning = next((e for e in reversed(entries) if event_name(e) == "goal_learning_recorded"), None)
+    if learning is not None:
+        learning_data = event_data(learning)
+        if learning_data.get("goal_id") == goal_id and learning_data.get("subgoal_id", "") == subgoal_id:
+            record_learning(trace, cycle, learning_id=event_id(learning))
+
+    result = validate_cycle(cycle)
+    result.update({
+        "ok": True,
+        "task_id": str(getattr(task, "id", "") or ""),
+        "goal_id": goal_id,
+        "subgoal_id": subgoal_id,
+        "research_id": str(getattr(task, "id", "") or "") if str(getattr(getattr(task, "typ", None), "value", getattr(task, "typ", ""))).lower() == "research" else "",
+        "authorization_denied": denied,
+        "execution_observed": bool(cycle.execution_event_id),
+        "evaluation_observed": bool(cycle.evaluation_event_id),
+        "learning_observed": bool(cycle.learning_id),
+    })
+    return result
