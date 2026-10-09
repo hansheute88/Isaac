@@ -41,9 +41,13 @@ def reconstruct_cycle(trace: DecisionTrace, cycle_id: str) -> dict[str, Any]:
                 cycle.authorization_allowed = data.get("allowed") is True
             elif "authorization_allowed" in data:
                 cycle.authorization_allowed = data.get("authorization_allowed") is True
+            cycle.authorization_action_id = str(data.get("action_id") or data.get("authorized_action_id") or "").strip()
+            cycle.authorization_scope = str(data.get("scope") or data.get("authorized_scope") or "").strip()
         elif phase == "execution" and not cycle.execution_event_id:
             execution_position = position
-            cycle.execution_event_id = event_id
+            cycle.execution_event_id = str(data.get("execution_event_id") or event_id)
+            cycle.execution_action_id = str(data.get("action_id") or data.get("identifier") or "").strip()
+            cycle.execution_scope = str(data.get("scope") or data.get("resource") or "").strip()
         elif phase == "evaluation" and not cycle.evaluation_event_id:
             cycle.evaluation_event_id = event_id
         elif phase == "learning" and not cycle.learning_id:
