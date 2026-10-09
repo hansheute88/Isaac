@@ -86,14 +86,14 @@ def record_authorization(
 ) -> None:
     """Record an existing authorization decision; never make one."""
     cycle.authorization_event_id = str(authorization_event_id or "")
-    cycle.authorization_allowed = bool(allowed)
+    cycle.authorization_allowed = allowed is True
     trace.add(
         TracePhase.GOVERNANCE,
         "autonomy_authorization_observed",
         {
             "cycle_id": cycle.cycle_id,
             "authorization_event_id": cycle.authorization_event_id,
-            "allowed": bool(allowed),
+            "allowed": allowed is True,
         },
     )
 
