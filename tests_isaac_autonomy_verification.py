@@ -133,7 +133,7 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         metrics = self.full_metrics
         metrics.cycles = []
 
-        result = evaluate_autonomy_gates(metrics)
+        result = evaluate_autonomy_gates(metrics, trace=self.trace)
 
         self.assertTrue(result["gate_states"][GATE_BASELINE]["passed"])
         self.assertFalse(result["gate_states"][GATE_CYCLE]["passed"])
@@ -145,7 +145,7 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         metrics = self.full_metrics
         metrics.learning_records = []
 
-        result = evaluate_autonomy_gates(metrics)
+        result = evaluate_autonomy_gates(metrics, trace=self.trace)
 
         self.assertTrue(result["gate_states"][GATE_CYCLE]["passed"])
         self.assertFalse(result["gate_states"][GATE_LEARNING]["passed"])
@@ -155,7 +155,7 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         metrics = self.full_metrics
         metrics.interest_derivations = [self.valid_interest_1]  # Only 1 < required 2
 
-        result = evaluate_autonomy_gates(metrics)
+        result = evaluate_autonomy_gates(metrics, trace=self.trace)
 
         self.assertTrue(result["gate_states"][GATE_LEARNING]["passed"])
         self.assertFalse(result["gate_states"][GATE_INTEREST]["passed"])
@@ -165,7 +165,7 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         metrics = self.full_metrics
         metrics.preflight_passed = False
 
-        result = evaluate_autonomy_gates(metrics)
+        result = evaluate_autonomy_gates(metrics, trace=self.trace)
 
         self.assertTrue(result["gate_states"][GATE_INTEREST]["passed"])
         self.assertFalse(result["gate_states"][GATE_PREFLIGHT]["passed"])
@@ -177,7 +177,7 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         metrics = self.full_metrics
         metrics.manual_state_mutations = 1
 
-        result = evaluate_autonomy_gates(metrics)
+        result = evaluate_autonomy_gates(metrics, trace=self.trace)
 
         self.assertFalse(result["dod_status"]["9_zero_manual_state_mutations"])
         self.assertFalse(result["gate_states"][GATE_PROOF]["passed"])
@@ -205,7 +205,7 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         metrics = self.full_metrics
         metrics.cycles = [denied]
 
-        result = evaluate_autonomy_gates(metrics)
+        result = evaluate_autonomy_gates(metrics, trace=self.trace)
 
         self.assertFalse(result["gate_states"][GATE_CYCLE]["passed"])
         self.assertEqual(result["highest_passed_gate"], GATE_BASELINE)
@@ -216,7 +216,7 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         metrics = self.full_metrics
         metrics.cycles = [incomplete]
 
-        result = evaluate_autonomy_gates(metrics)
+        result = evaluate_autonomy_gates(metrics, trace=self.trace)
 
         self.assertFalse(result["gate_states"][GATE_CYCLE]["passed"])
 
