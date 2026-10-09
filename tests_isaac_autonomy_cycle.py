@@ -10,6 +10,7 @@ from isaac_autonomy_cycle import (
     record_execution,
     record_learning,
     validate_cycle,
+    finalize_cycle_from_task,
 )
 
 
@@ -74,6 +75,65 @@ class TestIsaacAutonomyCycle(unittest.TestCase):
         first = begin_cycle(DecisionTrace(), intent="observe")
         second = begin_cycle(DecisionTrace(), intent="observe")
         self.assertNotEqual(first.cycle_id, second.cycle_id)
+
+
+    def test_task_evidence_links_goal_research_learning_by_stable_ids(self):
+        from types import SimpleNamespace
+        from decision_trace import TracePhase
+
+        trace = DecisionTrace()
+        trace.add(TracePhase.GOVERNANCE, "capability_decision", {"allowed": True})
+        trace.add(TracePhase.EXECUTION, "execution_succeeded", {"identifier": "search"})
+        trace.add(TracePhase.EVALUATION, "quality_scored", {"acceptable": True})
+        trace.add(TracePhase.LEARNING, "goal_learning_recorded", {
+            "goal_id": "goal-42", "subgoal_id": "sub-7", "facts": 2,
+        })
+        task = SimpleNamespace(
+            id="task-research-99",
+            typ=SimpleNamespace(value="research"),
+            prompt="Research bounded question",
+            retrieved_context={
+                "autonomy_cycle_id": "cycle-fixed-1",
+                "goal_id": "goal-42",
+                "subgoal_id": "sub-7",
+            },
+            decision_trace=trace,
+        )
+        result = finalize_cycle_from_task(task)
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["cycle_id"], "cycle-fixed-1")
+        self.assertEqual(result["goal_id"], "goal-42")
+        self.assertEqual(result["subgoal_id"], "sub-7")
+        self.assertEqual(result["research_id"], "task-research-99")
+        self.assertTrue(result["authorization_observed"])
+        self.assertTrue(result["execution_observed"])
+        self.assertTrue(result["evaluation_observed"])
+        self.assertTrue(result["learning_observed"])
+
+    def test_denied_authorization_never_records_execution(self):
+        from types import SimpleNamespace
+        from decision_trace import TracePhase
+
+        trace = DecisionTrace()
+        trace.add(TracePhase.GOVERNANCE, "capability_decision", {"allowed": False})
+        task = SimpleNamespace(
+            id="task-denied",
+            typ=SimpleNamespace(value="research"),
+            prompt="Denied research",
+            retrieved_context={
+                "autonomy_cycle_id": "cycle-denied",
+                "goal_id": "goal-1",
+                "subgoal_id": "sub-1",
+            },
+            decision_trace=trace,
+        )
+        result = finalize_cycle_from_task(task)
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["authorization_denied"])
+        self.assertFalse(result["execution_observed"])
+        self.assertFalse(any(
+            entry.event == "autonomy_execution_observed" for entry in trace.entries
+        ))
 
 
 if __name__ == "__main__":
