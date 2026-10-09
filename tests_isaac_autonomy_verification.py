@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from decision_trace import DecisionTrace, TracePhase
+from decision_trace import DecisionTrace, TraceEntry, TracePhase
 from benchmarks.isaac20_governance import build_governance_evidence
 from benchmarks.isaac20_governance_f2 import build_reproducibility_manifest
 from isaac_autonomy_cycle import begin_cycle, record_authorization
@@ -118,6 +118,38 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         self.assertIn("autonomy_run_started", result["missing_official_evidence_events"])
         self.assertIn("autonomy_run_ended", result["missing_official_evidence_events"])
         self.assertIn("autonomy_preflight_72h_passed", result["missing_official_evidence_events"])
+
+    def test_official_proof_rejects_preflight_events_after_run_start(self):
+        trace = DecisionTrace()
+        events = [
+            ("autonomy_run_started", 1_000_000.0),
+            ("autonomy_preflight_24h_passed", 1_000_001.0),
+            ("autonomy_preflight_48h_passed", 1_000_002.0),
+            ("autonomy_preflight_72h_passed", 1_000_003.0),
+            ("autonomy_run_heartbeat", 1_000_000.0 + 15 * 86400),
+            ("autonomy_run_ended", 1_000_000.0 + 30 * 86400),
+            ("autonomy_independent_validation_passed", 1_000_000.0 + 30 * 86400 + 1),
+            ("autonomy_final_report_exported", 1_000_000.0 + 30 * 86400 + 2),
+        ]
+        trace.entries = [
+            TraceEntry(
+                sequence=index,
+                ts=timestamp,
+                phase=TracePhase.GOVERNANCE,
+                event=event,
+                data={},
+                event_id=f"test-event-{index}",
+            )
+            for index, (event, timestamp) in enumerate(events, start=1)
+        ]
+
+        result = evaluate_autonomy_gates(self.full_metrics, trace=trace)
+
+        self.assertFalse(result["official_proof_eligible"])
+        self.assertIn(
+            "preflight_not_before_run:autonomy_preflight_24h_passed",
+            result["official_proof_timestamp_errors"],
+        )
 
     def test_failed_baseline_blocks_all_subsequent_gates(self):
         metrics = self.full_metrics
