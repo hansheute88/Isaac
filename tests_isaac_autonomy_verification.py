@@ -110,6 +110,15 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         for gate in (GATE_BASELINE, GATE_CYCLE, GATE_LEARNING, GATE_INTEREST, GATE_PREFLIGHT, GATE_PROOF, GATE_FINAL):
             self.assertTrue(result["gate_states"][gate]["passed"], f"Gate {gate} should pass")
 
+    def test_synthetic_green_gates_do_not_claim_official_30_day_proof(self):
+        result = evaluate_autonomy_gates(self.full_metrics, trace=self.trace)
+
+        self.assertFalse(result["official_proof_eligible"])
+        self.assertEqual(result["measured_uptime_days_from_trace"], 0.0)
+        self.assertIn("autonomy_run_started", result["missing_official_evidence_events"])
+        self.assertIn("autonomy_run_ended", result["missing_official_evidence_events"])
+        self.assertIn("autonomy_preflight_72h_passed", result["missing_official_evidence_events"])
+
     def test_failed_baseline_blocks_all_subsequent_gates(self):
         metrics = self.full_metrics
         metrics.provenance_manifest = {}
