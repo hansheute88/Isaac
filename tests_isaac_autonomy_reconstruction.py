@@ -58,5 +58,32 @@ class TestIsaacAutonomyReconstruction(unittest.TestCase):
         self.assertFalse(result["cycle"]["authorization_event_id"])
 
 
+    def test_denied_or_started_actions_are_not_reconstructed_as_execution(self):
+        trace = DecisionTrace()
+        cycle = begin_cycle(trace, intent="try a bounded action")
+        trace.add(
+            TracePhase.GOVERNANCE,
+            "tool_authorization_decision",
+            {"allowed": False, "tool_identifier": "test-tool"},
+        )
+        trace.add(
+            TracePhase.EXECUTION,
+            "execution_started",
+            {"identifier": "test-tool"},
+        )
+        trace.add(
+            TracePhase.LEARNING,
+            "procedure_record",
+            {"tools": ["test-tool"]},
+        )
+
+        result = reconstruct_cycle(trace, cycle.cycle_id)
+
+        self.assertTrue(result["cycle"]["authorization_event_id"])
+        self.assertFalse(result["cycle"]["execution_event_id"])
+        self.assertFalse(result["cycle"]["learning_id"])
+
+
+
 if __name__ == "__main__":
     unittest.main()
