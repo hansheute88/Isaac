@@ -25,6 +25,7 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
             "cycle_id": "cycle-1",
             "intent": "Research optimization",
             "authorization_event_id": "auth-1",
+            "authorization_allowed": True,
             "execution_event_id": "exec-1",
             "evaluation_event_id": "eval-1",
             "learning_id": "learn-1",
@@ -167,6 +168,26 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
 
         self.assertTrue(result["gate_states"][GATE_CYCLE]["passed"])
         self.assertEqual(result["valid_cycles_count"], 1)
+
+    def test_denied_authorization_invalidates_cycle_and_blocks_cycle_gate(self):
+        denied = dict(self.valid_cycle, authorization_allowed=False)
+        metrics = self.full_metrics
+        metrics.cycles = [denied]
+
+        result = evaluate_autonomy_gates(metrics)
+
+        self.assertFalse(result["gate_states"][GATE_CYCLE]["passed"])
+        self.assertEqual(result["highest_passed_gate"], GATE_BASELINE)
+
+    def test_missing_authorization_outcome_invalidates_cycle(self):
+        incomplete = dict(self.valid_cycle)
+        incomplete.pop("authorization_allowed", None)
+        metrics = self.full_metrics
+        metrics.cycles = [incomplete]
+
+        result = evaluate_autonomy_gates(metrics)
+
+        self.assertFalse(result["gate_states"][GATE_CYCLE]["passed"])
 
 
 if __name__ == "__main__":
