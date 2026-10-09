@@ -167,18 +167,48 @@ def evaluate_autonomy_gates(
     start_entries = [entry for entry in trace_entries if entry.get("event") == "autonomy_run_started"]
     end_entries = [entry for entry in trace_entries if entry.get("event") == "autonomy_run_ended"]
     measured_uptime_days = 0.0
-    if start_entries and end_entries:
+    event_times: dict[str, list[float]] = {}
+    timestamp_errors: list[str] = []
+    for entry in trace_entries:
+        event_name = str(entry.get("event") or "")
         try:
-            measured_uptime_days = max(
-                0.0,
-                (float(end_entries[-1].get("ts", 0)) - float(start_entries[0].get("ts", 0))) / 86400.0,
-            )
+            timestamp = float(entry.get("ts"))
+            if timestamp <= 0:
+                raise ValueError("timestamp must be positive")
+            event_times.setdefault(event_name, []).append(timestamp)
         except (TypeError, ValueError):
-            measured_uptime_days = 0.0
+            if event_name in required_official_events:
+                timestamp_errors.append(f"invalid_timestamp:{event_name}")
+    start_ts = None
+    end_ts = None
+    if event_times.get("autonomy_run_started") and event_times.get("autonomy_run_ended"):
+        start_ts = event_times["autonomy_run_started"][0]
+        end_ts = event_times["autonomy_run_ended"][-1]
+        if end_ts >= start_ts:
+            measured_uptime_days = (end_ts - start_ts) / 86400.0
+        else:
+            timestamp_errors.append("run_end_precedes_start")
+    preflight_events = (
+        "autonomy_preflight_24h_passed",
+        "autonomy_preflight_48h_passed",
+        "autonomy_preflight_72h_passed",
+    )
+    for event_name in preflight_events:
+        times = event_times.get(event_name, [])
+        if start_ts is not None and times and times[-1] >= start_ts:
+            timestamp_errors.append(f"preflight_not_before_run:{event_name}")
+    heartbeat_times = event_times.get("autonomy_run_heartbeat", [])
+    if start_ts is not None and end_ts is not None and not any(start_ts <= ts <= end_ts for ts in heartbeat_times):
+        timestamp_errors.append("no_heartbeat_within_run")
+    if end_ts is not None:
+        for event_name in ("autonomy_independent_validation_passed", "autonomy_final_report_exported"):
+            times = event_times.get(event_name, [])
+            if times and times[-1] < end_ts:
+                timestamp_errors.append(f"post_run_evidence_precedes_end:{event_name}")
     official_proof_eligible = (
         not missing_official_events
+        and not timestamp_errors
         and measured_uptime_days >= 30.0
-        and any(entry.get("event") == "autonomy_run_heartbeat" for entry in trace_entries)
         and bool(m.get("independent_validation_passed"))
     )
 
@@ -284,6 +314,7 @@ def evaluate_autonomy_gates(
         "official_proof_eligible": official_proof_eligible,
         "measured_uptime_days_from_trace": measured_uptime_days,
         "missing_official_evidence_events": missing_official_events,
+        "official_proof_timestamp_errors": sorted(set(timestamp_errors)),
     }
 
 
