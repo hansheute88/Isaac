@@ -759,16 +759,167 @@ class Executor:
 
         return None
 
+    # ── 30-day autonomy: bind real task decisions to the cycle trace ───────────
+    def _prepare_autonomy_cycle(self, task: Task) -> None:
+        context = getattr(task, "retrieved_context", None)
+        if not isinstance(context, dict):
+            return
+        if context.get("source") != "goal_autonomy" and not context.get("autonomy_cycle_id"):
+            return
+
+        try:
+            from isaac_autonomy_cycle import begin_cycle
+
+            cycle_id = str(context.get("autonomy_cycle_id") or "").strip()
+            goal_id = str(context.get("goal_id") or getattr(task, "goal_id", "") or "").strip()
+            subgoal_id = str(context.get("subgoal_id") or ((getattr(task, "subgoal_ids", []) or [""])[0]) or "").strip()
+            if not cycle_id:
+                cycle = begin_cycle(
+                    task.decision_trace,
+                    goal_id=goal_id,
+                    subgoal_id=subgoal_id,
+                    intent=str(task.prompt or ""),
+                )
+                cycle_id = cycle.cycle_id
+                context["autonomy_cycle_id"] = cycle_id
+            else:
+                task.decision_trace.autonomy_cycle_id = cycle_id
+
+            if context.get("autonomy_cycle_prepared"):
+                return
+
+            task.decision_trace.add(
+                TracePhase.RETRIEVAL,
+                "autonomy_observation_captured",
+                {
+                    "task_id": task.id,
+                    "source": str(context.get("source") or "existing_cycle"),
+                    "goal_id": goal_id,
+                    "subgoal_id": subgoal_id,
+                    "prompt_chars": len(task.prompt or ""),
+                },
+            )
+            task.decision_trace.add(
+                TracePhase.CLASSIFICATION,
+                "autonomy_intent_interpreted",
+                {
+                    "task_type": getattr(getattr(task, "typ", None), "value", str(getattr(task, "typ", ""))),
+                    "interaction_class": str(getattr(task, "interaction_class", "") or ""),
+                },
+            )
+
+            # Background goal tasks need the same memory-retrieval stage as owner
+            # requests. Attach only bounded formatted context; never fabricate it.
+            memory_attached = False
+            memory_chars = 0
+            try:
+                from memory import get_memory
+
+                memory = get_memory()
+                retrieval = memory.build_retrieval_context(
+                    task.prompt,
+                    intent=getattr(getattr(task, "typ", None), "value", str(getattr(task, "typ", ""))),
+                    interaction_class=str(getattr(task, "interaction_class", "") or ""),
+                )
+                formatted = str(memory.format_retrieval_context(retrieval) or "").strip()
+                if formatted:
+                    bounded = formatted[:3000]
+                    marker = "[Isaac-Gedächtniskontext]"
+                    if marker not in (task.prompt or ""):
+                        task.prompt = f"{task.prompt.rstrip()}\\n\\n{marker}\\n{bounded}"
+                    memory_attached = True
+                    memory_chars = len(bounded)
+            except Exception as exc:
+                task.decision_trace.add(
+                    TracePhase.RETRIEVAL,
+                    "autonomy_memory_retrieval_failed",
+                    {"error_type": type(exc).__name__},
+                )
+
+            task.decision_trace.add(
+                TracePhase.RETRIEVAL,
+                "autonomy_memory_context_checked",
+                {
+                    "attached_to_task_prompt": memory_attached,
+                    "context_chars": memory_chars,
+                    "bounded_chars": 3000,
+                },
+            )
+            task.decision_trace.add(
+                TracePhase.MOTIVATION,
+                "autonomy_goal_context_checked",
+                {
+                    "goal_id": goal_id,
+                    "subgoal_id": subgoal_id,
+                    "goal_context_present": bool(goal_id),
+                    "subgoal_context_present": bool(subgoal_id),
+                },
+            )
+            task.decision_trace.add(
+                TracePhase.STRATEGY,
+                "autonomy_plan_selected",
+                {
+                    "task_type": getattr(getattr(task, "typ", None), "value", str(getattr(task, "typ", ""))),
+                    "allow_tools": bool(getattr(getattr(task, "strategy", None), "allow_tools", False)),
+                    "required_capabilities_count": len(getattr(task, "required_capabilities", []) or []),
+                },
+            )
+            context["autonomy_cycle_prepared"] = True
+        except Exception as exc:
+            log.warning("Autonomy cycle preparation failed: %s", type(exc).__name__)
+
+    def _finalize_autonomy_cycle(self, task: Task) -> None:
+        context = getattr(task, "retrieved_context", None)
+        if not isinstance(context, dict) or not context.get("autonomy_cycle_id"):
+            return
+        if context.get("autonomy_cycle_finalized"):
+            return
+        try:
+            from isaac_autonomy_cycle import finalize_cycle_from_task
+
+            task.decision_trace.autonomy_cycle_id = str(context["autonomy_cycle_id"])
+            result = finalize_cycle_from_task(task)
+            task.decision_trace.add(
+                TracePhase.EVALUATION,
+                "autonomy_cycle_validation",
+                {
+                    "cycle_id": str(context["autonomy_cycle_id"]),
+                    "task_id": task.id,
+                    "task_status": getattr(getattr(task, "status", None), "value", str(getattr(task, "status", ""))),
+                    "valid": bool(result.get("valid")),
+                    "missing_required": list(result.get("missing_required") or []),
+                    "authorization_observed": bool(result.get("authorization_observed")),
+                    "execution_observed": bool(result.get("execution_observed")),
+                    "evaluation_observed": bool(result.get("evaluation_observed")),
+                    "learning_observed": bool(result.get("learning_observed")),
+                },
+            )
+            context["autonomy_cycle_validation"] = {
+                "valid": bool(result.get("valid")),
+                "missing_required": list(result.get("missing_required") or []),
+            }
+            context["autonomy_cycle_finalized"] = True
+        except Exception as exc:
+            log.warning("Autonomy cycle finalization failed: %s", type(exc).__name__)
+
     # ── Haupt-Execute ─────────────────────────────────────────────────────────
     async def _execute(self, task: Task):
+        t0 = time.monotonic()
+        self._prepare_autonomy_cycle(task)
         preflight_fehler = self._preflight(task)
+        if context := getattr(task, "retrieved_context", None):
+            if isinstance(context, dict) and context.get("autonomy_cycle_id"):
+                task.decision_trace.add(
+                    TracePhase.GOVERNANCE,
+                    "autonomy_preflight_result",
+                    {"passed": not bool(preflight_fehler), "error_type": "preflight" if preflight_fehler else ""},
+                )
         if preflight_fehler:
             task.status = TaskStatus.FAILED
             task.fehler = preflight_fehler
+            self._finalize_execute(task, t0)
             self._notify(task)
             return
-
-        t0 = time.monotonic()
         resumed_mid = False
         if task.resume_strategy == "from_checkpoint" or task.resume_checkpoint_id:
             resume_action = await self._resume_from_checkpoint(task)
@@ -822,6 +973,8 @@ class Executor:
             self._finalize_execute(task, t0)
 
     def _finalize_execute(self, task: Task, t0: float) -> None:
+        if task.status in (TaskStatus.DONE, TaskStatus.FAILED, TaskStatus.CANCELLED):
+            self._finalize_autonomy_cycle(task)
         if task.status == TaskStatus.CANCELLED:
             return
         if task.status in (TaskStatus.DONE, TaskStatus.FAILED):
@@ -998,6 +1151,17 @@ class Executor:
                 selection, prompt, override_ctx=override_ctx,
             )
             capability_block = self._check_tool_execution_capability(task, selection)
+            task.decision_trace.add(
+                TracePhase.GOVERNANCE,
+                "tool_authorization_decision",
+                {
+                    "allowed": not bool(capability_block or blocked),
+                    "tool_identifier": str(selection.get("identifier") or ""),
+                    "authorization_source": "rwx_and_constitution",
+                    "rwx_blocked": bool(capability_block),
+                    "constitution_blocked": bool(blocked),
+                },
+            )
             if capability_block:
                 result = ensure_result_contract(
                     {"ok": False, "error": capability_block, "via": "rwx"},
