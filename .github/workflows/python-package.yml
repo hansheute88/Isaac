@@ -56,6 +56,7 @@ jobs:
             tests_provider_configuration \
             tests_isaac20_capabilities \
             tests_isaac20_causal \
+            tests_isaac_governance_gate \
             tests_jules_agent
 
       - name: Run eval harness
