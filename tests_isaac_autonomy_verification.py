@@ -225,6 +225,8 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         result = evaluate_autonomy_gates(AutonomyRunMetrics(
             has_lifecycle_trace=True,
             has_provenance_manifest=True,
+            governance_evidence_package=self.evidence_package,
+            provenance_manifest=self.provenance_manifest,
             cycles=[mismatched],
         ))
         self.assertFalse(result["gate_states"][GATE_CYCLE]["passed"])
@@ -235,6 +237,8 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         result = evaluate_autonomy_gates(AutonomyRunMetrics(
             has_lifecycle_trace=True,
             has_provenance_manifest=True,
+            governance_evidence_package=self.evidence_package,
+            provenance_manifest=self.provenance_manifest,
             cycles=[mismatched],
         ))
         self.assertFalse(result["gate_states"][GATE_CYCLE]["passed"])
