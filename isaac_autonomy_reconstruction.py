@@ -22,6 +22,16 @@ def reconstruct_cycle(trace: DecisionTrace, cycle_id: str) -> dict[str, Any]:
         phase = str(entry.get("phase") or "")
         event_id = str(entry.get("event_id") or "")
         data = entry.get("data") or {}
+
+        if data.get("intent") and not cycle.intent:
+            cycle.intent = str(data["intent"])
+        if data.get("goal_id") and not cycle.goal_id:
+            cycle.goal_id = str(data["goal_id"])
+        if data.get("subgoal_id") and not cycle.subgoal_id:
+            cycle.subgoal_id = str(data["subgoal_id"])
+        if data.get("next_cycle_id") and not cycle.next_cycle_id:
+            cycle.next_cycle_id = str(data["next_cycle_id"])
+
         if phase == "governance" and data.get("authorization_event_id"):
             cycle.authorization_event_id = str(data["authorization_event_id"])
         elif phase == "execution" and not cycle.execution_event_id:
