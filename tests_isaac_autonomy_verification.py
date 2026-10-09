@@ -55,7 +55,7 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
             "alignment_check": {"aligned": True},
             "scope_check": {"bounded": True},
             "risk_check": {"acceptable": True},
-            "authorization": {"authorized": True},
+            "authorization": {"authorized": True, "authorization_event_id": "auth-interest-1"},
         }
         interest_args_2 = dict(interest_args_1, interest_id="interest-2", interest_proposal="Proposal B")
 
