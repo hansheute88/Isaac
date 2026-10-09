@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from decision_trace import DecisionTrace
+from decision_trace import DecisionTrace, TracePhase
 from isaac_autonomy_cycle import begin_cycle, record_authorization
 from isaac_autonomy_verification import (
     GATE_BASELINE,
@@ -188,6 +188,26 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         result = evaluate_autonomy_gates(metrics)
 
         self.assertFalse(result["gate_states"][GATE_CYCLE]["passed"])
+
+    def test_execution_before_authorization_is_rejected(self):
+        trace = DecisionTrace()
+        cycle = begin_cycle(trace, intent="Execute protected action")
+        trace.add(
+            TracePhase.EXECUTION,
+            "autonomy_execution_observed",
+            {"cycle_id": cycle.cycle_id, "execution_event_id": "exec-early"},
+        )
+        record_authorization(trace, cycle, authorization_event_id="auth-late", allowed=True)
+
+        metrics = AutonomyRunMetrics(
+            has_lifecycle_trace=True,
+            has_provenance_manifest=True,
+            cycles=[],
+        )
+        result = evaluate_autonomy_gates(metrics, trace=trace)
+
+        self.assertFalse(result["gate_states"][GATE_CYCLE]["passed"])
+        self.assertEqual(result["valid_cycles_count"], 0)
 
 
 if __name__ == "__main__":
