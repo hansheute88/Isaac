@@ -13,6 +13,7 @@ import asyncio
 import time
 import logging
 import json
+import os
 import hashlib
 import uuid
 from datetime import datetime, timezone
@@ -554,7 +555,7 @@ class BackgroundLoop:
             canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
             payload["event_hash"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
             with AUTONOMY_LIFECYCLE_PATH.open("a", encoding="utf-8") as stream:
-                stream.write(json.dumps(payload, sort_keys=True, ensure_ascii=False) + "\\n")
+                stream.write(json.dumps(payload, sort_keys=True, ensure_ascii=False) + "\n")
                 stream.flush()
                 os.fsync(stream.fileno())
             self._lifecycle_prev_hash = payload["event_hash"]
