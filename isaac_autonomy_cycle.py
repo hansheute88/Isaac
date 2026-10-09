@@ -22,6 +22,7 @@ class AutonomyCycle:
     subgoal_id: str = ""
     intent: str = ""
     authorization_event_id: str = ""
+    authorization_allowed: bool | None = None
     execution_event_id: str = ""
     evaluation_event_id: str = ""
     learning_id: str = ""
@@ -35,6 +36,7 @@ class AutonomyCycle:
             "subgoal_id": self.subgoal_id,
             "intent": self.intent,
             "authorization_event_id": self.authorization_event_id,
+            "authorization_allowed": self.authorization_allowed,
             "execution_event_id": self.execution_event_id,
             "evaluation_event_id": self.evaluation_event_id,
             "learning_id": self.learning_id,
@@ -84,6 +86,7 @@ def record_authorization(
 ) -> None:
     """Record an existing authorization decision; never make one."""
     cycle.authorization_event_id = str(authorization_event_id or "")
+    cycle.authorization_allowed = bool(allowed)
     trace.add(
         TracePhase.GOVERNANCE,
         "autonomy_authorization_observed",
@@ -153,9 +156,11 @@ def validate_cycle(cycle: AutonomyCycle) -> dict[str, Any]:
     return {
         "schema": CYCLE_SCHEMA,
         "cycle_id": cycle.cycle_id,
-        "valid": not missing,
+        "valid": not missing and cycle.authorization_allowed is True,
         "missing_required": missing,
         "authorization_observed": bool(cycle.authorization_event_id),
+        "authorization_allowed": cycle.authorization_allowed is True,
+        "authorization_error": ("authorization_missing" if not cycle.authorization_event_id else "authorization_not_allowed" if cycle.authorization_allowed is not True else None),
         "execution_observed": bool(cycle.execution_event_id),
         "evaluation_observed": bool(cycle.evaluation_event_id),
         "learning_observed": bool(cycle.learning_id),
