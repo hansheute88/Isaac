@@ -209,6 +209,10 @@ class TestIsaacAutonomyCycle(unittest.TestCase):
         executor._finalize_autonomy_cycle(task)
         result = task.retrieved_context.get("autonomy_cycle_validation") or {}
         self.assertTrue(result.get("valid"))
+        self.assertTrue(result.get("evaluation_observed"))
+        self.assertTrue(any(
+            entry.event == "autonomy_task_outcome_observed" for entry in task.decision_trace.entries
+        ))
         self.assertFalse(any(
             entry.event == "autonomy_learning_recorded" for entry in task.decision_trace.entries
         ))
