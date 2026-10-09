@@ -34,6 +34,10 @@ def reconstruct_cycle(trace: DecisionTrace, cycle_id: str) -> dict[str, Any]:
 
         if phase == "governance" and data.get("authorization_event_id"):
             cycle.authorization_event_id = str(data["authorization_event_id"])
+            if "allowed" in data:
+                cycle.authorization_allowed = data.get("allowed") is True
+            elif "authorization_allowed" in data:
+                cycle.authorization_allowed = data.get("authorization_allowed") is True
         elif phase == "execution" and not cycle.execution_event_id:
             cycle.execution_event_id = event_id
         elif phase == "evaluation" and not cycle.evaluation_event_id:
