@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from decision_trace import DecisionTrace
+from decision_trace import DecisionTrace, TracePhase
 from isaac_autonomy_cycle import begin_cycle, record_authorization
 from isaac_autonomy_verification import (
     GATE_BASELINE,
@@ -25,6 +25,7 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
             "cycle_id": "cycle-1",
             "intent": "Research optimization",
             "authorization_event_id": "auth-1",
+            "authorization_allowed": True,
             "execution_event_id": "exec-1",
             "evaluation_event_id": "eval-1",
             "learning_id": "learn-1",
@@ -54,7 +55,7 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
             "alignment_check": {"aligned": True},
             "scope_check": {"bounded": True},
             "risk_check": {"acceptable": True},
-            "authorization": {"authorized": True},
+            "authorization": {"authorized": True, "authorization_event_id": "auth-interest-1"},
         }
         interest_args_2 = dict(interest_args_1, interest_id="interest-2", interest_proposal="Proposal B")
 
@@ -167,6 +168,46 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
 
         self.assertTrue(result["gate_states"][GATE_CYCLE]["passed"])
         self.assertEqual(result["valid_cycles_count"], 1)
+
+    def test_denied_authorization_invalidates_cycle_and_blocks_cycle_gate(self):
+        denied = dict(self.valid_cycle, authorization_allowed=False)
+        metrics = self.full_metrics
+        metrics.cycles = [denied]
+
+        result = evaluate_autonomy_gates(metrics)
+
+        self.assertFalse(result["gate_states"][GATE_CYCLE]["passed"])
+        self.assertEqual(result["highest_passed_gate"], GATE_BASELINE)
+
+    def test_missing_authorization_outcome_invalidates_cycle(self):
+        incomplete = dict(self.valid_cycle)
+        incomplete.pop("authorization_allowed", None)
+        metrics = self.full_metrics
+        metrics.cycles = [incomplete]
+
+        result = evaluate_autonomy_gates(metrics)
+
+        self.assertFalse(result["gate_states"][GATE_CYCLE]["passed"])
+
+    def test_execution_before_authorization_is_rejected(self):
+        trace = DecisionTrace()
+        cycle = begin_cycle(trace, intent="Execute protected action")
+        trace.add(
+            TracePhase.EXECUTION,
+            "autonomy_execution_observed",
+            {"cycle_id": cycle.cycle_id, "execution_event_id": "exec-early"},
+        )
+        record_authorization(trace, cycle, authorization_event_id="auth-late", allowed=True)
+
+        metrics = AutonomyRunMetrics(
+            has_lifecycle_trace=True,
+            has_provenance_manifest=True,
+            cycles=[],
+        )
+        result = evaluate_autonomy_gates(metrics, trace=trace)
+
+        self.assertFalse(result["gate_states"][GATE_CYCLE]["passed"])
+        self.assertEqual(result["valid_cycles_count"], 0)
 
 
 if __name__ == "__main__":
