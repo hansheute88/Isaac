@@ -826,7 +826,7 @@ class Executor:
                     bounded = formatted[:3000]
                     marker = "[Isaac-Gedächtniskontext]"
                     if marker not in (task.prompt or ""):
-                        task.prompt = f"{task.prompt.rstrip()}\\n\\n{marker}\\n{bounded}"
+                        task.prompt = f"{task.prompt.rstrip()}\n\n{marker}\n{bounded}"
                     memory_attached = True
                     memory_chars = len(bounded)
             except Exception as exc:
