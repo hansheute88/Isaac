@@ -66,6 +66,10 @@ class DecisionTrace:
 
     def add(self, phase: TracePhase, event: str, data: dict[str, Any] | None = None) -> TraceEntry:
         payload = dict(data or {})
+        # Autonomy-cycle correlation is opt-in and scoped to this task trace.
+        cycle_id = str(getattr(self, "autonomy_cycle_id", "") or "").strip()
+        if cycle_id:
+            payload.setdefault("cycle_id", cycle_id)
         entry = TraceEntry(
             sequence=len(self.entries) + 1,
             ts=time.time(),
