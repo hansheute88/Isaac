@@ -2041,6 +2041,11 @@ class Executor:
                             {
                                 "cycle_id": context.get("autonomy_cycle_id"),
                                 "task_id": task.id,
+                                "research_id": (
+                                    task.id
+                                    if str(getattr(getattr(task, "typ", None), "value", getattr(task, "typ", ""))).lower() == "research"
+                                    else ""
+                                ),
                                 "goal_id": goal_learn.get("goal_id"),
                                 "subgoal_id": goal_learn.get("subgoal_id"),
                             },
