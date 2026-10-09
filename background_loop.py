@@ -13,6 +13,9 @@ import asyncio
 import time
 import logging
 import json
+import hashlib
+import uuid
+from datetime import datetime, timezone
 from dataclasses import dataclass, field
 from typing import Optional
 from pathlib import Path
@@ -25,6 +28,7 @@ from ki_dialog import get_ki_dialog
 log = logging.getLogger("Isaac.Background")
 
 STATE_PATH = DATA_DIR / "background_state.json"
+AUTONOMY_LIFECYCLE_PATH = DATA_DIR / "autonomy_lifecycle.jsonl"
 
 
 @dataclass
@@ -103,19 +107,29 @@ class BackgroundLoop:
         self._puffer:     list = []
         self._ideenqueue: list = []
         self._themen_idx  = 0
+        self._lifecycle_run_id = f"run_{uuid.uuid4().hex}"
+        self._lifecycle_sequence = 0
+        self._lifecycle_prev_hash = "0" * 64
+        self._restore_lifecycle_chain()
         log.info("BackgroundLoop v3.1-mobile initialisiert")
 
     def set_kernel(self, kernel):
         self._kernel = kernel
 
     async def start(self):
+        if self._running and self._task and not self._task.done():
+            return
         self._running = True
+        self._record_autonomy_lifecycle("run_started", {"tick_seconds": self.TICK})
         self._task    = asyncio.create_task(self._loop())
         log.info(f"BackgroundLoop gestartet (Tick: {self.TICK}s)")
         AuditLog.action("Background", "start", "BackgroundLoop v3.1-mobile aktiv")
 
     async def stop(self):
+        was_running = self._running
         self._running = False
+        if was_running:
+            self._record_autonomy_lifecycle("run_stop_requested", {"ticks": self.state.zyklen})
         if self._task:
             self._task.cancel()
             try:
@@ -123,6 +137,8 @@ class BackgroundLoop:
             except Exception:
                 pass
         self._dump_state()
+        if was_running:
+            self._record_autonomy_lifecycle("run_stopped", {"ticks": self.state.zyklen})
         log.info("BackgroundLoop gestoppt")
 
     async def _akku_status(self) -> dict:
@@ -176,6 +192,13 @@ class BackgroundLoop:
                 now  = time.monotonic()
                 akku = await self._akku_status()
                 self.state.zyklen += 1
+                self._record_autonomy_lifecycle("heartbeat", {
+                    "tick": self.state.zyklen,
+                    "battery_plugged": bool(akku.get("plugged")),
+                    "battery_percent": int(akku.get("prozent", 0)),
+                    "goal_autonomy_ticks": int(self.state.goal_autonomy_ticks or 0),
+                    "mission_ticks": int(self.state.mission_ticks or 0),
+                })
 
                 # Akku-Sparmodus
                 if not akku["plugged"] and akku["prozent"] < self.AKKU_MIN_PROZENT:
@@ -263,6 +286,7 @@ class BackgroundLoop:
             except asyncio.CancelledError:
                 break
             except Exception as e:
+                self._record_autonomy_lifecycle("loop_error", {"error_type": type(e).__name__})
                 log.error(f"Background-Loop Fehler: {e}", exc_info=True)
                 await asyncio.sleep(60)
 
@@ -495,6 +519,47 @@ class BackgroundLoop:
             log.info(f"Diskussion #{self.state.diskussionen_gesamt}: {thema[:50]}")
         except Exception as e:
             log.debug(f"Diskussion: {e}")
+
+    # ── Append-only, hash-chained runtime lifecycle evidence ───────────────────
+    def _restore_lifecycle_chain(self):
+        """Continue the append-only evidence chain after process restarts."""
+        try:
+            if not AUTONOMY_LIFECYCLE_PATH.exists():
+                return
+            with AUTONOMY_LIFECYCLE_PATH.open("r", encoding="utf-8") as stream:
+                for line in stream:
+                    if not line.strip():
+                        continue
+                    event = json.loads(line)
+                    self._lifecycle_sequence = max(self._lifecycle_sequence, int(event.get("sequence", 0)))
+                    self._lifecycle_prev_hash = str(event.get("event_hash") or self._lifecycle_prev_hash)
+        except Exception as exc:
+            log.warning("Autonomy lifecycle chain could not be restored: %s", type(exc).__name__)
+
+    def _record_autonomy_lifecycle(self, event_type: str, details: Optional[dict] = None):
+        """Persist observed runtime lifecycle events; this does not prove a cycle or authorize actions."""
+        try:
+            AUTONOMY_LIFECYCLE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            self._lifecycle_sequence += 1
+            payload = {
+                "schema": "isaac.autonomy.lifecycle.v1",
+                "run_id": self._lifecycle_run_id,
+                "sequence": self._lifecycle_sequence,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "event_type": str(event_type),
+                "source_revision": os.environ.get("GITHUB_SHA", ""),
+                "details": details or {},
+                "previous_hash": self._lifecycle_prev_hash,
+            }
+            canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+            payload["event_hash"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+            with AUTONOMY_LIFECYCLE_PATH.open("a", encoding="utf-8") as stream:
+                stream.write(json.dumps(payload, sort_keys=True, ensure_ascii=False) + "\\n")
+                stream.flush()
+                os.fsync(stream.fileno())
+            self._lifecycle_prev_hash = payload["event_hash"]
+        except Exception as exc:
+            log.warning("Autonomy lifecycle evidence write failed: %s", type(exc).__name__)
 
     # ── State Dump ────────────────────────────────────────────────────────────
     def _dump_state(self):
