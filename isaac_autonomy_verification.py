@@ -14,6 +14,7 @@ Invariants:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import re
 from typing import Any
 
 from decision_trace import DecisionTrace
@@ -21,6 +22,8 @@ from isaac_autonomy_cycle import validate_cycle
 from isaac_autonomy_reconstruction import reconstruct_cycle
 from isaac_interest_derivation import validate_interest_derivation
 from isaac_learning_causality import validate_learning_record
+from benchmarks.isaac20_governance import verify_governance_evidence
+from benchmarks.isaac20_governance_f2 import verify_reproducibility_manifest
 
 VERIFICATION_SCHEMA = "isaac.autonomy.verification.v1"
 
@@ -56,6 +59,8 @@ class AutonomyRunMetrics:
     manual_state_mutations: int = 0
     has_lifecycle_trace: bool = False
     has_provenance_manifest: bool = False
+    governance_evidence_package: dict[str, Any] = field(default_factory=dict)
+    provenance_manifest: dict[str, Any] = field(default_factory=dict)
     report_exportable: bool = True
     independent_validation_passed: bool = False
     preflight_passed: bool = False
@@ -73,6 +78,8 @@ class AutonomyRunMetrics:
             "manual_state_mutations": self.manual_state_mutations,
             "has_lifecycle_trace": self.has_lifecycle_trace,
             "has_provenance_manifest": self.has_provenance_manifest,
+            "governance_evidence_package": self.governance_evidence_package,
+            "provenance_manifest": self.provenance_manifest,
             "report_exportable": self.report_exportable,
             "independent_validation_passed": self.independent_validation_passed,
             "preflight_passed": self.preflight_passed,
@@ -122,8 +129,21 @@ def evaluate_autonomy_gates(
     research_cycles = int(m.get("research_cycles_count") or 0)
     unauthorized = int(m.get("unauthorized_actions_count") or 0)
     mutations = int(m.get("manual_state_mutations") or 0)
-    has_trace = bool(m.get("has_lifecycle_trace"))
-    has_manifest = bool(m.get("has_provenance_manifest"))
+    # These gates must be based on supplied evidence, not caller-set booleans.
+    has_trace = trace is not None and bool(trace.to_list())
+    evidence_package = m.get("governance_evidence_package")
+    manifest = m.get("provenance_manifest")
+    workflow = manifest.get("workflow", {}) if isinstance(manifest, dict) else {}
+    source_revision = str(manifest.get("source_revision") or "") if isinstance(manifest, dict) else ""
+    has_manifest = (
+        isinstance(evidence_package, dict)
+        and isinstance(manifest, dict)
+        and bool(re.fullmatch(r"[0-9a-f]{40}", source_revision))
+        and bool(str(workflow.get("run_id") or "").strip())
+        and bool(str(workflow.get("name") or "").strip())
+        and verify_governance_evidence(evidence_package)
+        and verify_reproducibility_manifest(manifest, evidence_package=evidence_package)
+    )
     exportable = bool(m.get("report_exportable"))
     independent_val = bool(m.get("independent_validation_passed"))
     preflight = bool(m.get("preflight_passed"))
