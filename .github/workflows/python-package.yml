@@ -5,7 +5,7 @@ name: Python package
 
 on:
   push:
-    branches: ["main", "isaac-2.0/masterplan"]
+    branches: ["main", "isaac-2.0/masterplan", "feat/*"]
   pull_request:
     branches: ["main", "isaac-2.0/masterplan"]
 

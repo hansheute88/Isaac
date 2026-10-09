@@ -69,6 +69,47 @@ class TestIsaacGovernanceGate(unittest.TestCase):
         self.assertTrue(result["valid"])
         self.assertEqual(result["checked_executions"], 1)
 
+    def test_real_executor_trace_allow_correlates_with_execution_started(self):
+        trace = DecisionTrace()
+        trace.add(TracePhase.GOVERNANCE, "tool_execution_capability", {
+            "tool_identifier": "real-tool",
+            "resource": "tool:real-tool",
+            "allowed": True,
+        })
+        trace.add(TracePhase.EXECUTION, "execution_started", {
+            "identifier": "real-tool",
+        })
+        result = validate_execution_authorization(trace)
+        self.assertTrue(result["valid"])
+        self.assertEqual(result["checked_executions"], 1)
+
+    def test_real_executor_trace_deny_blocks_execution_started(self):
+        trace = DecisionTrace()
+        trace.add(TracePhase.GOVERNANCE, "tool_execution_capability", {
+            "tool_identifier": "real-tool",
+            "resource": "tool:real-tool",
+            "allowed": False,
+        })
+        trace.add(TracePhase.EXECUTION, "execution_started", {
+            "identifier": "real-tool",
+        })
+        result = validate_execution_authorization(trace)
+        self.assertFalse(result["valid"])
+        self.assertIn("denied_action_executed:real-tool", result["violations"])
+
+    def test_missing_allow_metadata_fails_closed(self):
+        trace = DecisionTrace()
+        trace.add(TracePhase.GOVERNANCE, "tool_execution_capability", {
+            "tool_identifier": "real-tool",
+            "resource": "tool:real-tool",
+        })
+        trace.add(TracePhase.EXECUTION, "execution_started", {
+            "identifier": "real-tool",
+        })
+        result = validate_execution_authorization(trace)
+        self.assertFalse(result["valid"])
+        self.assertIn("denied_action_executed:real-tool", result["violations"])
+
     def test_missing_action_id_fails_closed(self):
         trace = DecisionTrace()
         trace.add(TracePhase.EXECUTION, "tool_execution", {"execution_event_id": "exec-no-id"})
