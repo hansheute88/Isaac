@@ -5,9 +5,9 @@ name: Python package
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "isaac-2.0/masterplan"]
   pull_request:
-    branches: ["main"]
+    branches: ["main", "isaac-2.0/masterplan"]
 
 env:
   ISAAC_DISABLE_VECTOR_MEMORY: "1"
@@ -56,6 +56,9 @@ jobs:
             tests_provider_configuration \
             tests_isaac20_capabilities \
             tests_isaac20_causal \
+            tests_isaac_governance_gate \
+            tests_isaac_autonomy_verification \
+            tests_isaac_interest_derivation \
             tests_jules_agent
 
       - name: Run eval harness
