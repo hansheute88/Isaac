@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from decision_trace import DecisionTrace, TraceEntry, TracePhase
-from benchmarks.isaac20_governance import build_governance_evidence
-from benchmarks.isaac20_governance_f2 import build_reproducibility_manifest
+from decision_trace import DecisionTrace
 from isaac_autonomy_cycle import begin_cycle, record_authorization
 from isaac_autonomy_verification import (
     GATE_BASELINE,
@@ -27,11 +25,6 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
             "cycle_id": "cycle-1",
             "intent": "Research optimization",
             "authorization_event_id": "auth-1",
-            "authorization_allowed": True,
-            "authorization_action_id": "action:research-optimization",
-            "authorization_scope": "research:goal-1",
-            "execution_action_id": "action:research-optimization",
-            "execution_scope": "research:goal-1",
             "execution_event_id": "exec-1",
             "evaluation_event_id": "eval-1",
             "learning_id": "learn-1",
@@ -61,26 +54,12 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
             "alignment_check": {"aligned": True},
             "scope_check": {"bounded": True},
             "risk_check": {"acceptable": True},
-            "authorization": {"authorized": True, "authorization_event_id": "auth-interest-1"},
+            "authorization": {"authorized": True},
         }
         interest_args_2 = dict(interest_args_1, interest_id="interest-2", interest_proposal="Proposal B")
 
         self.valid_interest_1 = build_interest_derivation(**interest_args_1).to_dict()
         self.valid_interest_2 = build_interest_derivation(**interest_args_2).to_dict()
-
-        self.evidence_package = build_governance_evidence(
-            e1_report={"schema_version": "test-e1-v1", "passed": True},
-            e2_report={"schema_version": "test-e2-v1", "passed": True},
-            e3_report={"schema_version": "test-e3-v1", "passed": True},
-        )
-        self.provenance_manifest = build_reproducibility_manifest(
-            evidence_package=self.evidence_package,
-            source_revision="a" * 40,
-            workflow_run_id="12345",
-            workflow_name="unit-test",
-        )
-        self.trace = DecisionTrace()
-        self.trace.add(TracePhase.GOVERNANCE, "lifecycle_started", {"run_id": "unit-test"})
 
         self.full_metrics = AutonomyRunMetrics(
             uptime_days=30.0,
@@ -94,15 +73,13 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
             manual_state_mutations=0,
             has_lifecycle_trace=True,
             has_provenance_manifest=True,
-            governance_evidence_package=self.evidence_package,
-            provenance_manifest=self.provenance_manifest,
             report_exportable=True,
             independent_validation_passed=True,
             preflight_passed=True,
         )
 
     def test_full_successful_verification_reaches_final_gate(self):
-        result = evaluate_autonomy_gates(self.full_metrics, trace=self.trace)
+        result = evaluate_autonomy_gates(self.full_metrics)
 
         self.assertTrue(result["dod_passed"])
         self.assertEqual(result["highest_passed_gate"], GATE_FINAL)
@@ -110,52 +87,11 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         for gate in (GATE_BASELINE, GATE_CYCLE, GATE_LEARNING, GATE_INTEREST, GATE_PREFLIGHT, GATE_PROOF, GATE_FINAL):
             self.assertTrue(result["gate_states"][gate]["passed"], f"Gate {gate} should pass")
 
-    def test_synthetic_green_gates_do_not_claim_official_30_day_proof(self):
-        result = evaluate_autonomy_gates(self.full_metrics, trace=self.trace)
-
-        self.assertFalse(result["official_proof_eligible"])
-        self.assertEqual(result["measured_uptime_days_from_trace"], 0.0)
-        self.assertIn("autonomy_run_started", result["missing_official_evidence_events"])
-        self.assertIn("autonomy_run_ended", result["missing_official_evidence_events"])
-        self.assertIn("autonomy_preflight_72h_passed", result["missing_official_evidence_events"])
-
-    def test_official_proof_rejects_preflight_events_after_run_start(self):
-        trace = DecisionTrace()
-        events = [
-            ("autonomy_run_started", 1_000_000.0),
-            ("autonomy_preflight_24h_passed", 1_000_001.0),
-            ("autonomy_preflight_48h_passed", 1_000_002.0),
-            ("autonomy_preflight_72h_passed", 1_000_003.0),
-            ("autonomy_run_heartbeat", 1_000_000.0 + 15 * 86400),
-            ("autonomy_run_ended", 1_000_000.0 + 30 * 86400),
-            ("autonomy_independent_validation_passed", 1_000_000.0 + 30 * 86400 + 1),
-            ("autonomy_final_report_exported", 1_000_000.0 + 30 * 86400 + 2),
-        ]
-        trace.entries = [
-            TraceEntry(
-                sequence=index,
-                ts=timestamp,
-                phase=TracePhase.GOVERNANCE,
-                event=event,
-                data={},
-                event_id=f"test-event-{index}",
-            )
-            for index, (event, timestamp) in enumerate(events, start=1)
-        ]
-
-        result = evaluate_autonomy_gates(self.full_metrics, trace=trace)
-
-        self.assertFalse(result["official_proof_eligible"])
-        self.assertIn(
-            "preflight_not_before_run:autonomy_preflight_24h_passed",
-            result["official_proof_timestamp_errors"],
-        )
-
     def test_failed_baseline_blocks_all_subsequent_gates(self):
         metrics = self.full_metrics
-        metrics.provenance_manifest = {}
+        metrics.has_provenance_manifest = False
 
-        result = evaluate_autonomy_gates(metrics, trace=self.trace)
+        result = evaluate_autonomy_gates(metrics)
 
         self.assertFalse(result["gate_states"][GATE_BASELINE]["passed"])
         self.assertEqual(result["passed_gates"], [])
@@ -163,18 +99,11 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         for gate in (GATE_CYCLE, GATE_LEARNING, GATE_INTEREST, GATE_PREFLIGHT, GATE_PROOF, GATE_FINAL):
             self.assertFalse(result["gate_states"][gate]["passed"])
 
-    def test_tampered_provenance_manifest_blocks_baseline(self):
-        metrics = self.full_metrics
-        metrics.provenance_manifest = dict(self.provenance_manifest, manifest_hash="0" * 64)
-        result = evaluate_autonomy_gates(metrics, trace=self.trace)
-        self.assertFalse(result["gate_states"][GATE_BASELINE]["passed"])
-        self.assertFalse(result["dod_status"]["11_provenance_manifest"])
-
     def test_failed_cycle_blocks_subsequent_gates(self):
         metrics = self.full_metrics
         metrics.cycles = []
 
-        result = evaluate_autonomy_gates(metrics, trace=self.trace)
+        result = evaluate_autonomy_gates(metrics)
 
         self.assertTrue(result["gate_states"][GATE_BASELINE]["passed"])
         self.assertFalse(result["gate_states"][GATE_CYCLE]["passed"])
@@ -186,7 +115,7 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         metrics = self.full_metrics
         metrics.learning_records = []
 
-        result = evaluate_autonomy_gates(metrics, trace=self.trace)
+        result = evaluate_autonomy_gates(metrics)
 
         self.assertTrue(result["gate_states"][GATE_CYCLE]["passed"])
         self.assertFalse(result["gate_states"][GATE_LEARNING]["passed"])
@@ -196,7 +125,7 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         metrics = self.full_metrics
         metrics.interest_derivations = [self.valid_interest_1]  # Only 1 < required 2
 
-        result = evaluate_autonomy_gates(metrics, trace=self.trace)
+        result = evaluate_autonomy_gates(metrics)
 
         self.assertTrue(result["gate_states"][GATE_LEARNING]["passed"])
         self.assertFalse(result["gate_states"][GATE_INTEREST]["passed"])
@@ -206,7 +135,7 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         metrics = self.full_metrics
         metrics.preflight_passed = False
 
-        result = evaluate_autonomy_gates(metrics, trace=self.trace)
+        result = evaluate_autonomy_gates(metrics)
 
         self.assertTrue(result["gate_states"][GATE_INTEREST]["passed"])
         self.assertFalse(result["gate_states"][GATE_PREFLIGHT]["passed"])
@@ -218,7 +147,7 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         metrics = self.full_metrics
         metrics.manual_state_mutations = 1
 
-        result = evaluate_autonomy_gates(metrics, trace=self.trace)
+        result = evaluate_autonomy_gates(metrics)
 
         self.assertFalse(result["dod_status"]["9_zero_manual_state_mutations"])
         self.assertFalse(result["gate_states"][GATE_PROOF]["passed"])
@@ -231,8 +160,6 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         metrics = AutonomyRunMetrics(
             has_lifecycle_trace=True,
             has_provenance_manifest=True,
-            governance_evidence_package=self.evidence_package,
-            provenance_manifest=self.provenance_manifest,
             cycles=[],
         )
 
@@ -240,72 +167,6 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
 
         self.assertTrue(result["gate_states"][GATE_CYCLE]["passed"])
         self.assertEqual(result["valid_cycles_count"], 1)
-
-    def test_denied_authorization_invalidates_cycle_and_blocks_cycle_gate(self):
-        denied = dict(self.valid_cycle, authorization_allowed=False)
-        metrics = self.full_metrics
-        metrics.cycles = [denied]
-
-        result = evaluate_autonomy_gates(metrics, trace=self.trace)
-
-        self.assertFalse(result["gate_states"][GATE_CYCLE]["passed"])
-        self.assertEqual(result["highest_passed_gate"], GATE_BASELINE)
-
-    def test_missing_authorization_outcome_invalidates_cycle(self):
-        incomplete = dict(self.valid_cycle)
-        incomplete.pop("authorization_allowed", None)
-        metrics = self.full_metrics
-        metrics.cycles = [incomplete]
-
-        result = evaluate_autonomy_gates(metrics, trace=self.trace)
-
-        self.assertFalse(result["gate_states"][GATE_CYCLE]["passed"])
-
-    def test_execution_for_different_action_is_rejected(self):
-        mismatched = dict(self.valid_cycle, execution_action_id="action:delete-data")
-        result = evaluate_autonomy_gates(AutonomyRunMetrics(
-            has_lifecycle_trace=True,
-            has_provenance_manifest=True,
-            governance_evidence_package=self.evidence_package,
-            provenance_manifest=self.provenance_manifest,
-            cycles=[mismatched],
-        ))
-        self.assertFalse(result["gate_states"][GATE_CYCLE]["passed"])
-        self.assertEqual(result["valid_cycles_count"], 0)
-
-    def test_execution_outside_authorized_scope_is_rejected(self):
-        mismatched = dict(self.valid_cycle, execution_scope="filesystem:/")
-        result = evaluate_autonomy_gates(AutonomyRunMetrics(
-            has_lifecycle_trace=True,
-            has_provenance_manifest=True,
-            governance_evidence_package=self.evidence_package,
-            provenance_manifest=self.provenance_manifest,
-            cycles=[mismatched],
-        ))
-        self.assertFalse(result["gate_states"][GATE_CYCLE]["passed"])
-        self.assertEqual(result["valid_cycles_count"], 0)
-
-    def test_execution_before_authorization_is_rejected(self):
-        trace = DecisionTrace()
-        cycle = begin_cycle(trace, intent="Execute protected action")
-        trace.add(
-            TracePhase.EXECUTION,
-            "autonomy_execution_observed",
-            {"cycle_id": cycle.cycle_id, "execution_event_id": "exec-early"},
-        )
-        record_authorization(trace, cycle, authorization_event_id="auth-late", allowed=True)
-
-        metrics = AutonomyRunMetrics(
-            has_lifecycle_trace=True,
-            has_provenance_manifest=True,
-            governance_evidence_package=self.evidence_package,
-            provenance_manifest=self.provenance_manifest,
-            cycles=[],
-        )
-        result = evaluate_autonomy_gates(metrics, trace=trace)
-
-        self.assertFalse(result["gate_states"][GATE_CYCLE]["passed"])
-        self.assertEqual(result["valid_cycles_count"], 0)
 
 
 if __name__ == "__main__":

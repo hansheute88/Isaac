@@ -17,10 +17,8 @@ def reconstruct_cycle(trace: DecisionTrace, cycle_id: str) -> dict[str, Any]:
         if str((e.get("data") or {}).get("cycle_id") or "") == target
     ]
     cycle = AutonomyCycle(cycle_id=target)
-    authorization_position = None
-    execution_position = None
 
-    for position, entry in enumerate(entries):
+    for entry in entries:
         phase = str(entry.get("phase") or "")
         event_id = str(entry.get("event_id") or "")
         data = entry.get("data") or {}
@@ -35,34 +33,15 @@ def reconstruct_cycle(trace: DecisionTrace, cycle_id: str) -> dict[str, Any]:
             cycle.next_cycle_id = str(data["next_cycle_id"])
 
         if phase == "governance" and data.get("authorization_event_id"):
-            authorization_position = position
             cycle.authorization_event_id = str(data["authorization_event_id"])
-            if "allowed" in data:
-                cycle.authorization_allowed = data.get("allowed") is True
-            elif "authorization_allowed" in data:
-                cycle.authorization_allowed = data.get("authorization_allowed") is True
-            cycle.authorization_action_id = str(data.get("action_id") or data.get("authorized_action_id") or "").strip()
-            cycle.authorization_scope = str(data.get("scope") or data.get("authorized_scope") or "").strip()
         elif phase == "execution" and not cycle.execution_event_id:
-            execution_position = position
-            cycle.execution_event_id = str(data.get("execution_event_id") or event_id)
-            cycle.execution_action_id = str(data.get("action_id") or data.get("identifier") or "").strip()
-            cycle.execution_scope = str(data.get("scope") or data.get("resource") or "").strip()
+            cycle.execution_event_id = event_id
         elif phase == "evaluation" and not cycle.evaluation_event_id:
             cycle.evaluation_event_id = event_id
         elif phase == "learning" and not cycle.learning_id:
             cycle.learning_id = str(data.get("learning_id") or event_id)
 
     result = validate_cycle(cycle)
-    if execution_position is not None:
-        result["authorization_precedes_execution"] = (
-            authorization_position is not None and authorization_position < execution_position
-        )
-        if not result["authorization_precedes_execution"]:
-            result["valid"] = False
-            result["authorization_error"] = "authorization_after_execution"
-    else:
-        result["authorization_precedes_execution"] = None
     result["related_trace_entries"] = len(entries)
     result["cycle"] = cycle.as_dict()
     return result

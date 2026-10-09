@@ -959,6 +959,32 @@ class Executor:
             )
             task.log(f"Tool-Auswahl: {selection.get('name')} [{selection.get('kind')}/{selection.get('category')}]")
             self._notify(task)
+            execution_started = task.decision_trace.add(
+                TracePhase.EXECUTION,
+                "execution_started",
+                {
+                    "identifier": selection.get("identifier", ""),
+                    "name": selection.get("name", ""),
+                    "iteration": iteration,
+                    "run_index": tool_runs + 1,
+                    **(
+                        {"authorized_by_event_id": task.causal_refs["capability_trace_event_id"]}
+                        if task.causal_refs.get("capability_trace_event_id") else {}
+                    ),
+                },
+            )
+            task.causal_refs["last_action_trace_event_id"] = execution_started.event_id
+            self._checkpoint(
+                task,
+                CheckpointState.TOOL_PENDING,
+                current_prompt=prompt,
+                tool_snapshot={
+                    "tool": selection.get("name", ""),
+                    "identifier": selection.get("identifier", ""),
+                    "kind": selection.get("kind", ""),
+                    "pending": True,
+                },
+            )
             from config import Level
             from constitution_override import build_override_context
 
@@ -972,7 +998,6 @@ class Executor:
                 selection, prompt, override_ctx=override_ctx,
             )
             capability_block = self._check_tool_execution_capability(task, selection)
-            execution_started = None
             if capability_block:
                 result = ensure_result_contract(
                     {"ok": False, "error": capability_block, "via": "rwx"},
@@ -981,32 +1006,6 @@ class Executor:
             elif blocked:
                 result = ensure_result_contract(blocked, source="constitution")
             else:
-                execution_started = task.decision_trace.add(
-                    TracePhase.EXECUTION,
-                    "execution_started",
-                    {
-                        "identifier": selection.get("identifier", ""),
-                        "name": selection.get("name", ""),
-                        "iteration": iteration,
-                        "run_index": tool_runs + 1,
-                        **(
-                            {"authorized_by_event_id": task.causal_refs["capability_trace_event_id"]}
-                            if task.causal_refs.get("capability_trace_event_id") else {}
-                        ),
-                    },
-                )
-                task.causal_refs["last_action_trace_event_id"] = execution_started.event_id
-                self._checkpoint(
-                    task,
-                    CheckpointState.TOOL_PENDING,
-                    current_prompt=prompt,
-                    tool_snapshot={
-                        "tool": selection.get("name", ""),
-                        "identifier": selection.get("identifier", ""),
-                        "kind": selection.get("kind", ""),
-                        "pending": True,
-                    },
-                )
                 result = ensure_result_contract(
                     await run_selected_tool(
                         selection,
@@ -1038,7 +1037,7 @@ class Executor:
                     via=via,
                     antwort=str(result.get("output") or result.get("error") or "")[:1200],
                 ),
-                side_effect_refs=[f"{kind}:{prompt[:80]}"] if execution_started else [],
+                side_effect_refs=[f"{kind}:{prompt[:80]}"],
             )
             tool_runs += 1
             if not result.get('ok'):
@@ -1058,7 +1057,7 @@ class Executor:
                         "error": result.get("error", ""),
                         "blocked_by": list(meta.get("blocked_by") or []),
                         "source": meta.get("source") or via,
-                        **({"caused_by_event_id": execution_started.event_id} if execution_started else {"blocked_before_execution": True}),
+                        "caused_by_event_id": execution_started.event_id,
                     },
                 )
                 task.decision_trace.add(

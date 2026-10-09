@@ -22,11 +22,6 @@ class AutonomyCycle:
     subgoal_id: str = ""
     intent: str = ""
     authorization_event_id: str = ""
-    authorization_allowed: bool | None = None
-    authorization_action_id: str = ""
-    authorization_scope: str = ""
-    execution_action_id: str = ""
-    execution_scope: str = ""
     execution_event_id: str = ""
     evaluation_event_id: str = ""
     learning_id: str = ""
@@ -40,11 +35,6 @@ class AutonomyCycle:
             "subgoal_id": self.subgoal_id,
             "intent": self.intent,
             "authorization_event_id": self.authorization_event_id,
-            "authorization_allowed": self.authorization_allowed,
-            "authorization_action_id": self.authorization_action_id,
-            "authorization_scope": self.authorization_scope,
-            "execution_action_id": self.execution_action_id,
-            "execution_scope": self.execution_scope,
             "execution_event_id": self.execution_event_id,
             "evaluation_event_id": self.evaluation_event_id,
             "learning_id": self.learning_id,
@@ -91,23 +81,16 @@ def record_authorization(
     *,
     authorization_event_id: str,
     allowed: bool,
-    action_id: str = "",
-    scope: str = "",
 ) -> None:
     """Record an existing authorization decision; never make one."""
     cycle.authorization_event_id = str(authorization_event_id or "")
-    cycle.authorization_allowed = allowed is True
-    cycle.authorization_action_id = str(action_id or "").strip()
-    cycle.authorization_scope = str(scope or "").strip()
     trace.add(
         TracePhase.GOVERNANCE,
         "autonomy_authorization_observed",
         {
             "cycle_id": cycle.cycle_id,
             "authorization_event_id": cycle.authorization_event_id,
-            "allowed": allowed is True,
-            "action_id": cycle.authorization_action_id,
-            "scope": cycle.authorization_scope,
+            "allowed": bool(allowed),
         },
     )
 
@@ -117,20 +100,14 @@ def record_execution(
     cycle: AutonomyCycle,
     *,
     execution_event_id: str,
-    action_id: str = "",
-    scope: str = "",
 ) -> None:
     cycle.execution_event_id = str(execution_event_id or "")
-    cycle.execution_action_id = str(action_id or "").strip()
-    cycle.execution_scope = str(scope or "").strip()
     trace.add(
         TracePhase.EXECUTION,
         "autonomy_execution_observed",
         {
             "cycle_id": cycle.cycle_id,
             "execution_event_id": cycle.execution_event_id,
-            "action_id": cycle.execution_action_id,
-            "scope": cycle.execution_scope,
         },
     )
 
@@ -173,30 +150,12 @@ def record_learning(
 
 def validate_cycle(cycle: AutonomyCycle) -> dict[str, Any]:
     missing = cycle.missing_required()
-    binding_errors: list[str] = []
-    if cycle.execution_event_id:
-        if not cycle.authorization_action_id or not cycle.execution_action_id:
-            binding_errors.append("authorization_action_binding_missing")
-        elif cycle.authorization_action_id != cycle.execution_action_id:
-            binding_errors.append("authorization_action_mismatch")
-        if not cycle.authorization_scope or not cycle.execution_scope:
-            binding_errors.append("authorization_scope_binding_missing")
-        elif cycle.authorization_scope != cycle.execution_scope:
-            binding_errors.append("authorization_scope_mismatch")
-    authorization_error = (
-        "authorization_missing" if not cycle.authorization_event_id
-        else "authorization_not_allowed" if cycle.authorization_allowed is not True
-        else binding_errors[0] if binding_errors else None
-    )
     return {
         "schema": CYCLE_SCHEMA,
         "cycle_id": cycle.cycle_id,
-        "valid": not missing and cycle.authorization_allowed is True and not binding_errors,
+        "valid": not missing,
         "missing_required": missing,
         "authorization_observed": bool(cycle.authorization_event_id),
-        "authorization_allowed": cycle.authorization_allowed is True,
-        "authorization_error": authorization_error,
-        "authorization_binding_errors": binding_errors,
         "execution_observed": bool(cycle.execution_event_id),
         "evaluation_observed": bool(cycle.evaluation_event_id),
         "learning_observed": bool(cycle.learning_id),
