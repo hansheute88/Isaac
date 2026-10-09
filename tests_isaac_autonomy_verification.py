@@ -3,6 +3,8 @@ from __future__ import annotations
 import unittest
 
 from decision_trace import DecisionTrace, TracePhase
+from benchmarks.isaac20_governance import build_governance_evidence
+from benchmarks.isaac20_governance_f2 import build_reproducibility_manifest
 from isaac_autonomy_cycle import begin_cycle, record_authorization
 from isaac_autonomy_verification import (
     GATE_BASELINE,
@@ -66,6 +68,20 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         self.valid_interest_1 = build_interest_derivation(**interest_args_1).to_dict()
         self.valid_interest_2 = build_interest_derivation(**interest_args_2).to_dict()
 
+        self.evidence_package = build_governance_evidence(
+            e1_report={"schema_version": "test-e1-v1", "passed": True},
+            e2_report={"schema_version": "test-e2-v1", "passed": True},
+            e3_report={"schema_version": "test-e3-v1", "passed": True},
+        )
+        self.provenance_manifest = build_reproducibility_manifest(
+            evidence_package=self.evidence_package,
+            source_revision="a" * 40,
+            workflow_run_id="12345",
+            workflow_name="unit-test",
+        )
+        self.trace = DecisionTrace()
+        self.trace.add(TracePhase.GOVERNANCE, "lifecycle_started", {"run_id": "unit-test"})
+
         self.full_metrics = AutonomyRunMetrics(
             uptime_days=30.0,
             uptime_target_days=30.0,
@@ -78,13 +94,15 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
             manual_state_mutations=0,
             has_lifecycle_trace=True,
             has_provenance_manifest=True,
+            governance_evidence_package=self.evidence_package,
+            provenance_manifest=self.provenance_manifest,
             report_exportable=True,
             independent_validation_passed=True,
             preflight_passed=True,
         )
 
     def test_full_successful_verification_reaches_final_gate(self):
-        result = evaluate_autonomy_gates(self.full_metrics)
+        result = evaluate_autonomy_gates(self.full_metrics, trace=self.trace)
 
         self.assertTrue(result["dod_passed"])
         self.assertEqual(result["highest_passed_gate"], GATE_FINAL)
@@ -94,15 +112,22 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
 
     def test_failed_baseline_blocks_all_subsequent_gates(self):
         metrics = self.full_metrics
-        metrics.has_provenance_manifest = False
+        metrics.provenance_manifest = {}
 
-        result = evaluate_autonomy_gates(metrics)
+        result = evaluate_autonomy_gates(metrics, trace=self.trace)
 
         self.assertFalse(result["gate_states"][GATE_BASELINE]["passed"])
         self.assertEqual(result["passed_gates"], [])
         self.assertIsNone(result["highest_passed_gate"])
         for gate in (GATE_CYCLE, GATE_LEARNING, GATE_INTEREST, GATE_PREFLIGHT, GATE_PROOF, GATE_FINAL):
             self.assertFalse(result["gate_states"][gate]["passed"])
+
+    def test_tampered_provenance_manifest_blocks_baseline(self):
+        metrics = self.full_metrics
+        metrics.provenance_manifest = dict(self.provenance_manifest, manifest_hash="0" * 64)
+        result = evaluate_autonomy_gates(metrics, trace=self.trace)
+        self.assertFalse(result["gate_states"][GATE_BASELINE]["passed"])
+        self.assertFalse(result["dod_status"]["11_provenance_manifest"])
 
     def test_failed_cycle_blocks_subsequent_gates(self):
         metrics = self.full_metrics
@@ -165,6 +190,8 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         metrics = AutonomyRunMetrics(
             has_lifecycle_trace=True,
             has_provenance_manifest=True,
+            governance_evidence_package=self.evidence_package,
+            provenance_manifest=self.provenance_manifest,
             cycles=[],
         )
 
@@ -226,6 +253,8 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         metrics = AutonomyRunMetrics(
             has_lifecycle_trace=True,
             has_provenance_manifest=True,
+            governance_evidence_package=self.evidence_package,
+            provenance_manifest=self.provenance_manifest,
             cycles=[],
         )
         result = evaluate_autonomy_gates(metrics, trace=trace)
