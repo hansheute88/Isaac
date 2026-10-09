@@ -37,7 +37,7 @@ jobs:
       - name: Compile core modules
         run: |
           python -m py_compile \
-            isaac_core.py executor.py low_complexity.py memory.py \
+            isaac_core.py executor.py low_complexity.py memory.py background_loop.py tests_isaac_background_lifecycle.py \
             relay.py logic.py watchdog.py task_checkpoint.py
 
       - name: Sanity check
@@ -57,6 +57,7 @@ jobs:
             tests_isaac20_capabilities \
             tests_isaac20_causal \
             tests_jules_agent \
+            tests_isaac_background_lifecycle \\
             tests_isaac_autonomy_cycle \
             tests_isaac_autonomy_reconstruction \
             tests_isaac_interest_derivation \
