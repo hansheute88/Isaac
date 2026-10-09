@@ -148,6 +148,40 @@ def evaluate_autonomy_gates(
     independent_val = bool(m.get("independent_validation_passed"))
     preflight = bool(m.get("preflight_passed"))
 
+    # A passing synthetic/unit-test gate is not proof of an official 30-day run.
+    # Eligibility requires lifecycle events with real trace timestamps, all three
+    # preflight milestones, and an independent-validation event in the trace.
+    trace_entries = trace.to_list() if trace is not None else []
+    trace_events = [str(entry.get("event") or "") for entry in trace_entries]
+    required_official_events = {
+        "autonomy_run_started",
+        "autonomy_run_heartbeat",
+        "autonomy_run_ended",
+        "autonomy_preflight_24h_passed",
+        "autonomy_preflight_48h_passed",
+        "autonomy_preflight_72h_passed",
+        "autonomy_independent_validation_passed",
+        "autonomy_final_report_exported",
+    }
+    missing_official_events = sorted(required_official_events - set(trace_events))
+    start_entries = [entry for entry in trace_entries if entry.get("event") == "autonomy_run_started"]
+    end_entries = [entry for entry in trace_entries if entry.get("event") == "autonomy_run_ended"]
+    measured_uptime_days = 0.0
+    if start_entries and end_entries:
+        try:
+            measured_uptime_days = max(
+                0.0,
+                (float(end_entries[-1].get("ts", 0)) - float(start_entries[0].get("ts", 0))) / 86400.0,
+            )
+        except (TypeError, ValueError):
+            measured_uptime_days = 0.0
+    official_proof_eligible = (
+        not missing_official_events
+        and measured_uptime_days >= 30.0
+        and any(entry.get("event") == "autonomy_run_heartbeat" for entry in trace_entries)
+        and bool(m.get("independent_validation_passed"))
+    )
+
     dod_checks = {
         "1_uptime": uptime >= target_uptime,
         "2_reconstructable_cycles": valid_cycles_count >= 1,
@@ -247,6 +281,9 @@ def evaluate_autonomy_gates(
         "valid_cycles_count": valid_cycles_count,
         "valid_learning_records_count": len(valid_learning_recs),
         "valid_interest_derivations_count": len(valid_interest_derivs),
+        "official_proof_eligible": official_proof_eligible,
+        "measured_uptime_days_from_trace": measured_uptime_days,
+        "missing_official_evidence_events": missing_official_events,
     }
 
 
