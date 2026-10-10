@@ -36,6 +36,7 @@ from config         import get_config, Level, WORKSPACE, is_owner_equivalent_mod
 from constitution_override import apply_constitution_gate, build_override_context
 from privilege      import get_gate, steffen_ctx, isaac_ctx
 from audit          import AuditLog, setup_privilege_audit
+from isaac_runtime_audit import audited_surface, emit_proof_audit_readiness
 from memory         import get_memory
 from executor       import get_executor, TaskType, TaskStatus, Strategy
 from relay          import get_relay
@@ -332,6 +333,8 @@ class IsaacKernel:
         log.info(f"  KI-Dialog:  {self.ki_dialog.stats()['gespraeche']} Gespräche, "
                  f"{self.ki_dialog.stats()['wissenseintraege']} Wissenseinträge")
         log.info(f"  SUDO:       {'Ersteinrichtung' if self.sudo.is_first_run() else 'Bereit'}")
+        audit_inventory = emit_proof_audit_readiness()
+        log.info("Runtime audit instrumentation: complete=%s surfaces=%s", audit_inventory["coverage_complete"], len(audit_inventory["surfaces"]))
         AuditLog.action("Kernel", "startup", f"v{self.VERSION}", Level.ISAAC)
 
     # ── Haupt-Verarbeitung ────────────────────────────────────────────────────
@@ -2213,6 +2216,7 @@ class IsaacKernel:
             "actions": actions,
         }
 
+    @audited_surface("browser_missions")
     async def _run_browser_flow_bounded(
         self,
         browser,
