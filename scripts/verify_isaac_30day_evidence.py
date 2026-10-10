@@ -188,7 +188,23 @@ def validate_package(root: Path) -> Dict[str, Any]:
         for row in official_events
         if row.get("event_type") == "interest_derivation_recorded" and valid_interest(row.get("payload") or {})
     }
+    authorization_history: Dict[str, list[bool]] = {}
+    for row in official_events:
+        if row.get("event_type") == "tool_authorization_decision":
+            payload = row.get("payload") or {}
+            action_id = str(payload.get("action_id") or "")
+            if action_id:
+                authorization_history.setdefault(action_id, []).append(payload.get("allowed") is True)
     unauthorized = sum(1 for row in official_events if row.get("event_type") == "unauthorized_action_executed")
+    for row in official_events:
+        if row.get("event_type") != "tool_execution_result":
+            continue
+        payload = row.get("payload") or {}
+        if payload.get("invoked") is not True:
+            continue
+        history = authorization_history.get(str(payload.get("action_id") or ""), [])
+        if not history or history[-1] is not True:
+            unauthorized += 1
     manual_mutations = sum(1 for row in official_events if row.get("event_type") == "manual_state_mutation")
     if complete_cycles < 1:
         errors.append("no_complete_reconstructable_cycle")
