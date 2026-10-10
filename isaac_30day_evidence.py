@@ -32,6 +32,45 @@ DEFAULT_INTERVAL_SECONDS = 60
 DEFAULT_BACKUP_SECONDS = 900
 
 
+def _pid_alive(pid: int) -> bool:
+    """Check process existence without sending a signal or terminating it."""
+    try:
+        process_id = int(pid)
+    except (TypeError, ValueError, OverflowError):
+        return False
+    if process_id <= 0:
+        return False
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        open_process = kernel32.OpenProcess
+        open_process.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+        open_process.restype = wintypes.HANDLE
+        close_handle = kernel32.CloseHandle
+        close_handle.argtypes = (wintypes.HANDLE,)
+        close_handle.restype = wintypes.BOOL
+        handle = open_process(0x1000, False, process_id)  # PROCESS_QUERY_LIMITED_INFORMATION
+        if handle:
+            close_handle(handle)
+            return True
+        return ctypes.get_last_error() == 5  # ACCESS_DENIED means the PID may still exist.
+    try:
+        os.kill(process_id, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError as exc:
+        if exc.errno == 3:  # ESRCH
+            return False
+        if exc.errno == 1:  # EPERM
+            return True
+        raise
+    return True
+
+
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
