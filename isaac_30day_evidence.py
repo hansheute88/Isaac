@@ -306,6 +306,15 @@ def evaluate_gates(state: Dict[str, Any], records: list[Dict[str, Any]],
         for record in learning_by_id.values()
     )
     interest_ok = len(interest_by_id) >= 2
+    required_audit_surfaces = {
+        "executor_tools", "owner_actions", "browser_missions", "mcp_tools",
+        "state_store_writes", "filesystem_state",
+    }
+    audit_ready = any(
+        (event.get("payload") or {}).get("coverage_complete") is True
+        and required_audit_surfaces.issubset(set((event.get("payload") or {}).get("surfaces") or []))
+        for event in runtime_events if event.get("event_type") == "proof_audit_readiness"
+    )
     elapsed = _elapsed_hours(state, current)
     gap_seconds = state.get("previous_sample_gap_seconds")
     gap_ok = gap_seconds is None or float(gap_seconds) <= max(180, float(state["interval_seconds"]) * 2.5)
@@ -329,7 +338,7 @@ def evaluate_gates(state: Dict[str, Any], records: list[Dict[str, Any]],
                 and state.get("gates", {}).get("STABILITY_48H", {}).get("passed", False)
                 and stability_events_ok and learning_ok and interest_ok and forbidden_count == 0
             )
-            reason = "72h autonomy gate evidence present" if passed else "requires passed earlier gates, cycle/learning/interest evidence, and zero forbidden events"
+            reason = "72h autonomy gate evidence present" if passed else "requires passed earlier gates, cycle/learning/interest evidence, complete mutation/execution audit coverage, and zero forbidden events"
         gates[gate] = {"passed": bool(passed), "elapsed_hours": round(elapsed, 4), "required_hours": hours, "reason": reason}
     official_started = state.get("official_started_at_utc")
     official_elapsed_days = 0.0
@@ -369,6 +378,11 @@ def evaluate_gates(state: Dict[str, Any], records: list[Dict[str, Any]],
     )
     official_unauthorized = _unauthorized_execution_count(official_runtime_events)
     official_manual_mutations = sum(1 for event in official_runtime_events if event.get("event_type") == "manual_state_mutation")
+    official_audit_ready = any(
+        (event.get("payload") or {}).get("coverage_complete") is True
+        and required_audit_surfaces.issubset(set((event.get("payload") or {}).get("surfaces") or []))
+        for event in official_runtime_events if event.get("event_type") == "proof_audit_readiness"
+    )
     final_requirements = {
         "30_day_uptime": official_elapsed_days >= OFFICIAL_DAYS,
         "five_subgoals": len(official_subgoals) >= 5,
@@ -378,6 +392,7 @@ def evaluate_gates(state: Dict[str, Any], records: list[Dict[str, Any]],
         "zero_unauthorized_actions": official_unauthorized == 0,
         "zero_manual_mutations": official_manual_mutations == 0,
         "valid_event_chain": chain["valid"],
+        "audit_coverage_complete": official_audit_ready,
         "independent_validation": bool(state.get("independent_validation_passed", False)),
     }
 
@@ -392,6 +407,7 @@ def evaluate_gates(state: Dict[str, Any], records: list[Dict[str, Any]],
         "valid_reconstructable_cycle_count": len(complete_cycle_ids),
         "valid_learning_record_count": len(learning_by_id),
         "valid_interest_derivation_count": len(interest_by_id),
+        "audit_coverage_complete": audit_ready,
         "gates": gates,
         "official_core_requirements_passed": bool(official_started) and all(
             value for key, value in final_requirements.items() if key != "independent_validation"
