@@ -38,7 +38,7 @@ Use a backup path on a separate drive or managed network share. The launcher sta
 
 - **24h preflight:** at least one real health sample, all observed health samples healthy, valid event hash chain, and continuous sampling.
 - **48h stability:** 24h gate passed plus one cycle with linked authorization, execution, and evaluation evidence.
-- **72h autonomy:** earlier gates passed, measurable schema-valid learning evidence, at least two valid bounded-interest derivations, and zero recorded unauthorized executions/manual owner-goal mutations.
+- **72h autonomy:** earlier gates passed, measurable schema-valid learning evidence, at least two valid bounded-interest derivations, zero recorded unauthorized executions/manual owner-goal mutations, and an explicit runtime `proof_audit_readiness` event covering every required execution and state-mutation surface.
 - **Official 30 days:** begins only after the 72h gate passes. Final completion additionally requires at least 5 planner/inquiry/recovery-generated subgoals, 10 schema-valid research cycles, measurable downstream learning effects, zero unauthorized actions, zero manual mutations, and a valid evidence chain.
 
 A health failure, backward clock movement, monitoring gap, event-chain tampering, unauthorized action, or recorded manual mutation fails the run closed. Preserve failed evidence for diagnosis; use a new directory for a new run.
@@ -50,6 +50,8 @@ A health failure, backward clock movement, monitoring gap, event-chain tampering
 - `manifest.json`: SHA-256 and size metadata for the event ledger and run state.
 - backup snapshots: regular copies of the ledger, state, and manifest.
 - `supervisor.stdout.log` / `supervisor.stderr.log`: watcher process logs.
+- `final_report.json`: candidate report after 30 days, before independent validation.
+- `independent_validation.json`: detached independent verification result bound to the final manifest hash.
 
 Verify at any time:
 
@@ -69,4 +71,4 @@ This finalization step changes the run to `COMPLETE` only if the separate standa
 
 ## Known limitation before the official run
 
-The gate is deliberately fail-closed. Runtime hooks record goal-autonomy cycle boundaries and the existing selection/authorization, task execution, and evaluation path. GoalStore subgoal creation, schema-valid learning records, and schema-valid interest derivations are recorded only when those real code paths execute. I have not established that the current production loop naturally produces the required causal learning records and two valid bounded-interest derivations end-to-end. Therefore **do not assume the official run is ready**: first run the preflight and confirm that real runtime evidence reaches these contracts. The official clock remains blocked unless all 72h gate criteria pass. Do not manually add events to make a gate pass. If the 72h gate does not pass, treat that as a real integration/behavior gap to fix before attempting the official run.
+The gate is deliberately fail-closed. Runtime hooks record goal-autonomy cycle boundaries and the existing selection/authorization, task execution, and evaluation path. GoalStore subgoal creation, schema-valid learning records, and schema-valid interest derivations are recorded only when those real code paths execute. I have not established that the current production loop naturally produces the required causal learning records and two valid bounded-interest derivations end-to-end. More importantly, the current code does **not** yet emit a trustworthy `proof_audit_readiness` event proving coverage of all required surfaces (`executor_tools`, `owner_actions`, `browser_missions`, `mcp_tools`, `state_store_writes`, `filesystem_state`). Consequently, the 72h gate and official 30-day clock must remain blocked until that coverage is implemented and independently tested. Do not manually add readiness events or evidence to make a gate pass. If the 72h gate does not pass, treat that as a real integration/behavior gap to fix before attempting the official run.
