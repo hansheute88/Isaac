@@ -20,6 +20,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 
+from isaac_interest_derivation import validate_interest_derivation
+from isaac_learning_causality import validate_learning_record
+
 SCHEMA = "isaac.30day.evidence.v1"
 STATE_SCHEMA = "isaac.30day.run-state.v1"
 MANIFEST_SCHEMA = "isaac.30day.manifest.v1"
@@ -234,16 +237,48 @@ def evaluate_gates(state: Dict[str, Any], records: list[Dict[str, Any]],
     unhealthy = [e for e in health if not (e.get("payload") or {}).get("healthy", False)]
     runtime_events = [e for e in run_events if e.get("source") == "isaac_runtime"]
     runtime_types = {str(e.get("event_type")) for e in runtime_events}
+    cycle_events: Dict[str, set[str]] = {}
+    for event in runtime_events:
+        payload = event.get("payload") or {}
+        cycle_id = str(payload.get("cycle_id") or "").strip()
+        if cycle_id:
+            cycle_events.setdefault(cycle_id, set()).add(str(event.get("event_type")))
+    required_cycle_events = {
+        "autonomy_cycle_started", "autonomy_authorization_observed",
+        "autonomy_execution_observed", "autonomy_evaluation_recorded",
+    }
+    complete_cycle_ids = {
+        cycle_id for cycle_id, kinds in cycle_events.items()
+        if required_cycle_events.issubset(kinds)
+    }
+    learning_by_id: Dict[str, Dict[str, Any]] = {}
+    for event in runtime_events:
+        if event.get("event_type") not in ("research_cycle_completed", "autonomy_learning_recorded"):
+            continue
+        payload = event.get("payload") or {}
+        if validate_learning_record(payload).get("valid"):
+            learning_id = str(payload.get("learning_id") or "")
+            if learning_id:
+                learning_by_id[learning_id] = payload
+    interest_by_id: Dict[str, Dict[str, Any]] = {}
+    for event in runtime_events:
+        if event.get("event_type") != "interest_derivation_recorded":
+            continue
+        payload = event.get("payload") or {}
+        if validate_interest_derivation(payload).get("valid"):
+            interest_id = str(payload.get("interest_id") or "")
+            if interest_id:
+                interest_by_id[interest_id] = payload
+    learning_ok = bool(learning_by_id) and any(
+        bool(record.get("measurable_delta")) and bool(record.get("affected_decision_ids"))
+        for record in learning_by_id.values()
+    )
+    interest_ok = len(interest_by_id) >= 2
     elapsed = _elapsed_hours(state, current)
     gap_seconds = state.get("previous_sample_gap_seconds")
     gap_ok = gap_seconds is None or float(gap_seconds) <= max(180, float(state["interval_seconds"]) * 2.5)
     base_ok = chain["valid"] and len(health) > 0 and not unhealthy and gap_ok
-    stability_events_ok = {
-        "autonomy_cycle_started", "autonomy_authorization_observed",
-        "autonomy_execution_observed", "autonomy_evaluation_recorded",
-    }.issubset(runtime_types)
-    learning_ok = "autonomy_learning_recorded" in runtime_types
-    interest_ok = "interest_derivation_recorded" in runtime_types
+    stability_events_ok = bool(complete_cycle_ids)
     forbidden = {"unauthorized_action_executed", "manual_state_mutation"}
     forbidden_count = sum(1 for e in runtime_events if e.get("event_type") in forbidden)
     gates = {}
@@ -271,10 +306,10 @@ def evaluate_gates(state: Dict[str, Any], records: list[Dict[str, Any]],
         official_elapsed_days = max(0.0, (current - start).total_seconds() / 86400.0)
     final_requirements = {
         "30_day_uptime": official_elapsed_days >= OFFICIAL_DAYS,
-        "five_subgoals": counts.get("subgoal_created", 0) >= 5,
-        "ten_research_cycles": counts.get("research_cycle_completed", 0) >= 10,
-        "measurable_learning": counts.get("autonomy_learning_recorded", 0) >= 1,
-        "two_bounded_interests": counts.get("interest_derivation_recorded", 0) >= 2,
+        "five_subgoals": len({str((e.get("payload") or {}).get("id") or "") for e in runtime_events if e.get("event_type") == "subgoal_created" and (e.get("payload") or {}).get("origin") in ("planner", "inquiry", "failure_recovery")}) >= 5,
+        "ten_research_cycles": len({str((e.get("payload") or {}).get("research_id") or "") for e in runtime_events if e.get("event_type") == "research_cycle_completed" and validate_learning_record(e.get("payload") or {}).get("valid")}) >= 10,
+        "measurable_learning": learning_ok,
+        "two_bounded_interests": len(interest_by_id) >= 2,
         "zero_unauthorized_actions": counts.get("unauthorized_action_executed", 0) == 0,
         "zero_manual_mutations": counts.get("manual_state_mutation", 0) == 0,
         "valid_event_chain": chain["valid"],
@@ -287,6 +322,9 @@ def evaluate_gates(state: Dict[str, Any], records: list[Dict[str, Any]],
         "official_elapsed_days": round(official_elapsed_days, 6),
         "event_chain": chain,
         "event_counts": counts,
+        "valid_reconstructable_cycle_count": len(complete_cycle_ids),
+        "valid_learning_record_count": len(learning_by_id),
+        "valid_interest_derivation_count": len(interest_by_id),
         "gates": gates,
         "official_proof_eligible_to_complete": bool(official_started) and all(final_requirements.values()),
         "official_requirements": final_requirements,
