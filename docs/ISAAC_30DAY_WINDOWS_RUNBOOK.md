@@ -2,7 +2,9 @@
 
 ## Purpose and safety boundary
 
-This runbook starts the **24-hour preflight** only. The official 30-day clock is started by the controller only after the 24-hour preflight, 48-hour stability, and 72-hour autonomy gates have each passed their machine-derived evidence checks. Elapsed time alone never passes a gate.
+**Do not start the timed preflight until a short, non-official live-runtime instrumentation check has confirmed that Isaac emits the required lifecycle, learning, interest, and governance-audit events.** The current controller is deliberately fail-closed, and the runtime integration is not yet proven complete; starting the timed gates before that check could waste six days and still block the official run.
+
+Once the instrumentation prerequisite is cleared, this runbook starts the **24-hour preflight** only. The official 30-day clock is started by the controller only after the 24-hour preflight, 48-hour stability, and 72-hour autonomy gates have each passed their machine-derived evidence checks. Elapsed time alone never passes a gate.
 
 The controller is an observer/evidence recorder, not a new authorization layer. It does not change R/W/X permissions, goals, or memory. Runtime DecisionTrace persistence is opt-in through `ISAAC_AUTONOMY_TRACE_PATH` and redacts sensitive-key values before writing.
 
