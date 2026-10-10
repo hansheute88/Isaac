@@ -122,42 +122,31 @@ def _record_boundary_decision(surface: str, operation: str, action_id: str, resu
             )
         )
     elif surface == "filesystem_state":
-        denied = bool(
-            isinstance(result, tuple)
-            and result
-            and "Verfassung blockiert" in str(result[0])
+        result_text = str(result[0]) if isinstance(result, tuple) and result else ""
+        denied = any(
+            marker in result_text
+            for marker in (
+                "Verfassung blockiert",
+                "Zugriff außerhalb erlaubter Wurzeln blockiert",
+                "Zugriff auf ",
+                "Leerer Pfad",
+                "Ungültiger Pfad",
+            )
         )
     else:
         return
 
-    # A positive authorization event must come from the actual policy gate,
-    # not from the absence of a denial-shaped return value.
+    # Positive authorization is recorded only by the actual policy gate.
+    # Denied paths already emitted a child-scoped DENY + invoked=False pair.
     if denied:
-        boundary_action_id = uuid.uuid4().hex
-        record_tool_authorization_decision(
-            boundary_action_id,
-            False,
-            surface,
-            operation,
-            "constitution_denied",
-            parent_action_id=action_id,
-        )
-        record_tool_execution_result(
-            boundary_action_id,
-            invoked=False,
-            ok=False,
-            surface=surface,
-            operation=operation,
-            parent_action_id=action_id,
-        )
-    else:
-        record_tool_execution_result(
-            action_id,
-            invoked=True,
-            ok=_result_ok(result),
-            surface=surface,
-            operation=operation,
-        )
+        return
+    record_tool_execution_result(
+        action_id,
+        invoked=True,
+        ok=_result_ok(result),
+        surface=surface,
+        operation=operation,
+    )
 
 
 def audited_surface(surface: str) -> Callable:
