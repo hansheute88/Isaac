@@ -61,11 +61,12 @@ Verify at any time:
 
 The hash chain detects changes made after events are recorded. It is not a substitute for access control or independent custody of the backup drive.
 
-When the supervisor reports \`AWAITING_INDEPENDENT_VALIDATION\` after the 30-day criteria are met, run:
+When the supervisor reports `AWAITING_INDEPENDENT_VALIDATION` after the 30-day criteria are met, run:
 
-\`\`\`powershell
+```powershell
 .\.venv\Scripts\python.exe -m isaac_30day_evidence finalize --evidence-dir "C:\IsaacProof\Evidence"
-\`\`\`
+```
+
 This finalization step changes the run to `COMPLETE` only if the separate standard-library verifier passes. It writes `independent_validation.json`, bound to the final manifest hash. If validation fails, the run is marked `FAILED_FINAL_VALIDATION`; preserve the entire evidence package.
 
 ## Known limitation before the official run
