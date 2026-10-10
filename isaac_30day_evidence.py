@@ -81,14 +81,24 @@ def _last_record(path: Path) -> Optional[Dict[str, Any]]:
         return None
     with path.open("rb") as handle:
         handle.seek(0, os.SEEK_END)
-        pos = handle.tell() - 1
-        while pos > 0:
+        end = handle.tell()
+        pos = end - 1
+        # Skip trailing newlines, then scan backwards to the prior line boundary.
+        while pos >= 0:
+            handle.seek(pos)
+            if handle.read(1) != b"\n":
+                break
+            pos -= 1
+        if pos < 0:
+            return None
+        end = pos + 1
+        while pos >= 0:
             handle.seek(pos)
             if handle.read(1) == b"\n":
                 break
             pos -= 1
-        handle.seek(pos + (1 if pos else 0))
-        line = handle.readline().strip()
+        handle.seek(pos + 1)
+        line = handle.read(end - pos - 1).strip()
     return json.loads(line.decode("utf-8")) if line else None
 
 
