@@ -6,6 +6,7 @@ Strukturierte lokale Dateioperationen mit klarer Pfad-Auflösung und Tier-Grenze
 
 import os
 import re
+import uuid
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,7 +14,12 @@ from typing import Optional
 
 from config import BASE_DIR, WORKSPACE, Level, get_config, is_owner_equivalent_mode
 from audit import AuditLog
-from isaac_runtime_audit import audited_surface
+from isaac_runtime_audit import (
+    audited_surface,
+    current_action_id,
+    record_tool_authorization_decision,
+    record_tool_execution_result,
+)
 
 log = logging.getLogger("Isaac.FileAccess")
 
@@ -185,15 +191,39 @@ def _constitution_gate_file_operation(cmd: FileCommand) -> tuple[str, bool] | No
 
 @audited_surface("filesystem_state")
 def execute_file_command(cmd: FileCommand) -> tuple[str, bool]:
+    action_id = current_action_id()
+    operation = (cmd.operation or "read").lower()
     blocked = _constitution_gate_file_operation(cmd)
     if blocked:
+        boundary_action_id = uuid.uuid4().hex
+        record_tool_authorization_decision(
+            boundary_action_id, False, "filesystem_state", operation,
+            "constitution_denied", parent_action_id=action_id,
+        )
+        record_tool_execution_result(
+            boundary_action_id, False, False, "filesystem_state", operation,
+            parent_action_id=action_id,
+        )
         return blocked
 
     resolved, error = resolve_path(cmd.path)
     if not resolved:
+        boundary_action_id = uuid.uuid4().hex
+        record_tool_authorization_decision(
+            boundary_action_id, False, "filesystem_state", operation,
+            "path_policy_denied", parent_action_id=action_id,
+        )
+        record_tool_execution_result(
+            boundary_action_id, False, False, "filesystem_state", operation,
+            parent_action_id=action_id,
+        )
         return f"[FILE] {error}", False
 
-    op = (cmd.operation or "read").lower()
+    record_tool_authorization_decision(
+        action_id, True, "filesystem_state", operation,
+        "path_and_constitution_policy_allowed",
+    )
+    op = operation
     rel = _display_path(resolved)
 
     if op == "list":
