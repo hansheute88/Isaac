@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from isaac_30day_evidence import (
@@ -32,8 +32,9 @@ class TestIsaac30DayEvidence(unittest.TestCase):
         self.assertFalse(verify_chain(records)["valid"])
 
     def test_24_hour_gate_requires_elapsed_time_and_health_evidence(self):
-        now = iso_utc()
-        start = iso_utc()
+        start_dt = datetime.now(timezone.utc)
+        start = iso_utc(start_dt)
+        append_event(self.root, "health_sample", {"healthy": True}, event_time=start)
         state = {
             "run_id": "test-run",
             "started_at_utc": start,
@@ -41,19 +42,14 @@ class TestIsaac30DayEvidence(unittest.TestCase):
             "previous_sample_gap_seconds": None,
             "gates": {},
         }
-        records = [{
-            "timestamp_utc": now,
-            "event_type": "health_sample",
-            "source": "supervisor",
-            "payload": {"healthy": True},
-        }]
-        before = evaluate_gates(state, records, now=__import__("datetime").datetime.fromisoformat(start.replace("Z", "+00:00")) + timedelta(hours=23))
+        records = read_events(self.root)
+        before = evaluate_gates(state, records, now=start_dt + timedelta(hours=23))
         self.assertFalse(before["gates"]["PREFLIGHT_24H"]["passed"])
-        after = evaluate_gates(state, records, now=__import__("datetime").datetime.fromisoformat(start.replace("Z", "+00:00")) + timedelta(hours=24))
+        after = evaluate_gates(state, records, now=start_dt + timedelta(hours=24))
         self.assertTrue(after["gates"]["PREFLIGHT_24H"]["passed"])
 
     def test_72_hour_gate_requires_real_cycle_learning_and_interest_events(self):
-        start_dt = __import__("datetime").datetime.now(__import__("datetime").timezone.utc) - timedelta(hours=73)
+        start_dt = datetime.now(timezone.utc) - timedelta(hours=73)
         start = iso_utc(start_dt)
         state = {
             "run_id": "test-run",
@@ -65,7 +61,6 @@ class TestIsaac30DayEvidence(unittest.TestCase):
                 "STABILITY_48H": {"passed": True},
             },
         }
-        records = []
         for kind, source, payload in [
             ("health_sample", "supervisor", {"healthy": True}),
             ("autonomy_cycle_started", "isaac_runtime", {"cycle_id": "c-1"}),
@@ -75,15 +70,12 @@ class TestIsaac30DayEvidence(unittest.TestCase):
             ("autonomy_learning_recorded", "isaac_runtime", {"learning_id": "l-1"}),
             ("interest_derivation_recorded", "isaac_runtime", {"interest_id": "i-1"}),
         ]:
-            records.append({
-                "timestamp_utc": iso_utc(start_dt + timedelta(hours=73)),
-                "event_type": kind,
-                "source": source,
-                "payload": payload,
-            })
+            append_event(self.root, kind, payload, source=source, event_time=iso_utc(start_dt + timedelta(hours=73)))
+        records = read_events(self.root)
         result = evaluate_gates(state, records, now=start_dt + timedelta(hours=73))
         self.assertTrue(result["gates"]["AUTONOMY_72H"]["passed"])
         records = [r for r in records if r["event_type"] != "autonomy_learning_recorded"]
+        # A missing learning event must block the gate even when the chain is otherwise valid.
         result = evaluate_gates(state, records, now=start_dt + timedelta(hours=73))
         self.assertFalse(result["gates"]["AUTONOMY_72H"]["passed"])
 
