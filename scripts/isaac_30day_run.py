@@ -185,15 +185,18 @@ def runtime_trace_stats(root: Path) -> dict[str, Any]:
         return {"exists": False, "entries": 0, "sha256": None, "bytes": 0}
     count = 0
     malformed = 0
-    with path.open("r", encoding="utf-8") as stream:
-        for line in stream:
-            if not line.strip():
-                continue
-            try:
-                json.loads(line)
-                count += 1
-            except ValueError:
-                malformed += 1
+    raw = path.read_text(encoding="utf-8")
+    lines = raw.splitlines(keepends=True)
+    for index, line in enumerate(lines):
+        if index == len(lines) - 1 and not line.endswith("\n"):
+            continue
+        if not line.strip():
+            continue
+        try:
+            json.loads(line)
+            count += 1
+        except ValueError:
+            malformed += 1
     return {"exists": True, "entries": count, "malformed_lines": malformed, "sha256": sha256_file(path), "bytes": path.stat().st_size}
 
 
@@ -246,10 +249,15 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     if not path.exists():
         return rows
-    with path.open("r", encoding="utf-8") as stream:
-        for line in stream:
-            if line.strip():
-                rows.append(json.loads(line))
+    raw = path.read_text(encoding="utf-8")
+    lines = raw.splitlines(keepends=True)
+    for index, line in enumerate(lines):
+        # The runtime appends events while the monitor reads. Ignore only an
+        # incomplete final line; malformed completed lines remain fatal.
+        if index == len(lines) - 1 and not line.endswith("\n"):
+            continue
+        if line.strip():
+            rows.append(json.loads(line))
     return rows
 
 
