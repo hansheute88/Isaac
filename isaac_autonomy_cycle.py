@@ -42,7 +42,7 @@ class AutonomyCycle:
         }
 
     def missing_required(self) -> list[str]:
-        required = ("cycle_id", "intent")
+        required = ("cycle_id", "intent", "authorization_event_id")
         return [key for key in required if not str(getattr(self, key, "")).strip()]
 
 
