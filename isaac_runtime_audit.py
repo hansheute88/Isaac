@@ -72,27 +72,43 @@ def bind_action_id(action_id: str) -> Iterator[None]:
 
 
 def record_tool_authorization_decision(
-    action_id: str, allowed: bool, surface: str, operation: str, reason: str = ""
+    action_id: str,
+    allowed: bool,
+    surface: str,
+    operation: str,
+    reason: str = "",
+    parent_action_id: str = "",
 ) -> None:
-    _emit("tool_authorization_decision", {
+    payload = {
         "action_id": str(action_id or ""),
         "allowed": bool(allowed),
         "surface": surface,
         "operation": operation,
         "reason": str(reason or "")[:160],
-    })
+    }
+    if parent_action_id:
+        payload["parent_action_id"] = str(parent_action_id)
+    _emit("tool_authorization_decision", payload)
 
 
 def record_tool_execution_result(
-    action_id: str, invoked: bool, ok: bool, surface: str, operation: str
+    action_id: str,
+    invoked: bool,
+    ok: bool,
+    surface: str,
+    operation: str,
+    parent_action_id: str = "",
 ) -> None:
-    _emit("tool_execution_result", {
+    payload = {
         "action_id": str(action_id or ""),
         "invoked": bool(invoked),
         "ok": bool(ok),
         "surface": surface,
         "operation": operation,
-    })
+    }
+    if parent_action_id:
+        payload["parent_action_id"] = str(parent_action_id)
+    _emit("tool_execution_result", payload)
 
 
 def _record_boundary_decision(surface: str, operation: str, action_id: str, result: Any) -> None:
@@ -114,9 +130,18 @@ def _record_boundary_decision(surface: str, operation: str, action_id: str, resu
     else:
         return
     reason = "constitution_denied" if denied else ""
-    record_tool_authorization_decision(action_id, not denied, surface, operation, reason)
+    boundary_action_id = uuid.uuid4().hex
+    record_tool_authorization_decision(
+        boundary_action_id, not denied, surface, operation, reason,
+        parent_action_id=action_id,
+    )
     record_tool_execution_result(
-        action_id, invoked=not denied, ok=_result_ok(result), surface=surface, operation=operation
+        boundary_action_id,
+        invoked=not denied,
+        ok=_result_ok(result),
+        surface=surface,
+        operation=operation,
+        parent_action_id=action_id,
     )
 
 
