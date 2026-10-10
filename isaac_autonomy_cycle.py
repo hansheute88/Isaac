@@ -12,6 +12,12 @@ import uuid
 from decision_trace import DecisionTrace, TracePhase
 
 
+def _emit_evidence(event_type: str, payload: dict[str, Any]) -> None:
+    # Evidence persistence is opt-in; official proof mode fails closed on write errors.
+    from isaac_30day_evidence import emit_runtime_event
+    emit_runtime_event(event_type, payload)
+
+
 CYCLE_SCHEMA = "isaac.autonomy.cycle.v1"
 
 
@@ -72,6 +78,7 @@ def begin_cycle(
             "intent": cycle.intent,
         },
     )
+    _emit_evidence("autonomy_cycle_started", cycle.as_dict())
     return cycle
 
 
@@ -93,6 +100,10 @@ def record_authorization(
             "allowed": bool(allowed),
         },
     )
+    _emit_evidence("autonomy_authorization_observed", {
+        "cycle_id": cycle.cycle_id, "authorization_event_id": cycle.authorization_event_id,
+        "allowed": bool(allowed),
+    })
 
 
 def record_execution(
@@ -110,6 +121,9 @@ def record_execution(
             "execution_event_id": cycle.execution_event_id,
         },
     )
+    _emit_evidence("autonomy_execution_observed", {
+        "cycle_id": cycle.cycle_id, "execution_event_id": cycle.execution_event_id,
+    })
 
 
 def record_evaluation(
@@ -129,6 +143,10 @@ def record_evaluation(
             "outcome": str(outcome or ""),
         },
     )
+    _emit_evidence("autonomy_evaluation_recorded", {
+        "cycle_id": cycle.cycle_id, "evaluation_event_id": cycle.evaluation_event_id,
+        "outcome": str(outcome or ""),
+    })
 
 
 def record_learning(
@@ -146,6 +164,9 @@ def record_learning(
             "learning_id": cycle.learning_id,
         },
     )
+    _emit_evidence("autonomy_learning_recorded", {
+        "cycle_id": cycle.cycle_id, "learning_id": cycle.learning_id,
+    })
 
 
 def validate_cycle(cycle: AutonomyCycle) -> dict[str, Any]:

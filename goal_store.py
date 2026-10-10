@@ -181,6 +181,10 @@ class GoalStore:
         )
         self.goals[goal.id] = goal
         self.save()
+        from isaac_30day_evidence import emit_runtime_event
+        emit_runtime_event("manual_state_mutation", {
+            "kind": "owner_goal_added", "goal_id": goal.id, "source": source,
+        })
         AuditLog.action("GoalStore", "goal_added", f"{goal.id}:{goal.title[:80]}")
         try:
             from memory import get_memory
@@ -219,6 +223,11 @@ class GoalStore:
         )
         self.subgoals[sg.id] = sg
         self.save()
+        from isaac_30day_evidence import emit_runtime_event
+        if origin in ("planner", "inquiry", "failure_recovery"):
+            emit_runtime_event("subgoal_created", sg.to_dict())
+        elif origin == "owner":
+            emit_runtime_event("manual_state_mutation", {"kind": "owner_subgoal_created", "subgoal_id": sg.id})
         return sg
 
     def list_goals(self, *, status: Optional[str] = "active") -> list[OwnerGoal]:
@@ -253,6 +262,10 @@ class GoalStore:
         g.updated_at = _now()
         self.goals[g.id] = g
         self.save()
+        from isaac_30day_evidence import emit_runtime_event
+        emit_runtime_event("manual_state_mutation", {
+            "kind": "owner_goal_status_changed", "goal_id": g.id, "status": status,
+        })
         AuditLog.action("GoalStore", "goal_status", f"{g.id}:{status}")
         return g
 

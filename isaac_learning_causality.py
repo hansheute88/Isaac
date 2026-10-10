@@ -83,7 +83,7 @@ def build_learning_record(
     evidence_event_ids: list[str],
     control: dict[str, Any] | None = None,
 ) -> LearningRecord:
-    return LearningRecord(
+    record = LearningRecord(
         learning_id=learning_id,
         research_id=research_id,
         goal_id=goal_id,
@@ -97,3 +97,9 @@ def build_learning_record(
         evidence_event_ids=evidence_event_ids,
         control=control,
     )
+    validation = validate_learning_record(record)
+    if validation.get("valid"):
+        from isaac_30day_evidence import emit_runtime_event
+        emit_runtime_event("research_cycle_completed", record.to_dict())
+        emit_runtime_event("autonomy_learning_recorded", record.to_dict())
+    return record

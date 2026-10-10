@@ -998,6 +998,23 @@ class Executor:
                 selection, prompt, override_ctx=override_ctx,
             )
             capability_block = self._check_tool_execution_capability(task, selection)
+            identifier = selection.get("identifier", "")
+            name = selection.get("name", identifier)
+            action_id = "%s:%s" % (task.id, execution_started.event_id)
+            authorized = not bool(capability_block) and not bool(blocked)
+            from isaac_30day_evidence import emit_runtime_event
+            emit_runtime_event("tool_authorization_decision", {
+                "action_id": action_id,
+                "task_id": task.id,
+                "tool_identifier": identifier,
+                "allowed": authorized,
+                "policy_event_id": (
+                    task.causal_refs.get("tool_capability_trace_event_id")
+                    or task.causal_refs.get("capability_trace_event_id")
+                    or ""
+                ),
+            })
+            execution_invoked = False
             if capability_block:
                 result = ensure_result_contract(
                     {"ok": False, "error": capability_block, "via": "rwx"},
@@ -1006,6 +1023,7 @@ class Executor:
             elif blocked:
                 result = ensure_result_contract(blocked, source="constitution")
             else:
+                execution_invoked = True
                 result = ensure_result_contract(
                     await run_selected_tool(
                         selection,
@@ -1015,8 +1033,13 @@ class Executor:
                     ),
                     source="executor_boundary",
                 )
-            identifier = selection.get("identifier", "")
-            name = selection.get("name", identifier)
+            emit_runtime_event("tool_execution_result", {
+                "action_id": action_id,
+                "task_id": task.id,
+                "tool_identifier": identifier,
+                "invoked": execution_invoked,
+                "ok": bool(result.get("ok")),
+            })
             kind = selection.get("kind", "")
             category = selection.get("category", "general")
             via = result.get('via') or selection.get('source') or kind
