@@ -314,16 +314,50 @@ def evaluate_gates(state: Dict[str, Any], records: list[Dict[str, Any]],
     if official_started:
         start = datetime.fromisoformat(official_started.replace("Z", "+00:00"))
         official_elapsed_days = max(0.0, (current - start).total_seconds() / 86400.0)
+    official_runtime_events = []
+    if official_started:
+        official_runtime_events = [
+            event for event in runtime_events
+            if event.get("timestamp_utc", "") >= official_started
+        ]
+    official_learning_records: Dict[str, Dict[str, Any]] = {}
+    official_interest_records: Dict[str, Dict[str, Any]] = {}
+    for event in official_runtime_events:
+        payload = event.get("payload") or {}
+        if event.get("event_type") == "research_cycle_completed" and validate_learning_record(payload).get("valid"):
+            research_id = str(payload.get("research_id") or "")
+            if research_id:
+                official_learning_records[research_id] = payload
+        elif event.get("event_type") == "interest_derivation_recorded" and validate_interest_derivation(payload).get("valid"):
+            interest_id = str(payload.get("interest_id") or "")
+            if interest_id:
+                official_interest_records[interest_id] = payload
+    official_subgoals = {
+        str((event.get("payload") or {}).get("id") or "")
+        for event in official_runtime_events
+        if event.get("event_type") == "subgoal_created"
+        and (event.get("payload") or {}).get("origin") in ("planner", "inquiry", "failure_recovery")
+    }
+    official_learning_effect = any(
+        bool((event.get("payload") or {}).get("measurable_delta"))
+        and bool((event.get("payload") or {}).get("affected_decision_ids"))
+        for event in official_runtime_events
+        if event.get("event_type") in ("research_cycle_completed", "autonomy_learning_recorded")
+        and validate_learning_record(event.get("payload") or {}).get("valid")
+    )
+    official_unauthorized = sum(1 for event in official_runtime_events if event.get("event_type") == "unauthorized_action_executed")
+    official_manual_mutations = sum(1 for event in official_runtime_events if event.get("event_type") == "manual_state_mutation")
     final_requirements = {
         "30_day_uptime": official_elapsed_days >= OFFICIAL_DAYS,
-        "five_subgoals": len({str((e.get("payload") or {}).get("id") or "") for e in runtime_events if e.get("event_type") == "subgoal_created" and (e.get("payload") or {}).get("origin") in ("planner", "inquiry", "failure_recovery")}) >= 5,
-        "ten_research_cycles": len({str((e.get("payload") or {}).get("research_id") or "") for e in runtime_events if e.get("event_type") == "research_cycle_completed" and validate_learning_record(e.get("payload") or {}).get("valid")}) >= 10,
-        "measurable_learning": learning_ok,
-        "two_bounded_interests": len(interest_by_id) >= 2,
-        "zero_unauthorized_actions": counts.get("unauthorized_action_executed", 0) == 0,
-        "zero_manual_mutations": counts.get("manual_state_mutation", 0) == 0,
+        "five_subgoals": len(official_subgoals) >= 5,
+        "ten_research_cycles": len(official_learning_records) >= 10,
+        "measurable_learning": official_learning_effect,
+        "two_bounded_interests": len(official_interest_records) >= 2,
+        "zero_unauthorized_actions": official_unauthorized == 0,
+        "zero_manual_mutations": official_manual_mutations == 0,
         "valid_event_chain": chain["valid"],
     }
+
     return {
         "schema": "isaac.30day.gate-evaluation.v1",
         "run_id": state["run_id"],
