@@ -243,6 +243,14 @@ def redact_trace_data(data: dict[str, Any], *, max_str: int = 400) -> dict[str, 
     for key, value in (data or {}).items():
         k = str(key)
         kl = k.lower()
+        # Preserve audit identifiers and structured authorization outcomes;
+        # redact actual authorization credential strings and sensitive nested keys.
+        if kl in {"authorization_event_id", "authorization_decision_id", "authorization_id"}:
+            out[k] = _truncate_scalar(value, max_str)
+            continue
+        if kl == "authorization" and isinstance(value, dict):
+            out[k] = redact_trace_data(value, max_str=max_str)
+            continue
         if any(frag in kl for frag in _REDACT_KEY_FRAGMENTS):
             out[k] = "[REDACTED]"
             continue
