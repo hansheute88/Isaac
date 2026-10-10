@@ -56,7 +56,8 @@ jobs:
             tests_provider_configuration \
             tests_isaac20_capabilities \
             tests_isaac20_causal \
-            tests_jules_agent
+            tests_jules_agent \
+            tests_isaac_30day_evidence
 
       - name: Run eval harness
         run: python -m evals.eval_runner
