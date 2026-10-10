@@ -177,13 +177,13 @@ def atomic_json(path: Path, value: Dict[str, Any]) -> None:
     os.replace(str(temp), str(path))
 
 
-def write_manifest(evidence_dir: Path, state: Dict[str, Any]) -> Dict[str, Any]:
+def _write_manifest_locked(evidence_dir: Path, state: Dict[str, Any],
+                           records: list[Dict[str, Any]]) -> Dict[str, Any]:
     files = {}
     for name in ("events.jsonl", "run_state.json", "final_report.json"):
         path = evidence_dir / name
         if path.exists():
             files[name] = {"sha256": sha256_file(path), "size_bytes": path.stat().st_size}
-    records = read_events(evidence_dir)
     chain = verify_chain(records)
     manifest = {
         "schema": MANIFEST_SCHEMA,
@@ -199,6 +199,18 @@ def write_manifest(evidence_dir: Path, state: Dict[str, Any]) -> Dict[str, Any]:
     return manifest
 
 
+def write_manifest(evidence_dir: Path, state: Dict[str, Any]) -> Dict[str, Any]:
+    ledger = evidence_dir / "events.jsonl"
+    ledger.touch(exist_ok=True)
+    with ledger.open("a+b") as lock_handle:
+        _lock_file(lock_handle)
+        try:
+            records = read_events(evidence_dir)
+            return _write_manifest_locked(evidence_dir, state, records)
+        finally:
+            _unlock_file(lock_handle)
+
+
 def backup_evidence(evidence_dir: Path, backup_dir: Path) -> Path:
     stamp = utc_now().strftime("%Y%m%dT%H%M%SZ")
     target = backup_dir / stamp
@@ -207,40 +219,20 @@ def backup_evidence(evidence_dir: Path, backup_dir: Path) -> Path:
         target = backup_dir / (stamp + "-" + str(suffix))
         suffix += 1
     target.mkdir(parents=True, exist_ok=False)
-    for name in ("events.jsonl", "run_state.json", "manifest.json", "final_report.json", "independent_validation.json"):
-        source = evidence_dir / name
-        if source.exists():
-            shutil.copy2(str(source), str(target / name))
-    return target
-
-
-def _pid_alive(runtime_pid: int) -> bool:
-    pid = int(runtime_pid)
-    if pid <= 0:
-        return False
-    if os.name == "nt":
-        import ctypes
-        from ctypes import wintypes
-        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-        kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
-        kernel32.OpenProcess.restype = wintypes.HANDLE
-        kernel32.GetExitCodeProcess.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
-        kernel32.GetExitCodeProcess.restype = wintypes.BOOL
-        kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
-        kernel32.CloseHandle.restype = wintypes.BOOL
-        handle = kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
-        if not handle:
-            return False
+    ledger = evidence_dir / "events.jsonl"
+    with ledger.open("a+b") as lock_handle:
+        _lock_file(lock_handle)
         try:
-            exit_code = wintypes.DWORD()
-            return bool(kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)) and exit_code.value == 259)
+            state = json.loads((evidence_dir / "run_state.json").read_text(encoding="utf-8"))
+            records = read_events(evidence_dir)
+            _write_manifest_locked(evidence_dir, state, records)
+            for name in ("events.jsonl", "run_state.json", "manifest.json", "final_report.json", "independent_validation.json"):
+                source = evidence_dir / name
+                if source.exists():
+                    shutil.copy2(str(source), str(target / name))
         finally:
-            kernel32.CloseHandle(handle)
-    try:
-        os.kill(pid, 0)
-        return True
-    except (OSError, ValueError, TypeError):
-        return False
+            _unlock_file(lock_handle)
+    return target
 
 
 def probe_health(url: str, timeout_seconds: float = 5.0,
