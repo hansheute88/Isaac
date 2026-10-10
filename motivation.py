@@ -358,7 +358,10 @@ async def run_goal_motivation_cycle(
             },
         )
         if submit_tasks:
-            await exe.submit(task)
+            if os.getenv("ISAAC_30DAY_OFFICIAL", "").strip() == "1":
+                await exe.submit_and_wait(task, timeout=180.0)
+            else:
+                await exe.submit(task)
             if cycle is not None:
                 try:
                     from isaac_autonomy_cycle import record_execution, record_evaluation
@@ -366,8 +369,8 @@ async def run_goal_motivation_cycle(
                         entry for entry in task.decision_trace.entries
                         if entry.phase == TracePhase.EXECUTION
                         and entry.event in {
-                            "execution_succeeded", "execution_failed", "model_call_succeeded",
-                            "model_call_failed", "search_completed", "search_failed",
+                            "execution_succeeded", "execution_failed", "model_call", "model_call_failed",
+                            "search_completed", "search_failed",
                         }
                     ]
                     evaluation_entries = [
