@@ -89,6 +89,11 @@ if (-not $healthy) {
     Stop-Setup "Isaac wurde innerhalb des Zeitlimits nicht gesund. Der Lauf ist als FAILED markiert; Evidenz wurde nicht gelöscht."
 }
 
+& $Python -m isaac_30day_evidence attach --evidence-dir $EvidenceDir --runtime-pid $isaac.Id
+if ($LASTEXITCODE -ne 0) {
+    Stop-Setup "Isaac-Prozess konnte nicht an die Evidenzüberwachung gebunden werden."
+}
+
 $stdout = Join-Path $EvidenceDir "supervisor.stdout.log"
 $stderr = Join-Path $EvidenceDir "supervisor.stderr.log"
 $watchArgs = '-m isaac_30day_evidence watch --evidence-dir "' + $EvidenceDir + '"'
