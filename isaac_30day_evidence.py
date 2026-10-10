@@ -214,13 +214,30 @@ def backup_evidence(evidence_dir: Path, backup_dir: Path) -> Path:
     return target
 
 
-def probe_health(url: str, timeout_seconds: float = 5.0) -> Dict[str, Any]:
+def probe_health(url: str, timeout_seconds: float = 5.0,
+                 runtime_pid: Optional[int] = None) -> Dict[str, Any]:
+    process_alive = True
+    if runtime_pid:
+        try:
+            os.kill(int(runtime_pid), 0)
+        except (OSError, ValueError, TypeError):
+            process_alive = False
+    if not process_alive:
+        return {"healthy": False, "process_alive": False, "runtime_pid": runtime_pid, "error": "runtime_process_not_alive"}
     request = urllib.request.Request(url, headers={"User-Agent": "Isaac-30Day-Proof/1.0"})
     try:
         with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
-            return {"healthy": 200 <= response.status < 400, "status_code": response.status}
+            return {
+                "healthy": 200 <= response.status < 400 and process_alive,
+                "status_code": response.status,
+                "process_alive": process_alive,
+                "runtime_pid": runtime_pid,
+            }
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        return {"healthy": False, "error_type": type(exc).__name__, "error": str(exc)[:300]}
+        return {
+            "healthy": False, "process_alive": process_alive, "runtime_pid": runtime_pid,
+            "error_type": type(exc).__name__, "error": str(exc)[:300],
+        }
 
 
 def _elapsed_hours(state: Dict[str, Any], now: datetime) -> float:
@@ -454,6 +471,7 @@ def initialize_run(evidence_dir: Path, source_revision: str, health_url: str,
         "source_revision": source_revision,
         "host": socket.gethostname(),
         "health_url": health_url,
+        "runtime_pid": None,
         "interval_seconds": int(interval_seconds),
         "backup_dir": str(backup_dir.resolve()) if backup_dir else str((evidence_dir / "backups").resolve()),
         "last_sample_at_utc": None,
@@ -466,6 +484,22 @@ def initialize_run(evidence_dir: Path, source_revision: str, health_url: str,
         "run_id": state["run_id"], "source_revision": source_revision,
         "host": state["host"], "health_url": health_url, "interval_seconds": interval_seconds,
     })
+    write_manifest(evidence_dir, state)
+    return state
+
+
+def attach_runtime_process(evidence_dir: Path, runtime_pid: int) -> Dict[str, Any]:
+    state_path = evidence_dir / "run_state.json"
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    if state.get("status") != "PREFLIGHT" or state.get("official_started_at_utc"):
+        raise RuntimeError("Runtime PID can only be attached during preflight.")
+    pid = int(runtime_pid)
+    if pid <= 0:
+        raise ValueError("runtime_pid must be a positive process ID")
+    os.kill(pid, 0)
+    state["runtime_pid"] = pid
+    atomic_json(state_path, state)
+    append_event(evidence_dir, "runtime_process_attached", {"runtime_pid": pid})
     write_manifest(evidence_dir, state)
     return state
 
@@ -494,7 +528,7 @@ def run_once(evidence_dir: Path, now: Optional[datetime] = None) -> Dict[str, An
             atomic_json(state_path, state)
             append_event(evidence_dir, "run_failed", {"reason": state["failure_reason"], "gap_seconds": state["previous_sample_gap_seconds"]})
             raise RuntimeError("Monitoring gap exceeded continuity limit; run failed closed.")
-    health = probe_health(state["health_url"])
+    health = probe_health(state["health_url"], runtime_pid=state.get("runtime_pid"))
     sample = append_event(evidence_dir, "health_sample", health, source="supervisor", event_time=iso_utc(current))
     state["last_sample_at_utc"] = sample["timestamp_utc"]
     if not health.get("healthy"):
@@ -589,6 +623,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     init.add_argument("--health-url", default="http://127.0.0.1:8766/")
     init.add_argument("--interval-seconds", type=int, default=DEFAULT_INTERVAL_SECONDS)
     init.add_argument("--backup-dir", default=None)
+    attach = sub.add_parser("attach", help="Bind the run to the real Isaac process ID")
+    attach.add_argument("--evidence-dir", required=True)
+    attach.add_argument("--runtime-pid", type=int, required=True)
     once = sub.add_parser("once", help="Perform one real health sample and update gates")
     once.add_argument("--evidence-dir", required=True)
     watch = sub.add_parser("watch", help="Continuously sample runtime health until stopped")
@@ -608,6 +645,10 @@ def main(argv: Optional[list[str]] = None) -> int:
             print(json.dumps({"initialized": True, "run_id": state["run_id"], "status": state["status"]}, indent=2))
             return 0
         root = Path(args.evidence_dir)
+        if args.command == "attach":
+            state = attach_runtime_process(root, args.runtime_pid)
+            print(json.dumps({"attached": True, "runtime_pid": state["runtime_pid"], "run_id": state["run_id"]}, indent=2))
+            return 0
         if args.command == "fail":
             state_path = root / "run_state.json"
             state = json.loads(state_path.read_text(encoding="utf-8"))
