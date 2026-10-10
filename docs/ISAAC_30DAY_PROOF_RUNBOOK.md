@@ -32,7 +32,7 @@ Set-ExecutionPolicy -Scope Process Bypass
   -BackupDir "D:\IsaacProofBackup"
 ```
 
-Use a backup path on a separate drive or managed network share. The launcher starts `isaac_core.py`, waits for a successful local health probe, and then starts the supervisor in a separate background process. It sets `ISAAC_30DAY_EVIDENCE_DIR` and `ISAAC_30DAY_OFFICIAL=1` only for those processes.
+Use a backup path on a separate drive or managed network share. The launcher starts `isaac_core.py`, waits for a successful local health probe, binds the run to that process ID, and then starts the supervisor in a separate background process. Health samples verify both the local endpoint and the actual Isaac process. It sets `ISAAC_30DAY_EVIDENCE_DIR` and `ISAAC_30DAY_OFFICIAL=1` only for those processes.
 
 ## Gates and clock
 
