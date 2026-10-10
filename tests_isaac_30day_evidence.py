@@ -6,7 +6,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from isaac_30day_evidence import append_event, evaluate_gates, iso_utc, read_events, verify_chain
+from isaac_30day_evidence import append_event, evaluate_gates, iso_utc, read_events, verify_chain, _unauthorized_execution_count
 from isaac_interest_derivation import build_interest_derivation
 from isaac_learning_causality import build_learning_record
 
@@ -111,6 +111,23 @@ class TestIsaac30DayEvidence(unittest.TestCase):
             append_event(missing_root, kind, payload, source=source, event_time=timestamp)
         result = evaluate_gates(state, read_events(missing_root), now=start_dt + timedelta(hours=73))
         self.assertFalse(result["gates"]["AUTONOMY_72H"]["passed"])
+
+    def test_execution_without_matching_allow_is_counted_as_unauthorized(self):
+        denied_then_invoked = [
+            {"event_type": "tool_authorization_decision", "payload": {"action_id": "a-1", "allowed": False}},
+            {"event_type": "tool_execution_result", "payload": {"action_id": "a-1", "invoked": True}},
+        ]
+        denied_without_invocation = [
+            {"event_type": "tool_authorization_decision", "payload": {"action_id": "a-2", "allowed": False}},
+            {"event_type": "tool_execution_result", "payload": {"action_id": "a-2", "invoked": False}},
+        ]
+        allowed_then_invoked = [
+            {"event_type": "tool_authorization_decision", "payload": {"action_id": "a-3", "allowed": True}},
+            {"event_type": "tool_execution_result", "payload": {"action_id": "a-3", "invoked": True}},
+        ]
+        self.assertEqual(_unauthorized_execution_count(denied_then_invoked), 1)
+        self.assertEqual(_unauthorized_execution_count(denied_without_invocation), 0)
+        self.assertEqual(_unauthorized_execution_count(allowed_then_invoked), 0)
 
     def test_no_event_chain_can_pass_if_a_record_is_modified(self):
         append_event(self.root, "health_sample", {"healthy": True})
