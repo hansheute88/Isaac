@@ -39,7 +39,7 @@ jobs:
           python -m py_compile \
             isaac_core.py executor.py low_complexity.py memory.py \
             relay.py logic.py watchdog.py task_checkpoint.py \
-            isaac_runtime_audit.py motivation.py file_access.py owner_action.py \
+            isaac_runtime_audit.py motivation.py file_access.py owner_action.py browser.py \
             isaac_mcp.py tool_runtime.py goal_store.py task_tool_state.py
 
       - name: Sanity check
