@@ -214,14 +214,38 @@ def backup_evidence(evidence_dir: Path, backup_dir: Path) -> Path:
     return target
 
 
+def _pid_alive(runtime_pid: int) -> bool:
+    pid = int(runtime_pid)
+    if pid <= 0:
+        return False
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        kernel32.OpenProcess.restype = wintypes.HANDLE
+        kernel32.GetExitCodeProcess.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+        kernel32.GetExitCodeProcess.restype = wintypes.BOOL
+        kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+        kernel32.CloseHandle.restype = wintypes.BOOL
+        handle = kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not handle:
+            return False
+        try:
+            exit_code = wintypes.DWORD()
+            return bool(kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)) and exit_code.value == 259)
+        finally:
+            kernel32.CloseHandle(handle)
+    try:
+        os.kill(pid, 0)
+        return True
+    except (OSError, ValueError, TypeError):
+        return False
+
+
 def probe_health(url: str, timeout_seconds: float = 5.0,
                  runtime_pid: Optional[int] = None) -> Dict[str, Any]:
-    process_alive = True
-    if runtime_pid:
-        try:
-            os.kill(int(runtime_pid), 0)
-        except (OSError, ValueError, TypeError):
-            process_alive = False
+    process_alive = _pid_alive(runtime_pid) if runtime_pid else True
     if not process_alive:
         return {"healthy": False, "process_alive": False, "runtime_pid": runtime_pid, "error": "runtime_process_not_alive"}
     request = urllib.request.Request(url, headers={"User-Agent": "Isaac-30Day-Proof/1.0"})
@@ -496,7 +520,8 @@ def attach_runtime_process(evidence_dir: Path, runtime_pid: int) -> Dict[str, An
     pid = int(runtime_pid)
     if pid <= 0:
         raise ValueError("runtime_pid must be a positive process ID")
-    os.kill(pid, 0)
+    if not _pid_alive(pid):
+        raise ValueError("runtime_pid is not alive or cannot be inspected")
     state["runtime_pid"] = pid
     atomic_json(state_path, state)
     append_event(evidence_dir, "runtime_process_attached", {"runtime_pid": pid})
