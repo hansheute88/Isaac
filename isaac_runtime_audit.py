@@ -129,20 +129,20 @@ def _record_boundary_decision(surface: str, operation: str, action_id: str, resu
         )
     else:
         return
-    reason = "constitution_denied" if denied else ""
-    boundary_action_id = uuid.uuid4().hex
-    record_tool_authorization_decision(
-        boundary_action_id, not denied, surface, operation, reason,
-        parent_action_id=action_id,
-    )
-    record_tool_execution_result(
-        boundary_action_id,
-        invoked=not denied,
-        ok=_result_ok(result),
-        surface=surface,
-        operation=operation,
-        parent_action_id=action_id,
-    )
+
+    # A positive authorization event must come from the actual policy gate,
+    # not from the absence of a denial-shaped return value.
+    if denied:
+        record_tool_authorization_decision(
+            action_id, False, surface, operation, "constitution_denied"
+        )
+        record_tool_execution_result(
+            action_id, invoked=False, ok=False, surface=surface, operation=operation
+        )
+    else:
+        record_tool_execution_result(
+            action_id, invoked=True, ok=_result_ok(result), surface=surface, operation=operation
+        )
 
 
 def audited_surface(surface: str) -> Callable:
