@@ -5,9 +5,9 @@ name: Python package
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "feat/**", "feature/**", "isaac-2.0/masterplan"]
   pull_request:
-    branches: ["main"]
+    branches: ["main", "isaac-2.0/masterplan"]
 
 env:
   ISAAC_DISABLE_VECTOR_MEMORY: "1"
