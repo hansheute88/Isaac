@@ -278,6 +278,10 @@ def verify_backup(root: Path, state: dict[str, Any]) -> dict[str, Any]:
         copied_journal = verify_journal(target)
         if not copied_journal["valid"]:
             return {"valid": False, "reason": "backup_journal_invalid", "detail": copied_journal}
+        manifest_hash = sha256_file(manifest_path)
+        backup_events = [e for e in read_jsonl(root / EVENTS) if e.get("event_type") == "backup_completed"]
+        if not backup_events or (backup_events[-1].get("payload") or {}).get("manifest_sha256") != manifest_hash:
+            return {"valid": False, "reason": "backup_manifest_not_bound_to_journal"}
         last_backup = state.get("last_backup_at_utc")
         age = None if not last_backup else (datetime.now(timezone.utc) - datetime.fromisoformat(last_backup)).total_seconds()
         if age is None or age > 1800:
@@ -525,7 +529,11 @@ def main() -> int:
         elif args.command == "backup-now":
             state = load_state(args.run_dir)
             report = backup(args.run_dir, Path(state["backup_dir"]))
-            append_event(args.run_dir, "backup_completed", {"files": report["files"]})
+            manifest_path = Path(state["backup_dir"]) / args.run_dir.name / "backup-manifest.json"
+            append_event(args.run_dir, "backup_completed", {
+                "files": report["files"],
+                "manifest_sha256": sha256_file(manifest_path),
+            })
             state = load_state(args.run_dir)
             state["last_backup_at_utc"] = utc_now()
             atomic_json(args.run_dir / STATE, state)
