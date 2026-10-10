@@ -31,6 +31,7 @@ from mcp_registry import MCPRegistry, get_mcp_registry
 from result_contract import ensure_result_contract
 from isaac_runtime_audit import (
     audited_surface,
+    bind_action_id,
     current_action_id,
     record_tool_authorization_decision,
     record_tool_execution_result,
@@ -270,17 +271,19 @@ class IsaacMCPService:
             erfolg=True,
         )
         try:
-            result = self.registry.invoke_tool(
-                tool_name,
-                args,
-                caller=caller,
-                caller_level=caller_level,
-                allow_owner_override=trusted_internal,
-            )
+            with bind_action_id(action_id):
+                result = self.registry.invoke_tool(
+                    tool_name,
+                    args,
+                    caller=caller,
+                    caller_level=caller_level,
+                    allow_owner_override=trusted_internal,
+                )
         except TypeError:
             # Backward-compatible fallback for third-party/custom registries
             # implementing the old two-argument invoke_tool contract.
-            result = self.registry.invoke_tool(tool_name, args)
+            with bind_action_id(action_id):
+                result = self.registry.invoke_tool(tool_name, args)
         except Exception as exc:
             AuditLog.error("MCP", "tool_invoke_failed", type(exc).__name__)
             record_tool_execution_result(
