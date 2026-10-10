@@ -449,7 +449,7 @@ class IsaacKernel:
                 AuditLog.steffen_input(user_input)
                 emp = self.empathie.analysiere(user_input)
                 trace = DecisionTrace()
-                trace.add(
+                owner_entry = trace.add(
                     TracePhase.CLASSIFICATION,
                     "owner_action_detected",
                     {
@@ -458,7 +458,29 @@ class IsaacKernel:
                         "privilege_mode": "admin",
                     },
                 )
-                result, ok = await execute_owner_action(owner_action)
+                from isaac_runtime_audit import (
+                    bind_action_id,
+                    record_tool_authorization_decision,
+                    record_tool_execution_result,
+                )
+                owner_action_id = "owner:%s" % owner_entry.event_id
+                # This branch is reachable only after the existing
+                # owner-equivalent privilege-mode gate has passed.
+                record_tool_authorization_decision(
+                    owner_action_id, True, "owner_actions", owner_action.kind,
+                    "owner_equivalent_mode",
+                )
+                try:
+                    with bind_action_id(owner_action_id):
+                        result, ok = await execute_owner_action(owner_action)
+                except Exception:
+                    record_tool_execution_result(
+                        owner_action_id, True, False, "owner_actions", owner_action.kind
+                    )
+                    raise
+                record_tool_execution_result(
+                    owner_action_id, True, bool(ok), "owner_actions", owner_action.kind
+                )
                 timing["owner_action_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
                 trace.add(
                     TracePhase.EXECUTION,
