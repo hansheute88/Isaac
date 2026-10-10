@@ -220,6 +220,17 @@ def validate_package(root: Path) -> Dict[str, Any]:
         errors.append("unauthorized_action_detected")
     if manual_mutations:
         errors.append("manual_state_mutation_detected")
+    required_audit_surfaces = {
+        "executor_tools", "owner_actions", "browser_missions", "mcp_tools",
+        "state_store_writes", "filesystem_state",
+    }
+    audit_ready = any(
+        (row.get("payload") or {}).get("coverage_complete") is True
+        and required_audit_surfaces.issubset(set((row.get("payload") or {}).get("surfaces") or []))
+        for row in official_events if row.get("event_type") == "proof_audit_readiness"
+    )
+    if not audit_ready:
+        errors.append("complete_execution_and_mutation_audit_coverage_missing")
 
     return {
         "schema": "isaac.30day.independent-validation.v1",
@@ -239,6 +250,7 @@ def validate_package(root: Path) -> Dict[str, Any]:
             "valid_bounded_interests": len(interests),
             "unauthorized_actions": unauthorized,
             "manual_state_mutations": manual_mutations,
+            "audit_coverage_complete": audit_ready,
         },
         "errors": errors,
         "passed": not errors,
