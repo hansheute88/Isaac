@@ -47,8 +47,8 @@ A health failure, backward clock movement, monitoring gap, event-chain tampering
 
 - `events.jsonl`: fsync'd hash-chained supervisor and runtime events.
 - `run_state.json`: pinned source revision, gate state, official clock and failure state.
-- `manifest.json`: SHA-256 and size metadata for the event ledger and run state.
-- backup snapshots: regular copies of the ledger, state, and manifest.
+- `manifest.json`: SHA-256 and size metadata for the event ledger, run state, and final report.
+- backup snapshots: regular copies of the ledger, state, manifest, final report, and independent validation when present.
 - `supervisor.stdout.log` / `supervisor.stderr.log`: watcher process logs.
 - `final_report.json`: candidate report after 30 days, before independent validation.
 - `independent_validation.json`: detached independent verification result bound to the final manifest hash.
