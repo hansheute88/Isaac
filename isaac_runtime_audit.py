@@ -10,7 +10,9 @@ import functools
 import inspect
 import os
 import uuid
-from typing import Any, Callable
+from contextlib import contextmanager
+from contextvars import ContextVar, Token
+from typing import Any, Callable, Iterator
 
 AUDIT_CONTRACT = "isaac.runtime.audit.v1"
 REQUIRED_SURFACES = (
@@ -51,6 +53,24 @@ def _result_ok(result: Any) -> bool:
     return True
 
 
+_ACTION_ID: ContextVar[str] = ContextVar("isaac_runtime_action_id", default="")
+
+
+def current_action_id() -> str:
+    """Return the action ID propagated through the current async call chain."""
+    return _ACTION_ID.get()
+
+
+@contextmanager
+def bind_action_id(action_id: str) -> Iterator[None]:
+    """Propagate the executor's real authorization ID into nested runtime hooks."""
+    token = _ACTION_ID.set(str(action_id or ""))
+    try:
+        yield
+    finally:
+        _ACTION_ID.reset(token)
+
+
 def audited_surface(surface: str) -> Callable:
     """Decorate a real runtime entry point with start/finish evidence events."""
     if surface not in REQUIRED_SURFACES:
@@ -59,18 +79,25 @@ def audited_surface(surface: str) -> Callable:
     def decorate(function: Callable) -> Callable:
         operation = function.__name__
 
-        def started() -> str:
-            action_id = uuid.uuid4().hex
-            _emit("runtime_surface_event", {
-                "contract": AUDIT_CONTRACT,
-                "surface": surface,
-                "operation": operation,
-                "phase": "started",
-                "action_id": action_id,
-            })
-            return action_id
+        def started() -> tuple[str, Token[str]]:
+            action_id = current_action_id() or uuid.uuid4().hex
+            token = _ACTION_ID.set(action_id)
+            try:
+                _emit("runtime_surface_event", {
+                    "contract": AUDIT_CONTRACT,
+                    "surface": surface,
+                    "operation": operation,
+                    "phase": "started",
+                    "action_id": action_id,
+                })
+            except Exception:
+                _ACTION_ID.reset(token)
+                raise
+            return action_id, token
 
-        def completed(action_id: str, phase: str, ok: bool, error_type: str = "") -> None:
+        def completed(
+            action_id: str, phase: str, ok: bool, error_type: str = ""
+        ) -> None:
             payload = {
                 "contract": AUDIT_CONTRACT,
                 "surface": surface,
@@ -86,26 +113,38 @@ def audited_surface(surface: str) -> Callable:
         if inspect.iscoroutinefunction(function):
             @functools.wraps(function)
             async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
-                action_id = started()
+                action_id, token = started()
+                phase, ok, error_type = "completed", True, ""
                 try:
                     result = await function(*args, **kwargs)
+                    ok = _result_ok(result)
+                    return result
                 except Exception as exc:
-                    completed(action_id, "failed", False, type(exc).__name__)
+                    phase, ok, error_type = "failed", False, type(exc).__name__
                     raise
-                completed(action_id, "completed", _result_ok(result))
-                return result
+                finally:
+                    try:
+                        completed(action_id, phase, ok, error_type)
+                    finally:
+                        _ACTION_ID.reset(token)
             wrapped = async_wrapper
         else:
             @functools.wraps(function)
             def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
-                action_id = started()
+                action_id, token = started()
+                phase, ok, error_type = "completed", True, ""
                 try:
                     result = function(*args, **kwargs)
+                    ok = _result_ok(result)
+                    return result
                 except Exception as exc:
-                    completed(action_id, "failed", False, type(exc).__name__)
+                    phase, ok, error_type = "failed", False, type(exc).__name__
                     raise
-                completed(action_id, "completed", _result_ok(result))
-                return result
+                finally:
+                    try:
+                        completed(action_id, phase, ok, error_type)
+                    finally:
+                        _ACTION_ID.reset(token)
             wrapped = sync_wrapper
 
         setattr(wrapped, "__isaac_audit_surface__", surface)
