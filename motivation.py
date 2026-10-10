@@ -301,8 +301,9 @@ async def run_goal_motivation_cycle(
         # 30-day autonomy: create a reconstructable cycle on the existing trace.
         # This records the cycle boundary only; authorization remains owned by the
         # existing capability/governance layer.
+        cycle = None
         try:
-            from isaac_autonomy_cycle import begin_cycle
+            from isaac_autonomy_cycle import begin_cycle, record_authorization
 
             cycle = begin_cycle(
                 task.decision_trace,
@@ -311,7 +312,27 @@ async def run_goal_motivation_cycle(
                 intent=dec.prompt,
             )
             task.retrieved_context["autonomy_cycle_id"] = cycle.cycle_id
+            authorization = task.decision_trace.add(
+                TracePhase.GOVERNANCE,
+                "goal_autonomy_authorization_observed",
+                {
+                    "cycle_id": cycle.cycle_id,
+                    "goal_id": dec.goal_id,
+                    "subgoal_id": dec.subgoal_id,
+                    "allowed": True,
+                    "allow_tools": bool(dec.allow_tools),
+                    "basis": "selected_by_existing_goal_motivation_policy",
+                },
+            )
+            record_authorization(
+                task.decision_trace,
+                cycle,
+                authorization_event_id=authorization.event_id,
+                allowed=True,
+            )
         except Exception as exc:
+            if os.getenv("ISAAC_30DAY_OFFICIAL", "").strip() == "1":
+                raise
             log.debug("autonomy cycle start skipped: %s", exc)
 
         task.decision_trace.add(
@@ -338,6 +359,36 @@ async def run_goal_motivation_cycle(
         )
         if submit_tasks:
             await exe.submit(task)
+            if cycle is not None:
+                try:
+                    from isaac_autonomy_cycle import record_execution, record_evaluation
+                    execution_entries = [
+                        entry for entry in task.decision_trace.entries
+                        if entry.phase == TracePhase.EXECUTION
+                        and entry.event in {
+                            "execution_succeeded", "execution_failed", "model_call_succeeded",
+                            "model_call_failed", "search_completed", "search_failed",
+                        }
+                    ]
+                    evaluation_entries = [
+                        entry for entry in task.decision_trace.entries
+                        if entry.phase == TracePhase.EVALUATION
+                    ]
+                    if execution_entries:
+                        record_execution(
+                            task.decision_trace, cycle,
+                            execution_event_id=execution_entries[-1].event_id,
+                        )
+                    if evaluation_entries:
+                        record_evaluation(
+                            task.decision_trace, cycle,
+                            evaluation_event_id=evaluation_entries[-1].event_id,
+                            outcome=str(getattr(task.status, "value", task.status)),
+                        )
+                except Exception:
+                    if os.getenv("ISAAC_30DAY_OFFICIAL", "").strip() == "1":
+                        raise
+                    log.exception("autonomy cycle completion evidence failed")
         task_ids.append(task.id)
 
         note = (
