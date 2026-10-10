@@ -345,10 +345,12 @@ class AsyncRelay:
                 return result
             except RateLimitErr:
                 self._mark_failure(prov_name, "Rate Limit")
+                self._record_guardrail_failure(provider=prov_name, error="Rate Limit", task_id=task_id)
                 await asyncio.sleep(min(20, 5 * versuch))
             except ProviderErr as e:
                 msg = str(e)
                 self._mark_failure(prov_name, msg)
+                self._record_guardrail_failure(provider=prov_name, error=msg, task_id=task_id)
                 # Offline / connection errors: fail fast (no 3× ollama spam)
                 msg_l = msg.lower()
                 offline = any(
@@ -401,6 +403,20 @@ class AsyncRelay:
         if finish_chat_span and span is not None:
             finish_chat_span(span, result_text=err, model=model_name, success=False)
         return err
+
+    def _record_guardrail_failure(self, *, provider: str, error: str,
+                                  task_id: str = "", safety_critical: bool = False) -> None:
+        """Route runtime failure evidence into the additive guardrail layer."""
+        try:
+            from isaac_guardrails import get_guardrail_controller
+            entry = AuditLog.error("Relay", error[:250], f"provider={provider}")
+            failed_event_id = entry.get("event_id", "") if isinstance(entry, dict) else ""
+            get_guardrail_controller().intervene_provider(
+                provider=provider, failed_event_id=failed_event_id,
+                error=error, safety_critical=safety_critical, task_id=task_id,
+            )
+        except Exception as exc:
+            log.debug("Guardrail failure recording skipped: %s", exc)
 
     async def ask_with_fallback(self, prompt: str, system: str = "",
                                 preferred: Optional[str] = None,

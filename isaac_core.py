@@ -36,6 +36,7 @@ from config         import get_config, Level, WORKSPACE, is_owner_equivalent_mod
 from constitution_override import apply_constitution_gate, build_override_context
 from privilege      import get_gate, steffen_ctx, isaac_ctx
 from audit          import AuditLog, setup_privilege_audit
+from isaac_runtime_audit import audited_surface, emit_proof_audit_readiness
 from memory         import get_memory
 from executor       import get_executor, TaskType, TaskStatus, Strategy
 from relay          import get_relay
@@ -332,6 +333,8 @@ class IsaacKernel:
         log.info(f"  KI-Dialog:  {self.ki_dialog.stats()['gespraeche']} Gespräche, "
                  f"{self.ki_dialog.stats()['wissenseintraege']} Wissenseinträge")
         log.info(f"  SUDO:       {'Ersteinrichtung' if self.sudo.is_first_run() else 'Bereit'}")
+        audit_inventory = emit_proof_audit_readiness()
+        log.info("Runtime audit instrumentation: complete=%s surfaces=%s", audit_inventory["coverage_complete"], len(audit_inventory["surfaces"]))
         AuditLog.action("Kernel", "startup", f"v{self.VERSION}", Level.ISAAC)
 
     # ── Haupt-Verarbeitung ────────────────────────────────────────────────────
@@ -446,7 +449,7 @@ class IsaacKernel:
                 AuditLog.steffen_input(user_input)
                 emp = self.empathie.analysiere(user_input)
                 trace = DecisionTrace()
-                trace.add(
+                owner_entry = trace.add(
                     TracePhase.CLASSIFICATION,
                     "owner_action_detected",
                     {
@@ -455,7 +458,29 @@ class IsaacKernel:
                         "privilege_mode": "admin",
                     },
                 )
-                result, ok = await execute_owner_action(owner_action)
+                from isaac_runtime_audit import (
+                    bind_action_id,
+                    record_tool_authorization_decision,
+                    record_tool_execution_result,
+                )
+                owner_action_id = "owner:%s" % owner_entry.event_id
+                # This branch is reachable only after the existing
+                # owner-equivalent privilege-mode gate has passed.
+                record_tool_authorization_decision(
+                    owner_action_id, True, "owner_actions", owner_action.kind,
+                    "owner_equivalent_mode",
+                )
+                try:
+                    with bind_action_id(owner_action_id):
+                        result, ok = await execute_owner_action(owner_action)
+                except Exception:
+                    record_tool_execution_result(
+                        owner_action_id, True, False, "owner_actions", owner_action.kind
+                    )
+                    raise
+                record_tool_execution_result(
+                    owner_action_id, True, bool(ok), "owner_actions", owner_action.kind
+                )
                 timing["owner_action_ms"] = round((time.perf_counter() - t_start) * 1000, 2)
                 trace.add(
                     TracePhase.EXECUTION,
@@ -2213,6 +2238,7 @@ class IsaacKernel:
             "actions": actions,
         }
 
+    @audited_surface("browser_missions")
     async def _run_browser_flow_bounded(
         self,
         browser,
