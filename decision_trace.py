@@ -3,11 +3,15 @@ from __future__ import annotations
 import json
 import os
 import time
+import threading
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
+
+
+_TRACE_PERSIST_LOCK = threading.Lock()
 
 
 # Sensitive key fragments — values redacted in portable export (not dropped).
@@ -75,6 +79,7 @@ class DecisionTrace:
             event_id=str(uuid.uuid4()),
         )
         self.entries.append(entry)
+        _persist_autonomy_trace_entry(entry, self.trace_id)
         return entry
 
     def to_list(self) -> list[dict[str, Any]]:
@@ -201,6 +206,35 @@ class DecisionTrace:
                 }
             ],
         }
+
+
+def _persist_autonomy_trace_entry(entry: TraceEntry, trace_id: str) -> None:
+    """Append a redacted trace event when official autonomy evidence is enabled.
+
+    Disabled by default. If enabled, persistence errors intentionally propagate:
+    a proof run must not silently continue after losing its runtime evidence.
+    """
+    target = os.environ.get("ISAAC_AUTONOMY_TRACE_PATH", "").strip()
+    if not target:
+        return
+    path = Path(target).expanduser()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    record = {
+        "schema": "isaac.decision-trace.persisted.v1",
+        "trace_id": trace_id,
+        "sequence": entry.sequence,
+        "ts": entry.ts,
+        "phase": entry.phase.value,
+        "event": entry.event,
+        "event_id": entry.event_id,
+        "data": redact_trace_data(dict(entry.data or {})),
+    }
+    encoded = json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    with _TRACE_PERSIST_LOCK:
+        with path.open("a", encoding="utf-8", newline="\n") as stream:
+            stream.write(encoded + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
 
 
 def redact_trace_data(data: dict[str, Any], *, max_str: int = 400) -> dict[str, Any]:
