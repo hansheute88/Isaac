@@ -59,6 +59,14 @@ Verify at any time:
 
 The hash chain detects changes made after events are recorded. It is not a substitute for access control or independent custody of the backup drive.
 
+When the supervisor reports `AWAITING_INDEPENDENT_VALIDATION` after the 30-day criteria are met, run:
+
+```powershell
+.\\.venv\\Scripts\\python.exe -m isaac_30day_evidence finalize --evidence-dir "C:\\IsaacProof\\Evidence"
+```
+
+This finalization step changes the run to `COMPLETE` only if the separate standard-library verifier passes. It writes `independent_validation.json`, bound to the final manifest hash. If validation fails, the run is marked `FAILED_FINAL_VALIDATION`; preserve the entire evidence package.
+
 ## Known limitation before the official run
 
 The gate is deliberately fail-closed. Runtime hooks record goal-autonomy cycle boundaries and the existing selection/authorization, task execution, and evaluation path. GoalStore subgoal creation, schema-valid learning records, and schema-valid interest derivations are recorded only when those real code paths execute. I have not established that the current production loop naturally produces the required causal learning records and two valid bounded-interest derivations end-to-end. Therefore **do not assume the official run is ready**: first run the preflight and confirm that real runtime evidence reaches these contracts. The official clock remains blocked unless all 72h gate criteria pass. Do not manually add events to make a gate pass. If the 72h gate does not pass, treat that as a real integration/behavior gap to fix before attempting the official run.
