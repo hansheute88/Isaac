@@ -61,7 +61,7 @@ Verify at any time:
 
 The hash chain detects changes made after events are recorded. It is not a substitute for access control or independent custody of the backup drive.
 
-When the supervisor reports `AWAITING_INDEPENDENT_VALIDATION` after the 30-day criteria are met, run:
+When the supervisor reports `AWAITING_INDEPENDENT_VALIDATION` after the 30-day criteria are met, stop the Isaac process cleanly first. The finalizer refuses to run while the recorded runtime PID is still alive, so the evidence package can be frozen. Then run:
 
 ```powershell
 .\.venv\Scripts\python.exe -m isaac_30day_evidence finalize --evidence-dir "C:\IsaacProof\Evidence"
