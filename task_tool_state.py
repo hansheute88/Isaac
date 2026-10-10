@@ -8,6 +8,7 @@ from typing import Any
 
 from config import DATA_DIR
 from state_io import atomic_write_json, load_json_or_recover
+from isaac_runtime_audit import audited_surface
 
 STATE_PATH = DATA_DIR / "task_tool_states.json"
 log = logging.getLogger(__name__)
@@ -90,6 +91,7 @@ class TaskToolStateStore:
         if not self.path.exists():
             self._save()
 
+    @audited_surface("state_store_writes")
     def _save(self):
         payload = [item.to_dict() for item in sorted(self._items.values(), key=lambda x: x.updated_at, reverse=True)[:300]]
         atomic_write_json(self.path, payload)
