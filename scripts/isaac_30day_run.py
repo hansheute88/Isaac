@@ -129,7 +129,7 @@ def backup(root: Path, destination: Path) -> dict[str, Any]:
         raise ValueError("Backup target must not overlap the run directory.")
     target.mkdir(parents=True, exist_ok=True)
     files = {}
-    for name in (STATE, EVENTS, TRACE):
+    for name in (STATE, EVENTS, TRACE, "preflight-tests.json", "preflight-tests.stdout.log", "preflight-tests.stderr.log", "isaac-stdout.log", "isaac-stderr.log"):
         source = root / name
         if source.exists():
             shutil.copy2(source, target / name)
@@ -340,8 +340,22 @@ def approve_gate(root: Path, gate: str) -> None:
     events = read_jsonl(root / EVENTS)
     test_report_path = root / "preflight-tests.json"
     test_report = {}
+    test_report_valid = False
     if test_report_path.exists():
-        test_report = json.loads(test_report_path.read_text(encoding="utf-8"))
+        try:
+            test_report = json.loads(test_report_path.read_text(encoding="utf-8"))
+            stdout_log = root / "preflight-tests.stdout.log"
+            stderr_log = root / "preflight-tests.stderr.log"
+            test_report_valid = (
+                test_report.get("schema") == "isaac.30day.preflight-tests.v1"
+                and test_report.get("exit_code") == 0
+                and test_report.get("source_revision") == state["source_revision"]
+                and stdout_log.exists() and stderr_log.exists()
+                and sha256_file(stdout_log) == test_report.get("stdout_sha256")
+                and sha256_file(stderr_log) == test_report.get("stderr_sha256")
+            )
+        except (OSError, ValueError):
+            test_report_valid = False
     heartbeats = [e for e in events if e.get("event_type") == "heartbeat"
                   and datetime.fromisoformat(e["timestamp_utc"]) >= phase_started]
     phase_heartbeat_ok = bool(heartbeats)
@@ -364,9 +378,7 @@ def approve_gate(root: Path, gate: str) -> None:
             "runtime_trace_enabled": trace["exists"] and trace["entries"] > 0 and metrics["valid_jsonl"],
             "backup_verified": backup_check["valid"],
             "journal_chain_valid": check["valid"],
-            "authorization_tests_passed": test_report.get("exit_code") == 0
-                and test_report.get("source_revision") == state["source_revision"]
-                and bool(test_report.get("stdout_sha256")),
+            "authorization_tests_passed": test_report_valid,
         }
     elif gate == "STABILITY":
         checks = {
