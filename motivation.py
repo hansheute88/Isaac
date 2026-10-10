@@ -314,19 +314,6 @@ async def run_goal_motivation_cycle(
         except Exception as exc:
             log.debug("autonomy cycle start skipped: %s", exc)
 
-        # Observed scope authorization from the existing active-goal store;
-        # this does not grant additional tool or system permissions.
-        task.decision_trace.add(
-            TracePhase.GOVERNANCE,
-            "goal_scope_authorization_observed",
-            {
-                "goal_id": dec.goal_id,
-                "subgoal_id": dec.subgoal_id,
-                "allowed": True,
-                "authorization_source": "active_owner_goal_store",
-                "scope": "bounded_subgoal",
-            },
-        )
         task.decision_trace.add(
             TracePhase.MOTIVATION,
             "selected",

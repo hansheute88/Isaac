@@ -32,30 +32,14 @@ def reconstruct_cycle(trace: DecisionTrace, cycle_id: str) -> dict[str, Any]:
         if data.get("next_cycle_id") and not cycle.next_cycle_id:
             cycle.next_cycle_id = str(data["next_cycle_id"])
 
-        event_name = str(entry.get("event") or "")
-        if phase == "governance":
-            if event_name in {"autonomy_authorization_observed", "authorization_observed"} and data.get("authorization_event_id"):
-                cycle.authorization_event_id = str(data["authorization_event_id"])
-            elif event_name in {
-                "capability_decision", "tool_execution_capability",
-                "tool_authorization_decision", "goal_scope_authorization_observed",
-            } and not cycle.authorization_event_id:
-                # The decision itself is evidence even when it denies the action.
-                cycle.authorization_event_id = event_id
+        if phase == "governance" and data.get("authorization_event_id"):
+            cycle.authorization_event_id = str(data["authorization_event_id"])
         elif phase == "execution" and not cycle.execution_event_id:
-            # Never equate a planned/started/failed action with execution.
-            if event_name in {"autonomy_execution_observed", "execution_observed"}:
-                cycle.execution_event_id = str(data.get("execution_event_id") or event_id)
+            cycle.execution_event_id = event_id
         elif phase == "evaluation" and not cycle.evaluation_event_id:
-            if event_name in {
-                "autonomy_evaluation_recorded", "evaluation_observed",
-                "quality_scored", "autonomy_task_outcome_observed",
-            }:
-                cycle.evaluation_event_id = str(data.get("evaluation_event_id") or event_id)
+            cycle.evaluation_event_id = event_id
         elif phase == "learning" and not cycle.learning_id:
-            # Generic procedure_record/turn_complete events are not learning proof.
-            if event_name in {"autonomy_learning_recorded", "learning_recorded", "goal_learning_recorded"}:
-                cycle.learning_id = str(data.get("learning_id") or event_id)
+            cycle.learning_id = str(data.get("learning_id") or event_id)
 
     result = validate_cycle(cycle)
     result["related_trace_entries"] = len(entries)

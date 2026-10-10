@@ -2,9 +2,9 @@ name: Isaac 2.0 Validation
 
 on:
   push:
-    branches: ["isaac-2.0/masterplan", "feat/isaac-30day-autonomy-roadmap-18197820798566488835"]
+    branches: ["isaac-2.0/masterplan"]
   pull_request:
-    branches: ["main", "isaac-2.0/masterplan"]
+    branches: ["main"]
 
 env:
   ISAAC_DISABLE_VECTOR_MEMORY: "1"
