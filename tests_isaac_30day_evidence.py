@@ -6,13 +6,9 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from isaac_30day_evidence import (
-    append_event,
-    evaluate_gates,
-    iso_utc,
-    read_events,
-    verify_chain,
-)
+from isaac_30day_evidence import append_event, evaluate_gates, iso_utc, read_events, verify_chain
+from isaac_interest_derivation import build_interest_derivation
+from isaac_learning_causality import build_learning_record
 
 
 class TestIsaac30DayEvidence(unittest.TestCase):
@@ -61,19 +57,39 @@ class TestIsaac30DayEvidence(unittest.TestCase):
                 "STABILITY_48H": {"passed": True},
             },
         }
+        learning_payload = build_learning_record(
+            learning_id="l-1", research_id="r-1", goal_id="g-1", subgoal_id="sg-1",
+            source_cycle_id="c-1", pre_state={"quality": 0.4}, research_evidence=["source-1"],
+            post_state={"quality": 0.7}, measurable_delta={"quality_delta": 0.3},
+            affected_decision_ids=["decision-2"], evidence_event_ids=["event-2"],
+        ).to_dict()
+        interest_base = {
+            "owner_goal_id": "g-1", "subgoal_id": "sg-1", "observation_research_id": "r-1",
+            "new_information": "Grounded new information", "inference": "Goal-related inference",
+            "interest_proposal": "Bounded follow-up topic", "alignment_check": {"aligned": True},
+            "scope_check": {"bounded": True}, "risk_check": {"acceptable": True},
+            "authorization": {"authorized": True},
+        }
+        interest_payloads = [
+            build_interest_derivation(interest_id="i-1", **interest_base).to_dict(),
+            build_interest_derivation(interest_id="i-2", **interest_base).to_dict(),
+        ]
+        timestamp = iso_utc(start_dt + timedelta(hours=73))
         for kind, source, payload in [
             ("health_sample", "supervisor", {"healthy": True}),
             ("autonomy_cycle_started", "isaac_runtime", {"cycle_id": "c-1"}),
             ("autonomy_authorization_observed", "isaac_runtime", {"cycle_id": "c-1", "allowed": True}),
             ("autonomy_execution_observed", "isaac_runtime", {"cycle_id": "c-1"}),
             ("autonomy_evaluation_recorded", "isaac_runtime", {"cycle_id": "c-1"}),
-            ("autonomy_learning_recorded", "isaac_runtime", {"learning_id": "l-1"}),
-            ("interest_derivation_recorded", "isaac_runtime", {"interest_id": "i-1"}),
+            ("autonomy_learning_recorded", "isaac_runtime", learning_payload),
+            ("research_cycle_completed", "isaac_runtime", learning_payload),
+            ("interest_derivation_recorded", "isaac_runtime", interest_payloads[0]),
+            ("interest_derivation_recorded", "isaac_runtime", interest_payloads[1]),
         ]:
-            append_event(self.root, kind, payload, source=source, event_time=iso_utc(start_dt + timedelta(hours=73)))
-        records = read_events(self.root)
-        result = evaluate_gates(state, records, now=start_dt + timedelta(hours=73))
+            append_event(self.root, kind, payload, source=source, event_time=timestamp)
+        result = evaluate_gates(state, read_events(self.root), now=start_dt + timedelta(hours=73))
         self.assertTrue(result["gates"]["AUTONOMY_72H"]["passed"])
+
         missing_root = self.root / "without-learning"
         for kind, source, payload in [
             ("health_sample", "supervisor", {"healthy": True}),
@@ -81,9 +97,10 @@ class TestIsaac30DayEvidence(unittest.TestCase):
             ("autonomy_authorization_observed", "isaac_runtime", {"cycle_id": "c-1", "allowed": True}),
             ("autonomy_execution_observed", "isaac_runtime", {"cycle_id": "c-1"}),
             ("autonomy_evaluation_recorded", "isaac_runtime", {"cycle_id": "c-1"}),
-            ("interest_derivation_recorded", "isaac_runtime", {"interest_id": "i-1"}),
+            ("interest_derivation_recorded", "isaac_runtime", interest_payloads[0]),
+            ("interest_derivation_recorded", "isaac_runtime", interest_payloads[1]),
         ]:
-            append_event(missing_root, kind, payload, source=source, event_time=iso_utc(start_dt + timedelta(hours=73)))
+            append_event(missing_root, kind, payload, source=source, event_time=timestamp)
         result = evaluate_gates(state, read_events(missing_root), now=start_dt + timedelta(hours=73))
         self.assertFalse(result["gates"]["AUTONOMY_72H"]["passed"])
 
