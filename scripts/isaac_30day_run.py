@@ -134,6 +134,9 @@ def backup(root: Path, destination: Path) -> dict[str, Any]:
         if source.exists():
             shutil.copy2(source, target / name)
             files[name] = sha256_file(target / name)
+    for source in root.glob("gate-*-evidence.json"):
+        shutil.copy2(source, target / source.name)
+        files[source.name] = sha256_file(target / source.name)
     report = {"schema": "isaac.30day.backup.v1", "created_at_utc": utc_now(), "source": str(root), "files": files}
     atomic_json(target / "backup-manifest.json", report)
     return report
@@ -477,10 +480,12 @@ def verify_and_manifest(root: Path) -> None:
         "runtime_trace": trace,
         "note": "A valid hash chain proves internal consistency only; independent backup and runtime evidence review are still required.",
     }
-    for name in (STATE, EVENTS, TRACE):
+    for name in (STATE, EVENTS, TRACE, "preflight-tests.json", "preflight-tests.stdout.log", "preflight-tests.stderr.log", "isaac-stdout.log", "isaac-stderr.log"):
         path = root / name
         if path.exists():
             manifest["files"][name] = {"sha256": sha256_file(path), "bytes": path.stat().st_size}
+    for path in root.glob("gate-*-evidence.json"):
+        manifest["files"][path.name] = {"sha256": sha256_file(path), "bytes": path.stat().st_size}
     atomic_json(root / "sha256-manifest.json", manifest)
     print(json.dumps(manifest, indent=2, ensure_ascii=False))
 
