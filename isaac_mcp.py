@@ -21,6 +21,7 @@ import ipaddress
 import os
 import threading
 import time
+import uuid
 from dataclasses import dataclass
 from typing import Any, Mapping
 
@@ -223,14 +224,17 @@ class IsaacMCPService:
         trusted_internal: bool = False,
     ) -> dict[str, Any]:
         args = dict(arguments or {})
-        action_id = current_action_id()
+        parent_action_id = current_action_id()
+        action_id = uuid.uuid4().hex
         raw_size = len(repr(args).encode("utf-8", errors="replace"))
         if raw_size > self.max_argument_bytes():
             record_tool_authorization_decision(
-                action_id, False, "mcp_tools", tool_name, "argument_size_limit"
+                action_id, False, "mcp_tools", tool_name, "argument_size_limit",
+                parent_action_id=parent_action_id,
             )
             record_tool_execution_result(
-                action_id, False, False, "mcp_tools", tool_name
+                action_id, False, False, "mcp_tools", tool_name,
+                parent_action_id=parent_action_id,
             )
             return self._deny(tool_name, "MCP arguments exceed configured size limit")
 
@@ -242,7 +246,8 @@ class IsaacMCPService:
             trusted_internal=trusted_internal,
         )
         record_tool_authorization_decision(
-            action_id, ok, "mcp_tools", tool_name, "" if ok else reason
+            action_id, ok, "mcp_tools", tool_name, "" if ok else reason,
+            parent_action_id=parent_action_id,
         )
         if not ok:
             record_tool_execution_result(
@@ -278,7 +283,8 @@ class IsaacMCPService:
         except Exception as exc:
             AuditLog.error("MCP", "tool_invoke_failed", type(exc).__name__)
             record_tool_execution_result(
-                action_id, True, False, "mcp_tools", tool_name
+                action_id, True, False, "mcp_tools", tool_name,
+                parent_action_id=parent_action_id,
             )
             return ensure_result_contract(
                 {"ok": False, "error": "MCP tool execution failed"},
@@ -295,7 +301,8 @@ class IsaacMCPService:
             )
         final_result = ensure_result_contract(result, source=f"isaac_mcp:{tool_name}")
         record_tool_execution_result(
-            action_id, True, bool(final_result.get("ok")), "mcp_tools", tool_name
+            action_id, True, bool(final_result.get("ok")), "mcp_tools", tool_name,
+            parent_action_id=parent_action_id,
         )
         return final_result
 
