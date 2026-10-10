@@ -242,39 +242,184 @@ def monitor(root: Path, pid: int, interval: int, backup_interval: int, once: boo
         time.sleep(max(5, interval))
 
 
-def approve_gate(root: Path, gate: str, evidence_path: Path) -> None:
+def read_jsonl(path: Path) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    if not path.exists():
+        return rows
+    with path.open("r", encoding="utf-8") as stream:
+        for line in stream:
+            if line.strip():
+                rows.append(json.loads(line))
+    return rows
+
+
+def verify_backup(root: Path, state: dict[str, Any]) -> dict[str, Any]:
+    target = Path(state["backup_dir"]) / root.name
+    manifest_path = target / "backup-manifest.json"
+    if not manifest_path.exists():
+        return {"valid": False, "reason": "backup_manifest_missing"}
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        for name, expected in manifest.get("files", {}).items():
+            candidate = target / name
+            if not candidate.exists() or sha256_file(candidate) != expected:
+                return {"valid": False, "reason": f"backup_hash_mismatch:{name}"}
+        copied_journal = verify_journal(target)
+        if not copied_journal["valid"]:
+            return {"valid": False, "reason": "backup_journal_invalid", "detail": copied_journal}
+        last_backup = state.get("last_backup_at_utc")
+        age = None if not last_backup else (datetime.now(timezone.utc) - datetime.fromisoformat(last_backup)).total_seconds()
+        if age is None or age > 1800:
+            return {"valid": False, "reason": "backup_stale", "age_seconds": age}
+        return {"valid": True, "age_seconds": age, "manifest_sha256": sha256_file(manifest_path)}
+    except (OSError, ValueError, KeyError) as exc:
+        return {"valid": False, "reason": f"backup_validation_error:{type(exc).__name__}"}
+
+
+def trace_gate_metrics(root: Path) -> dict[str, Any]:
+    try:
+        rows = read_jsonl(root / TRACE)
+    except (OSError, ValueError):
+        return {"valid_jsonl": False, "cycles_reconstructable": 0, "subgoals": 0, "research_cycles": 0,
+                "learning_effects": 0, "valid_interests": 0, "audit_snapshots": []}
+    cycles: dict[str, set[str]] = {}
+    subgoals = research = learning = interests = 0
+    audit_snapshots = []
+    for row in rows:
+        data = row.get("data") or {}
+        event = str(row.get("event") or "")
+        cid = str(data.get("cycle_id") or "")
+        if cid:
+            cycles.setdefault(cid, set()).add(event)
+        if event in {"subgoal_created", "autonomy_subgoal_created"}:
+            subgoals += 1
+        if event in {"research_cycle_completed", "autonomy_research_completed"}:
+            research += 1
+        if event in {"learning_record_created", "autonomy_learning_record_created"}:
+            if (isinstance(data.get("pre_state"), dict) and isinstance(data.get("post_state"), dict)
+                    and isinstance(data.get("measurable_delta"), dict) and data.get("measurable_delta")
+                    and isinstance(data.get("affected_decision_ids"), list) and data.get("affected_decision_ids")):
+                learning += 1
+        if event == "interest_derivation_recorded" and (data.get("validation") or {}).get("valid") is True:
+            interests += 1
+        if event in {"governance_audit_snapshot", "autonomy_audit_snapshot"}:
+            audit_snapshots.append({"ts": float(row.get("ts") or 0), **data})
+    complete = sum(
+        1 for events in cycles.values()
+        if "autonomy_cycle_started" in events
+        and "autonomy_authorization_observed" in events
+        and "autonomy_execution_observed" in events
+        and "autonomy_evaluation_recorded" in events
+    )
+    return {"valid_jsonl": True, "cycles_reconstructable": complete, "subgoals": subgoals,
+            "research_cycles": research, "learning_effects": learning, "valid_interests": interests,
+            "audit_snapshots": audit_snapshots}
+
+
+def approve_gate(root: Path, gate: str) -> None:
     state = load_state(root)
     check = verify_journal(root)
     if not check["valid"]:
         raise RuntimeError(f"Journal invalid: {check}")
-    expected = {"PREFLIGHT": "PREFLIGHT", "STABILITY": "STABILITY", "AUTONOMY": "AUTONOMY"}
-    if gate not in expected or state["phase"] != gate:
+    if gate not in {"PREFLIGHT", "STABILITY", "AUTONOMY"} or state["phase"] != gate:
         raise RuntimeError(f"Gate {gate} cannot be approved while phase is {state['phase']}.")
     durations = dict(PHASES)
     phase_started = datetime.fromisoformat(state["phase_started_at_utc"])
     elapsed = (datetime.now(timezone.utc) - phase_started).total_seconds()
+    trace = runtime_trace_stats(root)
+    metrics = trace_gate_metrics(root)
+    backup_check = verify_backup(root, state)
+    events = read_jsonl(root / EVENTS)
+    test_report_path = root / "preflight-tests.json"
+    test_report = {}
+    if test_report_path.exists():
+        test_report = json.loads(test_report_path.read_text(encoding="utf-8"))
+    heartbeats = [e for e in events if e.get("event_type") == "heartbeat"
+                  and datetime.fromisoformat(e["timestamp_utc"]) >= phase_started]
+    phase_heartbeat_ok = bool(heartbeats)
+    if phase_heartbeat_ok:
+        stamps = [datetime.fromisoformat(e["timestamp_utc"]).timestamp() for e in heartbeats]
+        phase_heartbeat_ok = stamps[-1] >= time.time() - 180 and stamps[0] <= phase_started.timestamp() + 180
+        phase_heartbeat_ok = phase_heartbeat_ok and all((b - a) <= 180 for a, b in zip(stamps, stamps[1:]))
+        phase_heartbeat_ok = phase_heartbeat_ok and all(
+            (e.get("payload") or {}).get("pid_alive") is True
+            and (e.get("payload") or {}).get("dashboard_port_8766_open") is True
+            and (e.get("payload") or {}).get("websocket_port_8765_open") is True
+            for e in heartbeats
+        )
+    recent_audits = [a for a in metrics["audit_snapshots"] if a["ts"] >= phase_started.timestamp()]
+    audit = recent_audits[-1] if recent_audits else {}
     if elapsed < durations[gate]:
-        raise RuntimeError(f"Gate duration incomplete: {elapsed:.0f}s elapsed; {durations[gate]}s required.")
-    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
-    required = {
-        "PREFLIGHT": ["runtime_trace_enabled", "backup_verified", "journal_chain_valid", "authorization_tests_passed"],
-        "STABILITY": ["runtime_health_stable", "no_unexplained_restarts", "backup_verified", "journal_chain_valid"],
-        "AUTONOMY": ["cycles_reconstructable", "learning_effect_measured", "interest_derivations_valid", "zero_unauthorized_actions", "zero_manual_state_mutations", "backup_verified", "journal_chain_valid"],
-    }[gate]
-    failed = [key for key in required if evidence.get(key) is not True]
+        checks = {"required_phase_duration_elapsed": False}
+    elif gate == "PREFLIGHT":
+        checks = {
+            "runtime_trace_enabled": trace["exists"] and trace["entries"] > 0 and metrics["valid_jsonl"],
+            "backup_verified": backup_check["valid"],
+            "journal_chain_valid": check["valid"],
+            "authorization_tests_passed": test_report.get("exit_code") == 0
+                and test_report.get("source_revision") == state["source_revision"]
+                and bool(test_report.get("stdout_sha256")),
+        }
+    elif gate == "STABILITY":
+        checks = {
+            "runtime_health_stable": phase_heartbeat_ok,
+            "no_unexplained_restarts": not any(
+                e.get("event_type") == "runtime_process_not_alive"
+                and datetime.fromisoformat(e["timestamp_utc"]) >= phase_started for e in events
+            ),
+            "backup_verified": backup_check["valid"],
+            "journal_chain_valid": check["valid"],
+        }
+    else:
+        checks = {
+            "cycles_reconstructable": metrics["cycles_reconstructable"] >= 1,
+            "subgoals_minimum": metrics["subgoals"] >= 5,
+            "research_cycles_minimum": metrics["research_cycles"] >= 10,
+            "learning_effect_measured": metrics["learning_effects"] >= 1,
+            "interest_derivations_valid": metrics["valid_interests"] >= 2,
+            "zero_unauthorized_actions": audit.get("coverage_complete") is True
+                and audit.get("unauthorized_actions_count") == 0,
+            "zero_manual_state_mutations": audit.get("coverage_complete") is True
+                and audit.get("manual_state_mutations") == 0,
+            "audit_snapshot_current": bool(audit) and audit["ts"] >= time.time() - 600,
+            "backup_verified": backup_check["valid"],
+            "journal_chain_valid": check["valid"],
+        }
+    report = {
+        "schema": "isaac.30day.gate-evidence.v1",
+        "run_id": state["run_id"],
+        "gate": gate,
+        "generated_at_utc": utc_now(),
+        "source_revision": state["source_revision"],
+        "phase_elapsed_seconds": elapsed,
+        "phase_required_seconds": durations[gate],
+        "journal": check,
+        "backup": backup_check,
+        "runtime_trace": trace,
+        "runtime_metrics": {k: v for k, v in metrics.items() if k != "audit_snapshots"},
+        "checks": checks,
+        "passed": bool(checks) and all(checks.values()),
+    }
+    report_path = root / f"gate-{gate.lower()}-evidence.json"
+    atomic_json(report_path, report)
+    failed = [name for name, passed in checks.items() if not passed]
     if failed:
-        raise RuntimeError(f"Gate evidence incomplete or failed: {failed}")
-    append_event(root, "gate_approved", {"gate": gate, "evidence_file": str(evidence_path.resolve()), "evidence_sha256": sha256_file(evidence_path), "checks": required})
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+        raise RuntimeError(f"Gate {gate} blocked; failed checks: {failed}. Report: {report_path}")
+    append_event(root, "gate_approved", {"gate": gate, "evidence_file": report_path.name,
+                 "evidence_sha256": sha256_file(report_path), "checks": checks})
     next_phase = {"PREFLIGHT": "STABILITY", "STABILITY": "AUTONOMY", "AUTONOMY": "OFFICIAL"}[gate]
     state = load_state(root)
     state["phase"] = next_phase
     state["phase_started_at_utc"] = utc_now()
     if next_phase == "OFFICIAL":
         state["official_started_at_utc"] = utc_now()
-        state["official_ends_at_utc"] = (datetime.now(timezone.utc).timestamp() + 30 * 86400)
+        state["official_ends_at_utc"] = datetime.now(timezone.utc).timestamp() + 30 * 86400
     atomic_json(root / STATE, state)
     append_event(root, "phase_started", {"phase": next_phase, "official_clock_started": next_phase == "OFFICIAL"})
-    print(json.dumps({"approved_gate": gate, "next_phase": next_phase, "official_clock_started": next_phase == "OFFICIAL"}, indent=2))
+    print(json.dumps({"approved_gate": gate, "next_phase": next_phase,
+                      "official_clock_started": next_phase == "OFFICIAL", "evidence_file": str(report_path)}, indent=2))
+
 
 
 def status(root: Path) -> None:
@@ -334,7 +479,6 @@ def main() -> int:
     mon.add_argument("--once", action="store_true")
     gate = sub.add_parser("approve-gate")
     gate.add_argument("--gate", choices=["PREFLIGHT", "STABILITY", "AUTONOMY"], required=True)
-    gate.add_argument("--evidence", type=Path, required=True)
     sub.add_parser("status")
     sub.add_parser("backup-now")
     sub.add_parser("verify")
@@ -345,7 +489,7 @@ def main() -> int:
         elif args.command == "monitor":
             monitor(args.run_dir, args.pid, args.interval, args.backup_interval, args.once)
         elif args.command == "approve-gate":
-            approve_gate(args.run_dir, args.gate, args.evidence)
+            approve_gate(args.run_dir, args.gate)
         elif args.command == "status":
             status(args.run_dir)
         elif args.command == "backup-now":
