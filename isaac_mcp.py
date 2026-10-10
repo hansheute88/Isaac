@@ -28,6 +28,7 @@ from audit import AuditLog
 from config import Level
 from mcp_registry import MCPRegistry, get_mcp_registry
 from result_contract import ensure_result_contract
+from isaac_runtime_audit import audited_surface
 
 
 DEFAULT_MAX_BODY_BYTES = 256 * 1024
@@ -206,6 +207,7 @@ class IsaacMCPService:
 
         return True, "OK"
 
+    @audited_surface("mcp_tools")
     def invoke(
         self,
         tool_name: str,
