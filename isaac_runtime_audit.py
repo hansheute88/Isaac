@@ -128,7 +128,7 @@ def audited_surface(surface: str) -> Callable:
     def decorate(function: Callable) -> Callable:
         operation = function.__name__
 
-        def started() -> tuple[str, Token[str]]:
+        def started() -> tuple[str, Token]:
             action_id = current_action_id() or uuid.uuid4().hex
             token = _ACTION_ID.set(action_id)
             try:
