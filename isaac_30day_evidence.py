@@ -680,6 +680,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         if args.command == "finalize":
             state_path = root / "run_state.json"
             state = json.loads(state_path.read_text(encoding="utf-8"))
+            if state.get("runtime_pid") and _pid_alive(int(state["runtime_pid"])):
+                raise RuntimeError("Stop the Isaac runtime cleanly before finalization so the evidence package is frozen.")
             records = read_events(root)
             evaluation = evaluate_gates(state, records)
             if state.get("status") != "AWAITING_INDEPENDENT_VALIDATION" or not evaluation.get("official_core_requirements_passed"):
