@@ -251,7 +251,8 @@ class IsaacMCPService:
         )
         if not ok:
             record_tool_execution_result(
-                action_id, False, False, "mcp_tools", tool_name
+                action_id, False, False, "mcp_tools", tool_name,
+                parent_action_id=parent_action_id,
             )
             return self._deny(tool_name, reason)
 
