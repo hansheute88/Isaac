@@ -194,6 +194,75 @@ class TestRuntimeAuditIntegration(unittest.TestCase):
         self.assertTrue(result["recorded"], result)
         self.assertTrue(result["interest_recorded"], result)
 
+        # Repeat the same real executor/evaluation path for a second independent
+        # research cycle; two derivations must be produced from two real runs.
+        task2 = Task(
+            id="research-task-2",
+            typ=TaskType.RESEARCH,
+            prompt="Compare bounded approaches for causal memory",
+            beschreibung="Compare bounded approaches for causal memory",
+            retrieved_context={"goal_id": "goal-1", "subgoal_id": "sub-1", "source": "goal_autonomy"},
+        )
+        cycle2 = begin_cycle(
+            task2.decision_trace,
+            goal_id="goal-1",
+            subgoal_id="sub-1",
+            intent=task2.prompt,
+        )
+        task2.retrieved_context["autonomy_cycle_id"] = cycle2.cycle_id
+        auth_entry2 = task2.decision_trace.add(
+            TracePhase.GOVERNANCE,
+            "goal_autonomy_authorization_observed",
+            {"cycle_id": cycle2.cycle_id, "allowed": True},
+        )
+        record_authorization(
+            task2.decision_trace, cycle2,
+            authorization_event_id=auth_entry2.event_id, allowed=True,
+        )
+        decision2 = MotivationDecision(
+            goal_id="goal-1",
+            subgoal_id="sub-1",
+            goal_title="Improve Isaac causal memory",
+            subgoal_title="Validate evidence-linked research",
+            score=7.5,
+            reason="independent bounded research",
+            suggested_task_type="research",
+            allow_tools=True,
+            prompt=task2.prompt,
+        )
+        pre_state2 = {
+            "task_status": task2.status.value,
+            "trace_entry_count": len(task2.decision_trace.entries),
+            "score_total": None,
+            "goal_id": "goal-1",
+            "subgoal_id": "sub-1",
+        }
+        asyncio.run(executor._execute_research(task2))
+        source_entries2 = [
+            entry for entry in task2.decision_trace.entries
+            if entry.event == "research_sources_collected"
+        ]
+        evaluation_entries2 = [
+            entry for entry in task2.decision_trace.entries
+            if entry.phase == TracePhase.EVALUATION and entry.event == "quality_scored"
+        ]
+        self.assertTrue(source_entries2)
+        self.assertTrue(evaluation_entries2)
+        record_execution(
+            task2.decision_trace, cycle2,
+            execution_event_id=source_entries2[-1].event_id,
+        )
+        record_evaluation(
+            task2.decision_trace, cycle2,
+            evaluation_event_id=evaluation_entries2[-1].event_id,
+            outcome=task2.status.value,
+        )
+        result2 = _record_research_learning_and_interest(
+            task2, decision2, cycle2, goal_store, pre_state2
+        )
+        self.assertTrue(result2["recorded"], result2)
+        self.assertTrue(result2["interest_recorded"], result2)
+
         events = read_events(Path(self._tmp.name))
         learning = [
             event for event in events
@@ -207,14 +276,17 @@ class TestRuntimeAuditIntegration(unittest.TestCase):
             event for event in events
             if event["event_type"] == "research_sources_collected"
         ]
-        self.assertEqual(len(learning), 1)
-        self.assertEqual(len(interests), 1)
-        self.assertEqual(len(source_evidence), 1)
+        self.assertEqual(len(learning), 2)
+        self.assertEqual(len(interests), 2)
+        self.assertEqual(len(source_evidence), 2)
         self.assertNotIn("token=must-not-be-recorded", repr(source_evidence[0]["payload"]))
         self.assertNotIn("The evidence supports", interests[0]["payload"]["new_information"])
         self.assertEqual(learning[0]["payload"]["source_cycle_id"], cycle.cycle_id)
         self.assertEqual(learning[0]["payload"]["research_id"], task.id)
+        self.assertEqual(learning[1]["payload"]["research_id"], task2.id)
+        self.assertNotEqual(learning[0]["payload"]["source_cycle_id"], learning[1]["payload"]["source_cycle_id"])
         self.assertEqual(interests[0]["payload"]["observation_research_id"], task.id)
+        self.assertEqual(interests[1]["payload"]["observation_research_id"], task2.id)
 
 
 if __name__ == "__main__":
