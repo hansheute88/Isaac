@@ -218,5 +218,173 @@ class TestIsaacAutonomyCycle(unittest.TestCase):
         ))
 
 
+    def test_background_executor_rwx_denial_blocks_real_tool_call(self):
+        import asyncio
+        from unittest.mock import AsyncMock, MagicMock
+        from executor import Executor, Task, TaskType, TaskStatus, Strategy
+        from isaac_capabilities import RWXRegistry
+        from tool_policy import ToolSelectionDecision, ToolDecisionReason
+        from isaac_autonomy_cycle import finalize_cycle_from_task
+
+        async def scenario():
+            task = Task(
+                id="background-denied-tool",
+                typ=TaskType.RESEARCH,
+                prompt="Research a bounded owner goal",
+                beschreibung="background goal",
+                strategy=Strategy(allow_tools=True),
+                required_capabilities=[{
+                    "resource": "tool:test-tool",
+                    "capability": "execute",
+                    "reason": "integration denial test",
+                }],
+                retrieved_context={
+                    "source": "goal_autonomy",
+                    "goal_id": "goal-deny",
+                    "subgoal_id": "sub-deny",
+                },
+            )
+            executor = object.__new__(Executor)
+            executor.rwx_registry = RWXRegistry()  # implicit deny
+            executor._tool_state = MagicMock()
+            executor._tool_state.get_or_create.return_value.to_dict.return_value = {}
+            executor._checkpoint = lambda *args, **kwargs: None
+            executor._notify = lambda *args, **kwargs: None
+            executor._tool_limit = lambda: 1
+
+            selection = {
+                "identifier": "test-tool",
+                "name": "test tool",
+                "kind": "mcp",
+                "category": "general",
+                "source": "integration-test",
+            }
+            selected = ToolSelectionDecision(
+                selected=selection,
+                reason=ToolDecisionReason.SELECTED_CANDIDATE,
+                metadata={},
+            )
+            with patch("memory.get_memory", return_value=type("Memory", (), {
+                "build_retrieval_context": lambda self, *a, **k: {},
+                "format_retrieval_context": lambda self, context: "",
+            })()), patch(
+                "executor.select_live_tool_for_task", new=AsyncMock(return_value=selected)
+            ), patch(
+                "executor.constitution_gate_for_tool", return_value=None
+            ), patch(
+                "executor.run_selected_tool", new=AsyncMock(return_value={"ok": True, "output": "should never run"})
+            ) as run_tool:
+                executor._prepare_autonomy_cycle(task)
+                await executor._maybe_use_tool(task, task.prompt, iteration=0, used_tool_ids=set())
+
+            self.assertEqual(run_tool.await_count, 0, "R/W/X DENY must prevent the tool side effect")
+            auth_events = [
+                entry for entry in task.decision_trace.entries
+                if entry.event == "tool_authorization_decision"
+            ]
+            self.assertEqual(len(auth_events), 1)
+            self.assertFalse(auth_events[0].data["allowed"])
+            self.assertFalse(any(
+                entry.event == "execution_succeeded" for entry in task.decision_trace.entries
+            ))
+            task.status = TaskStatus.FAILED
+            result = finalize_cycle_from_task(task)
+            self.assertTrue(result["authorization_denied"])
+            self.assertFalse(result["execution_observed"])
+            self.assertFalse(any(
+                entry.event == "autonomy_execution_observed" for entry in task.decision_trace.entries
+            ))
+
+        asyncio.run(scenario())
+
+    def test_background_executor_rwx_allow_links_authorization_to_execution(self):
+        import asyncio
+        from unittest.mock import AsyncMock, MagicMock
+        from executor import Executor, Task, TaskType, TaskStatus, Strategy
+        from isaac_capabilities import RWXPolicy, RWXRegistry
+        from tool_policy import ToolSelectionDecision, ToolDecisionReason
+        from isaac_autonomy_cycle import finalize_cycle_from_task
+
+        async def scenario():
+            task = Task(
+                id="background-allowed-tool",
+                typ=TaskType.RESEARCH,
+                prompt="Research a bounded owner goal",
+                beschreibung="background goal",
+                strategy=Strategy(allow_tools=True),
+                required_capabilities=[{
+                    "resource": "tool:test-tool",
+                    "capability": "execute",
+                    "reason": "integration allow test",
+                }],
+                retrieved_context={
+                    "source": "goal_autonomy",
+                    "goal_id": "goal-allow",
+                    "subgoal_id": "sub-allow",
+                },
+            )
+            executor = object.__new__(Executor)
+            executor.rwx_registry = RWXRegistry({
+                "tool:test-tool": RWXPolicy(
+                    resource="tool:test-tool", execute=True, source="integration-test"
+                )
+            })
+            executor._tool_state = MagicMock()
+            executor._tool_state.get_or_create.return_value.to_dict.return_value = {}
+            executor._checkpoint = lambda *args, **kwargs: None
+            executor._notify = lambda *args, **kwargs: None
+            executor._tool_limit = lambda: 1
+
+            selection = {
+                "identifier": "test-tool",
+                "name": "test tool",
+                "kind": "mcp",
+                "category": "general",
+                "source": "integration-test",
+            }
+            selected = ToolSelectionDecision(
+                selected=selection,
+                reason=ToolDecisionReason.SELECTED_CANDIDATE,
+                metadata={},
+            )
+            with patch("memory.get_memory", return_value=type("Memory", (), {
+                "build_retrieval_context": lambda self, *a, **k: {},
+                "format_retrieval_context": lambda self, context: "",
+            })()), patch(
+                "executor.select_live_tool_for_task", new=AsyncMock(return_value=selected)
+            ), patch(
+                "executor.constitution_gate_for_tool", return_value=None
+            ), patch(
+                "executor.run_selected_tool", new=AsyncMock(return_value={"ok": True, "output": "bounded result", "via": "integration-test"})
+            ) as run_tool:
+                executor._prepare_autonomy_cycle(task)
+                await executor._maybe_use_tool(task, task.prompt, iteration=0, used_tool_ids=set())
+
+            self.assertEqual(run_tool.await_count, 1)
+            self.assertTrue(any(
+                entry.event == "execution_succeeded" for entry in task.decision_trace.entries
+            ))
+            task.status = TaskStatus.DONE
+            task.decision_trace.add(
+                TracePhase.EVALUATION, "quality_scored",
+                {"acceptable": True, "via": "integration-test"},
+            )
+            result = finalize_cycle_from_task(task)
+            self.assertFalse(result["authorization_denied"])
+            self.assertTrue(result["authorization_observed"])
+            self.assertTrue(result["execution_observed"])
+            execution = next(
+                entry for entry in task.decision_trace.entries
+                if entry.event == "autonomy_execution_observed"
+            )
+            self.assertTrue(execution.data["execution_event_id"])
+            self.assertEqual(
+                task.retrieved_context["autonomy_cycle_id"],
+                execution.data["cycle_id"],
+            )
+
+        asyncio.run(scenario())
+
+
 if __name__ == "__main__":
     unittest.main()
