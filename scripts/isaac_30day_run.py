@@ -125,6 +125,8 @@ def backup(root: Path, destination: Path) -> dict[str, Any]:
         raise ValueError("Backup directory must be outside the run directory.")
     dest_resolved.mkdir(parents=True, exist_ok=True)
     target = dest_resolved / root.name
+    if target.resolve() == root_resolved or target.resolve() in root_resolved.parents or root_resolved in target.resolve().parents:
+        raise ValueError("Backup target must not overlap the run directory.")
     target.mkdir(parents=True, exist_ok=True)
     files = {}
     for name in (STATE, EVENTS, TRACE):
@@ -334,6 +336,7 @@ def main() -> int:
     gate.add_argument("--gate", choices=["PREFLIGHT", "STABILITY", "AUTONOMY"], required=True)
     gate.add_argument("--evidence", type=Path, required=True)
     sub.add_parser("status")
+    sub.add_parser("backup-now")
     sub.add_parser("verify")
     args = parser.parse_args()
     try:
@@ -345,6 +348,14 @@ def main() -> int:
             approve_gate(args.run_dir, args.gate, args.evidence)
         elif args.command == "status":
             status(args.run_dir)
+        elif args.command == "backup-now":
+            state = load_state(args.run_dir)
+            report = backup(args.run_dir, Path(state["backup_dir"]))
+            append_event(args.run_dir, "backup_completed", {"files": report["files"]})
+            state = load_state(args.run_dir)
+            state["last_backup_at_utc"] = utc_now()
+            atomic_json(args.run_dir / STATE, state)
+            print(json.dumps(report, indent=2, ensure_ascii=False))
         elif args.command == "verify":
             verify_and_manifest(args.run_dir)
         return 0
