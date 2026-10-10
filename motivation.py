@@ -6,9 +6,12 @@ Wählt das nächste Owner-Goal/Subgoal für den Autonomy-Tick.
 Kein Tool-Routing hier — nur Priorisierung + optionale Task-Erzeugung.
 """
 
+import hashlib
 import logging
 import os
+import re
 import time
+import uuid
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -20,6 +23,178 @@ log = logging.getLogger("Isaac.Motivation")
 
 DEFAULT_MAX_GOAL_TASKS_PER_TICK = 3  # Meltdown-Schutz, kein Ambitions-Cap
 DEFAULT_SUBGOAL_COOLDOWN_S = 1800  # 2× default autonomy interval (900s)
+
+
+def _record_research_learning_and_interest(
+    task: Any,
+    decision: MotivationDecision,
+    cycle: Any,
+    store: GoalStore,
+    pre_state: dict[str, Any],
+) -> dict[str, Any]:
+    """Persist causal learning/interest evidence only from a completed real research task."""
+    if getattr(task.typ, "value", task.typ) != "research":
+        return {"recorded": False, "reason": "not_research"}
+    if getattr(task.status, "value", task.status) != "done" or not (task.antwort or "").strip():
+        return {"recorded": False, "reason": "research_not_completed"}
+
+    entries = list(task.decision_trace.entries)
+    source_entries = [
+        entry for entry in entries
+        if entry.event == "research_sources_collected"
+        and isinstance(entry.data, dict)
+        and entry.data.get("evidence_id")
+        and int(entry.data.get("hit_count") or 0) > 0
+        and entry.data.get("source_refs")
+    ]
+    evaluations = [
+        entry for entry in entries
+        if entry.phase == TracePhase.EVALUATION
+        and entry.event == "quality_scored"
+        and entry.event_id
+    ]
+    if not source_entries or not evaluations:
+        return {"recorded": False, "reason": "missing_real_research_or_evaluation_evidence"}
+
+    source_entry = source_entries[-1]
+    evaluation_entry = evaluations[-1]
+    source_refs = [str(ref)[:300] for ref in source_entry.data.get("source_refs", []) if str(ref).strip()]
+    evidence_id = str(source_entry.data["evidence_id"])
+    if not source_refs:
+        return {"recorded": False, "reason": "empty_source_references"}
+
+    score_total = None
+    try:
+        score_total = round(float(evaluation_entry.data.get("score_total")), 4)
+    except (TypeError, ValueError):
+        pass
+    answer_digest = hashlib.sha256(str(task.antwort).encode("utf-8")).hexdigest()
+    post_state = {
+        "task_status": str(getattr(task.status, "value", task.status)),
+        "trace_entry_count": len(entries),
+        "score_total": score_total,
+        "answer_sha256": answer_digest,
+    }
+    affected_decisions = [
+        entry.event_id for entry in entries
+        if entry.event_id and entry.sequence > source_entry.sequence
+        and (
+            (entry.phase == TracePhase.EVALUATION and entry.event == "quality_scored")
+            or (entry.phase == TracePhase.FOLLOWUP and entry.event in {"followup_decided", "followup_aborted_stale"})
+            or (entry.phase == TracePhase.SELECTION and entry.event == "selected_candidate")
+        )
+    ]
+    if evaluation_entry.event_id not in affected_decisions:
+        affected_decisions.append(evaluation_entry.event_id)
+
+    learning_id = f"learn_{uuid.uuid4().hex}"
+    learning_record = None
+    try:
+        from isaac_learning_causality import build_learning_record, validate_learning_record
+        learning_record = build_learning_record(
+            learning_id=learning_id,
+            research_id=str(task.id),
+            goal_id=str(decision.goal_id),
+            subgoal_id=str(decision.subgoal_id),
+            source_cycle_id=str(cycle.cycle_id),
+            pre_state=dict(pre_state),
+            research_evidence=[evidence_id] + source_refs,
+            post_state=post_state,
+            measurable_delta={
+                "trace_entries_added": max(0, len(entries) - int(pre_state.get("trace_entry_count", 0))),
+                "source_hit_count": int(source_entry.data.get("hit_count") or 0),
+                "evaluation_score_total": score_total,
+            },
+            affected_decision_ids=affected_decisions,
+            evidence_event_ids=[evidence_id, source_entry.event_id, evaluation_entry.event_id],
+        )
+        validation = validate_learning_record(learning_record)
+        if validation.get("valid"):
+            from isaac_autonomy_cycle import record_learning
+            record_learning(task.decision_trace, cycle, learning_id=learning_id)
+        else:
+            learning_record = None
+    except Exception:
+        if os.getenv("ISAAC_30DAY_OFFICIAL", "").strip() == "1":
+            raise
+        log.exception("Causal research-learning evidence could not be recorded")
+
+    answer = str(task.antwort or "")
+    cues = (
+        "further research", "further investigation", "future work", "open question",
+        "next step", "next steps", "recommendation", "recommend", "research gap",
+        "weiterführ", "weitere recherche", "weitere untersuch", "offene frage",
+        "nächster schritt", "nächste schritte", "empfehl", "anschließend untersuch",
+    )
+    sentences = [part.strip(" \t-•") for part in re.split(r"(?<=[.!?])\s+|\n+", answer) if part.strip()]
+    proposal = next(
+        (sentence[:500] for sentence in sentences
+         if 20 <= len(sentence) <= 500 and any(cue in sentence.lower() for cue in cues)),
+        "",
+    )
+    interest_recorded = False
+    if proposal and cycle.authorization_event_id:
+        goal = store.goals.get(decision.goal_id)
+        subgoal = store.subgoals.get(decision.subgoal_id)
+        aligned = bool(
+            goal and subgoal
+            and goal.status == "active"
+            and subgoal.status == "active"
+            and subgoal.parent_goal_id == goal.id
+        )
+        if aligned:
+            try:
+                from isaac_interest_derivation import build_interest_derivation, record_interest_derivation
+                derivation = build_interest_derivation(
+                    interest_id=f"interest_{uuid.uuid4().hex}",
+                    owner_goal_id=goal.id,
+                    subgoal_id=subgoal.id,
+                    observation_research_id=str(task.id),
+                    new_information=(f"Research evidence {evidence_id}; answer_sha256={answer_digest}; source_count={len(source_refs)}"),
+                    inference=(
+                        f"Die Recherche-Empfehlung ist mit dem aktiven Ziel "
+                        f"'{goal.title[:160]}' und dem Teilziel '{subgoal.title[:160]}' verknüpft."
+                    ),
+                    interest_proposal=proposal,
+                    alignment_check={
+                        "aligned": True,
+                        "reason": "active goal and child subgoal IDs match the completed research task",
+                        "goal_id": goal.id,
+                        "subgoal_id": subgoal.id,
+                    },
+                    scope_check={
+                        "bounded": len(proposal) <= 500,
+                        "max_chars": 500,
+                        "scope": "proposal_only",
+                        "persistent_goal_mutation": False,
+                    },
+                    risk_check={
+                        "acceptable": True,
+                        "risk_level": "low",
+                        "reason": "records a bounded proposal only; does not execute or persist a new goal",
+                    },
+                    authorization={
+                        "authorized": True,
+                        "authorized_by": "existing_goal_motivation_policy",
+                        "authorization_event_id": str(cycle.authorization_event_id),
+                        "scope": "proposal_only",
+                        "persistent_goal_mutation": False,
+                    },
+                )
+                interest_result = record_interest_derivation(task.decision_trace, derivation)
+                interest_recorded = bool(interest_result.get("valid"))
+            except Exception:
+                if os.getenv("ISAAC_30DAY_OFFICIAL", "").strip() == "1":
+                    raise
+                log.exception("Bounded interest derivation could not be recorded")
+
+    return {
+        "recorded": bool(learning_record is not None),
+        "learning_id": learning_id if learning_record is not None else "",
+        "interest_recorded": interest_recorded,
+        "source_evidence_id": evidence_id,
+        "affected_decision_ids": affected_decisions,
+    }
 
 
 def goal_autonomy_enabled() -> bool:
@@ -357,6 +532,16 @@ async def run_goal_motivation_cycle(
                 "source": "goal_motivation",
             },
         )
+        pre_research_state = {
+            "task_status": str(getattr(task.status, "value", task.status)),
+            "trace_entry_count": len(task.decision_trace.entries),
+            "score_total": (
+                round(float(task.score.total), 4)
+                if task.score is not None else None
+            ),
+            "goal_id": dec.goal_id,
+            "subgoal_id": dec.subgoal_id,
+        }
         if submit_tasks:
             if os.getenv("ISAAC_30DAY_OFFICIAL", "").strip() == "1":
                 await exe.submit_and_wait(task, timeout=180.0)
@@ -370,7 +555,7 @@ async def run_goal_motivation_cycle(
                         if entry.phase == TracePhase.EXECUTION
                         and entry.event in {
                             "execution_succeeded", "execution_failed", "model_call", "model_call_failed",
-                            "search_completed", "search_failed",
+                            "search_completed", "search_failed", "research_sources_collected",
                         }
                     ]
                     evaluation_entries = [
@@ -392,6 +577,18 @@ async def run_goal_motivation_cycle(
                     if os.getenv("ISAAC_30DAY_OFFICIAL", "").strip() == "1":
                         raise
                     log.exception("autonomy cycle completion evidence failed")
+                if (
+                    task.typ == TaskType.RESEARCH
+                    and getattr(task.status, "value", task.status) == "done"
+                ):
+                    try:
+                        _record_research_learning_and_interest(
+                            task, dec, cycle, gs, pre_research_state
+                        )
+                    except Exception:
+                        if os.getenv("ISAAC_30DAY_OFFICIAL", "").strip() == "1":
+                            raise
+                        log.exception("research learning/interest integration failed")
         task_ids.append(task.id)
 
         note = (

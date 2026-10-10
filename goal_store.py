@@ -17,6 +17,7 @@ from typing import Any, Optional
 
 from config import DATA_DIR
 from audit import AuditLog
+from isaac_runtime_audit import audited_surface
 
 log = logging.getLogger("Isaac.GoalStore")
 
@@ -140,6 +141,7 @@ class GoalStore:
                 s = IsaacSubgoal.from_dict(row)
                 self.subgoals[s.id] = s
 
+    @audited_surface("state_store_writes")
     def save(self) -> None:
         payload = {
             "updated": _now(),

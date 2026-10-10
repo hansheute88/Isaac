@@ -20,6 +20,7 @@ import uuid
 import json
 import logging
 import ast
+import hashlib
 import os
 import tempfile
 from pathlib import Path
@@ -1024,15 +1025,17 @@ class Executor:
                 result = ensure_result_contract(blocked, source="constitution")
             else:
                 execution_invoked = True
-                result = ensure_result_contract(
-                    await run_selected_tool(
-                        selection,
-                        prompt,
-                        override_ctx=override_ctx,
-                        skip_constitution=True,
-                    ),
-                    source="executor_boundary",
-                )
+                from isaac_runtime_audit import bind_action_id
+                with bind_action_id(action_id):
+                    result = ensure_result_contract(
+                        await run_selected_tool(
+                            selection,
+                            prompt,
+                            override_ctx=override_ctx,
+                            skip_constitution=True,
+                        ),
+                        source="executor_boundary",
+                    )
             emit_runtime_event("tool_execution_result", {
                 "action_id": action_id,
                 "task_id": task.id,
@@ -1540,6 +1543,49 @@ class Executor:
             load_fulltext=True,
             engines=["ddg", "brave", "wikipedia", "searxng", "reddit", "arxiv", "github"],
         )
+        source_refs: list[str] = []
+        for hit in list(getattr(result, "hits", []) or [])[:12]:
+            if isinstance(hit, dict):
+                raw_url = str(hit.get("url") or hit.get("link") or "")
+                title = str(hit.get("title") or hit.get("titel") or hit.get("name") or "")
+            else:
+                raw_url = str(getattr(hit, "url", "") or getattr(hit, "link", "") or "")
+                title = str(getattr(hit, "title", "") or getattr(hit, "titel", "") or getattr(hit, "name", "") or "")
+            if raw_url:
+                from urllib.parse import urlsplit
+                parsed = urlsplit(raw_url)
+                safe_url = (
+                    f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+                    if parsed.scheme and parsed.netloc else ""
+                )
+                if safe_url:
+                    source_refs.append((title[:160] + " | " + safe_url[:300]).strip(" |"))
+            elif title:
+                source_refs.append(title[:300])
+        evidence_id = f"research_evidence_{uuid.uuid4().hex}"
+        evidence_entry = task.decision_trace.add(
+            TracePhase.EXECUTION,
+            "research_sources_collected",
+            {
+                "evidence_id": evidence_id,
+                "hit_count": len(getattr(result, "hits", []) or []),
+                "source_refs": source_refs,
+                "query_sha256": hashlib.sha256(query.encode("utf-8")).hexdigest(),
+            },
+        )
+        task.causal_refs["research_evidence_id"] = evidence_id
+        task.causal_refs["research_evidence_trace_event_id"] = evidence_entry.event_id
+        from isaac_30day_evidence import emit_runtime_event
+        emit_runtime_event("research_sources_collected", {
+            "evidence_id": evidence_id,
+            "task_id": task.id,
+            "goal_id": task.retrieved_context.get("goal_id", ""),
+            "subgoal_id": task.retrieved_context.get("subgoal_id", ""),
+            "cycle_id": task.retrieved_context.get("autonomy_cycle_id", ""),
+            "trace_event_id": evidence_entry.event_id,
+            "hit_count": len(getattr(result, "hits", []) or []),
+            "source_refs": source_refs,
+        })
         task.progress = 0.65
         self._notify(task)
 
@@ -1595,6 +1641,17 @@ class Executor:
         task.provider_used = prov
         task.status = TaskStatus.DONE
         task.score = self.logic.evaluate(antwort, query, task.id)
+        task.decision_trace.add(
+            TracePhase.EVALUATION,
+            "quality_scored",
+            {
+                "score_total": round(float(task.score.total), 3) if task.score else 0.0,
+                "acceptable": bool(getattr(task.score, "acceptable", False)),
+                "via": "research",
+                "hit_count": len(getattr(result, "hits", []) or []),
+                "research_evidence_id": evidence_id,
+            },
+        )
         task.log(f"Recherche: {len(result.hits)} Hits aus {result.quellen} q={query[:60]!r}")
 
     # ── Multi-KI-Task ─────────────────────────────────────────────────────────

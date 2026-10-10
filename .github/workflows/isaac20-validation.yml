@@ -26,10 +26,10 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Compile Isaac 2.0 modules
         run: |
-          python -m py_compile isaac_capabilities.py isaac_causal.py isaac_causal_query.py isaac_guardrails.py executor.py audit.py watchdog.py relay.py benchmarks/isaac20_fault_injection.py benchmarks/isaac20_metrics.py benchmarks/isaac20_ablation.py benchmarks/isaac20_governance.py benchmarks/isaac20_governance_f2.py isaac_sdk.py benchmarks/isaac20_investor_demo.py isaac_30day_evidence.py scripts/verify_isaac_30day_evidence.py
+          python -m py_compile isaac_capabilities.py isaac_causal.py isaac_causal_query.py isaac_guardrails.py executor.py audit.py watchdog.py relay.py benchmarks/isaac20_fault_injection.py benchmarks/isaac20_metrics.py benchmarks/isaac20_ablation.py benchmarks/isaac20_governance.py benchmarks/isaac20_governance_f2.py isaac_sdk.py benchmarks/isaac20_investor_demo.py isaac_30day_evidence.py scripts/verify_isaac_30day_evidence.py isaac_runtime_audit.py motivation.py file_access.py owner_action.py browser.py isaac_mcp.py tool_runtime.py goal_store.py task_tool_state.py
       - name: Run Isaac 2.0 tests
         run: |
-          python -m unittest tests_isaac20_capabilities tests_isaac20_causal tests_isaac20_causal_query tests_isaac20_runtime_lineage tests_isaac20_e2e tests_isaac20_guardrails tests_isaac20_e1 tests_isaac20_e2 tests_isaac20_e3 tests_isaac20_f1 tests_isaac20_f2 tests_isaac20_sdk tests_isaac20_investor_demo tests_isaac_30day_evidence
+          python -m unittest tests_isaac20_capabilities tests_isaac20_causal tests_isaac20_causal_query tests_isaac20_runtime_lineage tests_isaac20_e2e tests_isaac20_guardrails tests_isaac20_e1 tests_isaac20_e2 tests_isaac20_e3 tests_isaac20_f1 tests_isaac20_f2 tests_isaac20_sdk tests_isaac20_investor_demo tests_isaac_30day_evidence tests_isaac_runtime_audit
       - name: Run E1 machine-readable benchmark
         run: |
           python -m benchmarks.isaac20_fault_injection > e1_fault_injection_results.json
