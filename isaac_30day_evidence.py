@@ -476,6 +476,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     once.add_argument("--evidence-dir", required=True)
     watch = sub.add_parser("watch", help="Continuously sample runtime health until stopped")
     watch.add_argument("--evidence-dir", required=True)
+    fail = sub.add_parser("fail", help="Mark an initialized run failed without deleting evidence")
+    fail.add_argument("--evidence-dir", required=True)
+    fail.add_argument("--reason", required=True)
     verify = sub.add_parser("verify", help="Verify hash chain and report gate status")
     verify.add_argument("--evidence-dir", required=True)
     args = parser.parse_args(argv)
@@ -486,6 +489,17 @@ def main(argv: Optional[list[str]] = None) -> int:
             print(json.dumps({"initialized": True, "run_id": state["run_id"], "status": state["status"]}, indent=2))
             return 0
         root = Path(args.evidence_dir)
+        if args.command == "fail":
+            state_path = root / "run_state.json"
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            state["status"] = "FAILED"
+            state["failure_reason"] = str(args.reason)
+            state["failed_at_utc"] = iso_utc()
+            atomic_json(state_path, state)
+            append_event(root, "run_failed", {"reason": state["failure_reason"]})
+            write_manifest(root, state)
+            print(json.dumps({"status": "FAILED", "reason": state["failure_reason"]}, indent=2))
+            return 2
         if args.command == "once":
             result = run_once(root)
             print(json.dumps(result, indent=2))
