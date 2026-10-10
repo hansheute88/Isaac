@@ -210,6 +210,8 @@ class TestRuntimeAuditIntegration(unittest.TestCase):
         self.assertEqual(len(learning), 1)
         self.assertEqual(len(interests), 1)
         self.assertEqual(len(source_evidence), 1)
+        self.assertNotIn("token=must-not-be-recorded", repr(source_evidence[0]["payload"]))
+        self.assertNotIn("The evidence supports", interests[0]["payload"]["new_information"])
         self.assertEqual(learning[0]["payload"]["source_cycle_id"], cycle.cycle_id)
         self.assertEqual(learning[0]["payload"]["research_id"], task.id)
         self.assertEqual(interests[0]["payload"]["observation_research_id"], task.id)
