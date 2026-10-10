@@ -6,7 +6,6 @@ is verified at kernel startup.
 """
 from __future__ import annotations
 
-import asyncio
 import functools
 import inspect
 import os
@@ -127,7 +126,7 @@ def audit_hook_inventory() -> dict[str, Any]:
         for module_name, dotted_name in hooks:
             try:
                 target: Any = importlib.import_module(module_name)
-                for part in dotted_name.split(".")[1:] if dotted_name.startswith(module_name + ".") else ():
+                for part in dotted_name.split("."):
                     target = getattr(target, part)
                 if getattr(target, "__isaac_audit_surface__", None) != surface:
                     missing.append(module_name + "." + dotted_name.split(".")[-1])
