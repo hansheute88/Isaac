@@ -207,7 +207,7 @@ def backup_evidence(evidence_dir: Path, backup_dir: Path) -> Path:
         target = backup_dir / (stamp + "-" + str(suffix))
         suffix += 1
     target.mkdir(parents=True, exist_ok=False)
-    for name in ("events.jsonl", "run_state.json", "manifest.json"):
+    for name in ("events.jsonl", "run_state.json", "manifest.json", "final_report.json", "independent_validation.json"):
         source = evidence_dir / name
         if source.exists():
             shutil.copy2(str(source), str(target / name))
