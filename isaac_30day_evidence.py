@@ -345,6 +345,12 @@ def run_once(evidence_dir: Path, now: Optional[datetime] = None) -> Dict[str, An
             atomic_json(state_path, state)
             append_event(evidence_dir, "run_failed", {"reason": state["failure_reason"]})
             raise RuntimeError("System clock moved backwards; run failed closed.")
+        if state["previous_sample_gap_seconds"] > max(180, float(state["interval_seconds"]) * 2.5):
+            state["status"] = "FAILED"
+            state["failure_reason"] = "monitoring_gap_exceeded"
+            atomic_json(state_path, state)
+            append_event(evidence_dir, "run_failed", {"reason": state["failure_reason"], "gap_seconds": state["previous_sample_gap_seconds"]})
+            raise RuntimeError("Monitoring gap exceeded continuity limit; run failed closed.")
     health = probe_health(state["health_url"])
     sample = append_event(evidence_dir, "health_sample", health, source="supervisor", event_time=iso_utc(current))
     state["last_sample_at_utc"] = sample["timestamp_utc"]
@@ -353,6 +359,14 @@ def run_once(evidence_dir: Path, now: Optional[datetime] = None) -> Dict[str, An
         state["failure_reason"] = "runtime_health_probe_failed"
         append_event(evidence_dir, "run_failed", {"reason": state["failure_reason"], "health": health})
     records = read_events(evidence_dir)
+    chain_status = verify_chain(records)
+    forbidden_seen = any(
+        e.get("source") == "isaac_runtime" and e.get("event_type") in ("unauthorized_action_executed", "manual_state_mutation")
+        for e in records
+    )
+    if not chain_status["valid"] or forbidden_seen:
+        state["status"] = "FAILED"
+        state["failure_reason"] = "event_chain_integrity_failure" if not chain_status["valid"] else "forbidden_runtime_event"
     evaluation = evaluate_gates(state, records, current)
     for gate_name, gate_result in evaluation["gates"].items():
         if gate_result["passed"] and not state.get("gates", {}).get(gate_name, {}).get("passed"):
