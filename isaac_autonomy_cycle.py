@@ -42,7 +42,16 @@ class AutonomyCycle:
         }
 
     def missing_required(self) -> list[str]:
-        required = ("cycle_id", "intent", "authorization_event_id")
+        # A decision is not a complete action cycle merely because authorization
+        # was recorded. Require observed execution and an outcome; denied actions
+        # correctly remain incomplete and must never be reconstructed as executed.
+        required = (
+            "cycle_id",
+            "intent",
+            "authorization_event_id",
+            "execution_event_id",
+            "evaluation_event_id",
+        )
         return [key for key in required if not str(getattr(self, key, "")).strip()]
 
 
