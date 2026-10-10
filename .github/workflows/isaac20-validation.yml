@@ -2,9 +2,9 @@ name: Isaac 2.0 Validation
 
 on:
   push:
-    branches: ["isaac-2.0/masterplan"]
+    branches: ["isaac-2.0/masterplan", "feat/**", "feature/**"]
   pull_request:
-    branches: ["main"]
+    branches: ["main", "isaac-2.0/masterplan"]
 
 env:
   ISAAC_DISABLE_VECTOR_MEMORY: "1"
