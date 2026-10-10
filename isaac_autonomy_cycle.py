@@ -12,6 +12,12 @@ import uuid
 from decision_trace import DecisionTrace, TracePhase
 
 
+def _emit_evidence(event_type: str, payload: dict[str, Any]) -> None:
+    # Evidence persistence is opt-in; official proof mode fails closed on write errors.
+    from isaac_30day_evidence import emit_runtime_event
+    emit_runtime_event(event_type, payload)
+
+
 CYCLE_SCHEMA = "isaac.autonomy.cycle.v1"
 
 
