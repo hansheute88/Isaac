@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from decision_trace import DecisionTrace
+from decision_trace import DecisionTrace, TracePhase
 from isaac_autonomy_cycle import (
     begin_cycle,
     record_authorization,
