@@ -13,6 +13,7 @@ from typing import Optional
 
 from config import BASE_DIR, WORKSPACE, Level, get_config, is_owner_equivalent_mode
 from audit import AuditLog
+from isaac_runtime_audit import audited_surface
 
 log = logging.getLogger("Isaac.FileAccess")
 
@@ -182,6 +183,7 @@ def _constitution_gate_file_operation(cmd: FileCommand) -> tuple[str, bool] | No
     return f"[FILE] Verfassung blockiert: {blocked}", False
 
 
+@audited_surface("filesystem_state")
 def execute_file_command(cmd: FileCommand) -> tuple[str, bool]:
     blocked = _constitution_gate_file_operation(cmd)
     if blocked:
