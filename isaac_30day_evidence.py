@@ -319,7 +319,7 @@ def evaluate_gates(state: Dict[str, Any], records: list[Dict[str, Any]],
     gap_seconds = state.get("previous_sample_gap_seconds")
     gap_ok = gap_seconds is None or float(gap_seconds) <= max(180, float(state["interval_seconds"]) * 2.5)
     base_ok = chain["valid"] and len(health) > 0 and not unhealthy and gap_ok
-    stability_events_ok = bool(complete_cycle_ids)
+    stability_events_ok = bool(complete_cycle_ids) and len(complete_cycle_ids) == len(cycle_events)
     forbidden = {"unauthorized_action_executed", "manual_state_mutation"}
     forbidden_count = sum(1 for e in runtime_events if e.get("event_type") == "manual_state_mutation") + _unauthorized_execution_count(runtime_events)
     gates = {}
@@ -369,6 +369,23 @@ def evaluate_gates(state: Dict[str, Any], records: list[Dict[str, Any]],
         if event.get("event_type") == "subgoal_created"
         and (event.get("payload") or {}).get("origin") in ("planner", "inquiry", "failure_recovery")
     }
+    official_cycle_events: Dict[str, set[str]] = {}
+    for event in official_runtime_events:
+        payload = event.get("payload") or {}
+        cycle_id = str(payload.get("cycle_id") or "").strip()
+        if cycle_id:
+            official_cycle_events.setdefault(cycle_id, set()).add(str(event.get("event_type")))
+    required_official_cycle_events = {
+        "autonomy_cycle_started", "autonomy_authorization_observed",
+        "autonomy_execution_observed", "autonomy_evaluation_recorded",
+    }
+    official_complete_cycles = {
+        cycle_id for cycle_id, kinds in official_cycle_events.items()
+        if required_official_cycle_events.issubset(kinds)
+    }
+    all_official_cycles_reconstructable = bool(official_complete_cycles) and (
+        len(official_complete_cycles) == len(official_cycle_events)
+    )
     official_learning_effect = any(
         bool((event.get("payload") or {}).get("measurable_delta"))
         and bool((event.get("payload") or {}).get("affected_decision_ids"))
@@ -389,6 +406,7 @@ def evaluate_gates(state: Dict[str, Any], records: list[Dict[str, Any]],
         "ten_research_cycles": len(official_learning_records) >= 10,
         "measurable_learning": official_learning_effect,
         "two_bounded_interests": len(official_interest_records) >= 2,
+        "all_cycles_reconstructable": all_official_cycles_reconstructable,
         "zero_unauthorized_actions": official_unauthorized == 0,
         "zero_manual_mutations": official_manual_mutations == 0,
         "valid_event_chain": chain["valid"],
@@ -405,6 +423,7 @@ def evaluate_gates(state: Dict[str, Any], records: list[Dict[str, Any]],
         "event_chain": chain,
         "event_counts": counts,
         "valid_reconstructable_cycle_count": len(complete_cycle_ids),
+        "all_cycles_reconstructable": stability_events_ok,
         "valid_learning_record_count": len(learning_by_id),
         "valid_interest_derivation_count": len(interest_by_id),
         "audit_coverage_complete": audit_ready,
