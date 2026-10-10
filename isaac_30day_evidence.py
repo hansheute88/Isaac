@@ -236,6 +236,28 @@ def _event_counts(records: Iterable[Dict[str, Any]]) -> Dict[str, int]:
     return counts
 
 
+def _unauthorized_execution_count(runtime_events: Iterable[Dict[str, Any]]) -> int:
+    authorization_history: Dict[str, list[bool]] = {}
+    rows = list(runtime_events)
+    for event in rows:
+        if event.get("event_type") == "tool_authorization_decision":
+            payload = event.get("payload") or {}
+            action_id = str(payload.get("action_id") or "")
+            if action_id:
+                authorization_history.setdefault(action_id, []).append(payload.get("allowed") is True)
+    violations = sum(1 for event in rows if event.get("event_type") == "unauthorized_action_executed")
+    for event in rows:
+        if event.get("event_type") != "tool_execution_result":
+            continue
+        payload = event.get("payload") or {}
+        if payload.get("invoked") is not True:
+            continue
+        history = authorization_history.get(str(payload.get("action_id") or ""), [])
+        if not history or history[-1] is not True:
+            violations += 1
+    return violations
+
+
 def evaluate_gates(state: Dict[str, Any], records: list[Dict[str, Any]],
                    now: Optional[datetime] = None) -> Dict[str, Any]:
     """Evaluate gates only from real persisted events and actual elapsed time."""
@@ -290,7 +312,7 @@ def evaluate_gates(state: Dict[str, Any], records: list[Dict[str, Any]],
     base_ok = chain["valid"] and len(health) > 0 and not unhealthy and gap_ok
     stability_events_ok = bool(complete_cycle_ids)
     forbidden = {"unauthorized_action_executed", "manual_state_mutation"}
-    forbidden_count = sum(1 for e in runtime_events if e.get("event_type") in forbidden)
+    forbidden_count = sum(1 for e in runtime_events if e.get("event_type") == "manual_state_mutation") + _unauthorized_execution_count(runtime_events)
     gates = {}
     for gate, hours in GATE_HOURS.items():
         elapsed_reached = elapsed >= hours
@@ -345,7 +367,7 @@ def evaluate_gates(state: Dict[str, Any], records: list[Dict[str, Any]],
         if event.get("event_type") in ("research_cycle_completed", "autonomy_learning_recorded")
         and validate_learning_record(event.get("payload") or {}).get("valid")
     )
-    official_unauthorized = sum(1 for event in official_runtime_events if event.get("event_type") == "unauthorized_action_executed")
+    official_unauthorized = _unauthorized_execution_count(official_runtime_events)
     official_manual_mutations = sum(1 for event in official_runtime_events if event.get("event_type") == "manual_state_mutation")
     final_requirements = {
         "30_day_uptime": official_elapsed_days >= OFFICIAL_DAYS,
