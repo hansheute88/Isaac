@@ -386,5 +386,127 @@ class TestIsaacAutonomyCycle(unittest.TestCase):
         asyncio.run(scenario())
 
 
+    def test_full_background_executor_flow_preserves_real_evidence_chain(self):
+        import asyncio
+        from unittest.mock import AsyncMock, MagicMock
+        from executor import Executor, Task, TaskType, TaskStatus, Strategy
+        from isaac_capabilities import RWXPolicy, RWXRegistry
+        from tool_policy import ToolSelectionDecision, ToolDecisionReason
+
+        async def scenario():
+            task = Task(
+                id="background-e2e-allow",
+                typ=TaskType.RESEARCH,
+                prompt="Research a bounded owner goal",
+                beschreibung="background goal",
+                strategy=Strategy(allow_tools=True),
+                required_capabilities=[{
+                    "resource": "tool:test-tool",
+                    "capability": "execute",
+                    "reason": "background E2E test",
+                }],
+                retrieved_context={
+                    "source": "goal_autonomy",
+                    "goal_id": "goal-e2e",
+                    "subgoal_id": "sub-e2e",
+                },
+            )
+            executor = object.__new__(Executor)
+            executor.rwx_registry = RWXRegistry({
+                "tool:test-tool": RWXPolicy(
+                    resource="tool:test-tool", execute=True, source="integration-test"
+                )
+            })
+            executor._tool_state = MagicMock()
+            executor._tool_state.get_or_create.return_value.to_dict.return_value = {}
+            executor._checkpoint = lambda *args, **kwargs: None
+            executor._persist_task = lambda *args, **kwargs: None
+            executor._notify = lambda *args, **kwargs: None
+            executor._tool_limit = lambda: 1
+
+            selection = {
+                "identifier": "test-tool",
+                "name": "test tool",
+                "kind": "mcp",
+                "category": "general",
+                "source": "integration-test",
+            }
+            selected = ToolSelectionDecision(
+                selected=selection,
+                reason=ToolDecisionReason.SELECTED_CANDIDATE,
+                metadata={},
+            )
+
+            async def fake_research(current_task):
+                _, output = await executor._maybe_use_tool(
+                    current_task,
+                    current_task.execution_query(),
+                    iteration=0,
+                    used_tool_ids=set(),
+                )
+                current_task.antwort = output or "bounded test result"
+                current_task.status = TaskStatus.DONE
+                current_task.decision_trace.add(
+                    TracePhase.EVALUATION,
+                    "quality_scored",
+                    {"acceptable": True, "via": "integration-test"},
+                )
+
+            executor._execute_research = fake_research
+            fake_memory = type("Memory", (), {
+                "build_retrieval_context": lambda self, *a, **k: {"facts": ["remembered fact"]},
+                "format_retrieval_context": lambda self, context: "Remembered fact: bounded scope",
+            })()
+            with patch("memory.get_memory", return_value=fake_memory), patch(
+                "executor.select_live_tool_for_task", new=AsyncMock(return_value=selected)
+            ), patch(
+                "executor.constitution_gate_for_tool", return_value=None
+            ), patch(
+                "executor.run_selected_tool",
+                new=AsyncMock(return_value={"ok": True, "output": "bounded result", "via": "integration-test"}),
+            ) as run_tool, patch(
+                "executor.maybe_export_portable_trace"
+            ):
+                await executor._execute(task)
+
+            self.assertEqual(run_tool.await_count, 1)
+            self.assertIn("Remembered fact: bounded scope", task.prompt)
+            self.assertEqual(task.status, TaskStatus.DONE)
+            context = task.retrieved_context
+            cycle_id = context.get("autonomy_cycle_id")
+            self.assertTrue(cycle_id)
+            events = task.decision_trace.to_list()
+            self.assertTrue(all(
+                entry["data"].get("cycle_id") == cycle_id
+                for entry in events
+            ))
+            names = [entry["event"] for entry in events]
+            for required_event in (
+                "autonomy_observation_captured",
+                "autonomy_intent_interpreted",
+                "autonomy_memory_context_checked",
+                "autonomy_goal_context_checked",
+                "autonomy_plan_selected",
+                "autonomy_preflight_result",
+                "tool_authorization_decision",
+                "execution_succeeded",
+                "quality_scored",
+                "autonomy_cycle_validation",
+            ):
+                self.assertIn(required_event, names)
+
+            validation = context.get("autonomy_cycle_validation") or {}
+            self.assertTrue(validation.get("authorization_observed"))
+            self.assertTrue(validation.get("execution_observed"))
+            self.assertTrue(validation.get("evaluation_observed"))
+            # A generic turn/procedure completion is deliberately not learning proof.
+            self.assertFalse(validation.get("learning_observed"))
+            self.assertFalse(any(
+                entry["event"] == "autonomy_learning_recorded" for entry in events
+            ))
+
+        asyncio.run(scenario())
+
+
 if __name__ == "__main__":
     unittest.main()
