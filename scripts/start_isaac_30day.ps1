@@ -58,11 +58,26 @@ Push-Location $RepoRoot
 try {
     & $Python -m py_compile decision_trace.py isaac_autonomy_cycle.py isaac_autonomy_reconstruction.py isaac_autonomy_verification.py scripts\isaac_30day_run.py
     if ($LASTEXITCODE -ne 0) { throw "Python-Kompilierung fehlgeschlagen." }
-    & $Python -m unittest tests_isaac_autonomy_cycle tests_isaac_autonomy_reconstruction tests_isaac_autonomy_verification tests_isaac_governance_gate
-    if ($LASTEXITCODE -ne 0) { throw "Autonomie-/Governance-Tests fehlgeschlagen. Preflight wurde nicht gestartet." }
+    $TestStamp = (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssZ")
+    $TestStdout = Join-Path $env:TEMP ("isaac-30day-tests-" + $TestStamp + ".stdout.log")
+    $TestStderr = Join-Path $env:TEMP ("isaac-30day-tests-" + $TestStamp + ".stderr.log")
+    $TestProcess = Start-Process -FilePath $Python -ArgumentList @("-m", "unittest", "tests_isaac_autonomy_cycle", "tests_isaac_autonomy_reconstruction", "tests_isaac_autonomy_verification", "tests_isaac_governance_gate", "tests_isaac_30day_run") -WorkingDirectory $RepoRoot -Wait -PassThru -RedirectStandardOutput $TestStdout -RedirectStandardError $TestStderr
+    if ($TestProcess.ExitCode -ne 0) { throw "Autonomie-/Governance-Tests fehlgeschlagen. Preflight wurde nicht gestartet. Logs: $TestStdout ; $TestStderr" }
 
     & $Python $Runner --run-dir $RunDirectory init --source-revision $SourceRevision --backup-dir $BackupDirectory
     if ($LASTEXITCODE -ne 0) { throw "Run-Initialisierung fehlgeschlagen." }
+    Copy-Item $TestStdout (Join-Path $RunDirectory "preflight-tests.stdout.log")
+    Copy-Item $TestStderr (Join-Path $RunDirectory "preflight-tests.stderr.log")
+    $TestReport = @{
+        schema = "isaac.30day.preflight-tests.v1"
+        source_revision = $SourceRevision.ToLowerInvariant()
+        exit_code = $TestProcess.ExitCode
+        test_command = "python -m unittest tests_isaac_autonomy_cycle tests_isaac_autonomy_reconstruction tests_isaac_autonomy_verification tests_isaac_governance_gate tests_isaac_30day_run"
+        finished_at_utc = (Get-Date).ToUniversalTime().ToString("o")
+        stdout_sha256 = (Get-FileHash (Join-Path $RunDirectory "preflight-tests.stdout.log") -Algorithm SHA256).Hash.ToLowerInvariant()
+        stderr_sha256 = (Get-FileHash (Join-Path $RunDirectory "preflight-tests.stderr.log") -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+    $TestReport | ConvertTo-Json -Depth 5 | Set-Content -Encoding UTF8 (Join-Path $RunDirectory "preflight-tests.json")
     & $Python $Runner --run-dir $RunDirectory backup-now
     if ($LASTEXITCODE -ne 0) { throw "Initiales Evidence-Backup fehlgeschlagen." }
 
