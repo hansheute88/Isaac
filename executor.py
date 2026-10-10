@@ -1025,15 +1025,17 @@ class Executor:
                 result = ensure_result_contract(blocked, source="constitution")
             else:
                 execution_invoked = True
-                result = ensure_result_contract(
-                    await run_selected_tool(
-                        selection,
-                        prompt,
-                        override_ctx=override_ctx,
-                        skip_constitution=True,
-                    ),
-                    source="executor_boundary",
-                )
+                from isaac_runtime_audit import bind_action_id
+                with bind_action_id(action_id):
+                    result = ensure_result_contract(
+                        await run_selected_tool(
+                            selection,
+                            prompt,
+                            override_ctx=override_ctx,
+                            skip_constitution=True,
+                        ),
+                        source="executor_boundary",
+                    )
             emit_runtime_event("tool_execution_result", {
                 "action_id": action_id,
                 "task_id": task.id,
