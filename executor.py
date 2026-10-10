@@ -1545,10 +1545,10 @@ class Executor:
         for hit in list(getattr(result, "hits", []) or [])[:12]:
             if isinstance(hit, dict):
                 raw_url = str(hit.get("url") or hit.get("link") or "")
-                title = str(hit.get("title") or hit.get("name") or "")
+                title = str(hit.get("title") or hit.get("titel") or hit.get("name") or "")
             else:
                 raw_url = str(getattr(hit, "url", "") or getattr(hit, "link", "") or "")
-                title = str(getattr(hit, "title", "") or getattr(hit, "name", "") or "")
+                title = str(getattr(hit, "title", "") or getattr(hit, "titel", "") or getattr(hit, "name", "") or "")
             if raw_url:
                 from urllib.parse import urlsplit
                 parsed = urlsplit(raw_url)
