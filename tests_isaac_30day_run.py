@@ -63,10 +63,13 @@ class TestIsaac30DayRunEvidence(unittest.TestCase):
         self.run_dir.mkdir(parents=True, exist_ok=True)
         with patch.dict(os.environ, {"ISAAC_AUTONOMY_TRACE_PATH": str(trace_path)}):
             trace = DecisionTrace()
-            trace.add(TracePhase.GOVERNANCE, "authorization_decision", {"action_id": "a1", "api_key": "do-not-store"})
+            trace.add(TracePhase.GOVERNANCE, "authorization_decision", {"action_id": "a1", "authorization_event_id": "auth-event-1", "authorization": {"authorized": True, "token": "do-not-store"}, "api_key": "do-not-store"})
         row = json.loads(trace_path.read_text(encoding="utf-8").splitlines()[0])
         self.assertEqual(row["event"], "authorization_decision")
         self.assertEqual(row["data"]["api_key"], "[REDACTED]")
+        self.assertEqual(row["data"]["authorization_event_id"], "auth-event-1")
+        self.assertTrue(row["data"]["authorization"]["authorized"])
+        self.assertEqual(row["data"]["authorization"]["token"], "[REDACTED]")
         self.assertEqual(runtime_trace_stats(self.run_dir)["entries"], 1)
 
     def test_trace_persistence_disabled_by_default(self):
