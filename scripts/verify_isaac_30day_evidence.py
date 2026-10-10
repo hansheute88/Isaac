@@ -165,7 +165,11 @@ def validate_package(root: Path) -> Dict[str, Any]:
         "autonomy_cycle_started", "autonomy_authorization_observed",
         "autonomy_execution_observed", "autonomy_evaluation_recorded",
     }
-    complete_cycles = sum(1 for kinds in cycles.values() if required_cycle.issubset(kinds))
+    complete_cycle_ids = {
+        cycle_id for cycle_id, kinds in cycles.items() if required_cycle.issubset(kinds)
+    }
+    complete_cycles = len(complete_cycle_ids)
+    all_cycles_reconstructable = bool(complete_cycle_ids) and len(complete_cycle_ids) == len(cycles)
 
     subgoals = {
         str((row.get("payload") or {}).get("id") or "")
@@ -208,6 +212,8 @@ def validate_package(root: Path) -> Dict[str, Any]:
     manual_mutations = sum(1 for row in official_events if row.get("event_type") == "manual_state_mutation")
     if complete_cycles < 1:
         errors.append("no_complete_reconstructable_cycle")
+    if not all_cycles_reconstructable:
+        errors.append("one_or_more_official_cycles_not_reconstructable")
     if len(subgoals) < 5:
         errors.append("fewer_than_five_self_generated_subgoals")
     if len(research) < 10:
@@ -244,6 +250,7 @@ def validate_package(root: Path) -> Dict[str, Any]:
                 (parse_time(completed_at) - parse_time(official_start)).total_seconds() / 86400.0, 6
             ) if official_start and completed_at else 0.0,
             "complete_reconstructable_cycles": complete_cycles,
+            "all_cycles_reconstructable": all_cycles_reconstructable,
             "self_generated_subgoals": len(subgoals),
             "valid_research_cycles": len(research),
             "valid_learning_records": len({str(row.get("learning_id")) for row in learning}),
