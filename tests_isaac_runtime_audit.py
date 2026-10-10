@@ -18,6 +18,7 @@ from isaac_runtime_audit import (
     REQUIRED_SURFACES,
     audit_hook_inventory,
     audited_surface,
+    bind_action_id,
     emit_proof_audit_readiness,
 )
 from motivation import MotivationDecision, _record_research_learning_and_interest
@@ -46,7 +47,8 @@ class TestRuntimeAuditIntegration(unittest.TestCase):
         def example_tool():
             return {"ok": True}
 
-        result = example_tool()
+        with bind_action_id("executor-auth-123"):
+            result = example_tool()
         self.assertTrue(result["ok"])
         events = read_events(Path(self._tmp.name))
         self.assertEqual([e["event_type"] for e in events], [
@@ -58,6 +60,7 @@ class TestRuntimeAuditIntegration(unittest.TestCase):
         self.assertEqual(start["phase"], "started")
         self.assertEqual(finish["phase"], "completed")
         self.assertEqual(start["action_id"], finish["action_id"])
+        self.assertEqual(start["action_id"], "executor-auth-123")
         self.assertTrue(finish["ok"])
 
     def test_production_hook_inventory_covers_all_required_surfaces(self):
