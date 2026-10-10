@@ -20,6 +20,7 @@ import uuid
 import json
 import logging
 import ast
+import hashlib
 import os
 import tempfile
 from pathlib import Path
@@ -1567,7 +1568,7 @@ class Executor:
                 "evidence_id": evidence_id,
                 "hit_count": len(getattr(result, "hits", []) or []),
                 "source_refs": source_refs,
-                "query_sha256": __import__("hashlib").sha256(query.encode("utf-8")).hexdigest(),
+                "query_sha256": hashlib.sha256(query.encode("utf-8")).hexdigest(),
             },
         )
         task.causal_refs["research_evidence_id"] = evidence_id
