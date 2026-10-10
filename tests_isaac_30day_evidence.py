@@ -85,6 +85,10 @@ class TestIsaac30DayEvidence(unittest.TestCase):
             ("research_cycle_completed", "isaac_runtime", learning_payload),
             ("interest_derivation_recorded", "isaac_runtime", interest_payloads[0]),
             ("interest_derivation_recorded", "isaac_runtime", interest_payloads[1]),
+            ("proof_audit_readiness", "isaac_runtime", {
+                "coverage_complete": True,
+                "surfaces": ["executor_tools", "owner_actions", "browser_missions", "mcp_tools", "state_store_writes", "filesystem_state"],
+            }),
         ]:
             append_event(self.root, kind, payload, source=source, event_time=timestamp)
         result = evaluate_gates(state, read_events(self.root), now=start_dt + timedelta(hours=73))
@@ -99,6 +103,10 @@ class TestIsaac30DayEvidence(unittest.TestCase):
             ("autonomy_evaluation_recorded", "isaac_runtime", {"cycle_id": "c-1"}),
             ("interest_derivation_recorded", "isaac_runtime", interest_payloads[0]),
             ("interest_derivation_recorded", "isaac_runtime", interest_payloads[1]),
+            ("proof_audit_readiness", "isaac_runtime", {
+                "coverage_complete": True,
+                "surfaces": ["executor_tools", "owner_actions", "browser_missions", "mcp_tools", "state_store_writes", "filesystem_state"],
+            }),
         ]:
             append_event(missing_root, kind, payload, source=source, event_time=timestamp)
         result = evaluate_gates(state, read_events(missing_root), now=start_dt + timedelta(hours=73))
