@@ -219,6 +219,11 @@ class GoalStore:
         )
         self.subgoals[sg.id] = sg
         self.save()
+        from isaac_30day_evidence import emit_runtime_event
+        if origin in ("planner", "inquiry", "failure_recovery"):
+            emit_runtime_event("subgoal_created", sg.to_dict())
+        elif origin == "owner":
+            emit_runtime_event("manual_state_mutation", {"kind": "owner_subgoal_created", "subgoal_id": sg.id})
         return sg
 
     def list_goals(self, *, status: Optional[str] = "active") -> list[OwnerGoal]:
