@@ -359,12 +359,15 @@ def approve_gate(root: Path, gate: str) -> None:
             )
         except (OSError, ValueError):
             test_report_valid = False
+    # Allow up to ten minutes for Isaac's initial server warm-up, then require
+    # continuous healthy observations through the end of each timed gate.
+    health_start = phase_started.timestamp() + 600
     heartbeats = [e for e in events if e.get("event_type") == "heartbeat"
-                  and datetime.fromisoformat(e["timestamp_utc"]) >= phase_started]
+                  and datetime.fromisoformat(e["timestamp_utc"]).timestamp() >= health_start]
     phase_heartbeat_ok = bool(heartbeats)
     if phase_heartbeat_ok:
         stamps = [datetime.fromisoformat(e["timestamp_utc"]).timestamp() for e in heartbeats]
-        phase_heartbeat_ok = stamps[-1] >= time.time() - 180 and stamps[0] <= phase_started.timestamp() + 180
+        phase_heartbeat_ok = stamps[-1] >= time.time() - 180 and stamps[0] <= health_start + 60
         phase_heartbeat_ok = phase_heartbeat_ok and all((b - a) <= 180 for a, b in zip(stamps, stamps[1:]))
         phase_heartbeat_ok = phase_heartbeat_ok and all(
             (e.get("payload") or {}).get("pid_alive") is True
@@ -379,6 +382,7 @@ def approve_gate(root: Path, gate: str) -> None:
     elif gate == "PREFLIGHT":
         checks = {
             "runtime_trace_enabled": trace["exists"] and trace["entries"] > 0 and metrics["valid_jsonl"],
+            "runtime_health_observed": phase_heartbeat_ok,
             "backup_verified": backup_check["valid"],
             "journal_chain_valid": check["valid"],
             "authorization_tests_passed": test_report_valid,
@@ -395,6 +399,7 @@ def approve_gate(root: Path, gate: str) -> None:
         }
     else:
         checks = {
+            "runtime_health_stable": phase_heartbeat_ok,
             "cycles_reconstructable": metrics["cycles_reconstructable"] >= 1,
             "subgoals_minimum": metrics["subgoals"] >= 5,
             "research_cycles_minimum": metrics["research_cycles"] >= 10,
