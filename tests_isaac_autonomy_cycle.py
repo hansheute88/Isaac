@@ -208,7 +208,9 @@ class TestIsaacAutonomyCycle(unittest.TestCase):
         task.status = TaskStatus.DONE
         executor._finalize_autonomy_cycle(task)
         result = task.retrieved_context.get("autonomy_cycle_validation") or {}
-        self.assertTrue(result.get("valid"))
+        self.assertFalse(result.get("valid"))
+        self.assertIn("execution_event_id", result.get("missing_required") or [])
+        self.assertFalse(result.get("execution_observed"))
         self.assertTrue(result.get("evaluation_observed"))
         self.assertTrue(any(
             entry.event == "autonomy_task_outcome_observed" for entry in task.decision_trace.entries
@@ -291,6 +293,8 @@ class TestIsaacAutonomyCycle(unittest.TestCase):
             result = finalize_cycle_from_task(task)
             self.assertTrue(result["authorization_denied"])
             self.assertFalse(result["execution_observed"])
+            self.assertFalse(result["valid"])
+            self.assertIn("execution_event_id", result["missing_required"])
             self.assertFalse(any(
                 entry.event == "autonomy_execution_observed" for entry in task.decision_trace.entries
             ))
