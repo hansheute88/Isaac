@@ -235,11 +235,8 @@ def evaluate_gates(state: Dict[str, Any], records: list[Dict[str, Any]],
     runtime_events = [e for e in run_events if e.get("source") == "isaac_runtime"]
     runtime_types = {str(e.get("event_type")) for e in runtime_events}
     elapsed = _elapsed_hours(state, current)
-    last_sample = state.get("last_sample_at_utc")
-    gap_ok = True
-    if last_sample:
-        last_dt = datetime.fromisoformat(last_sample.replace("Z", "+00:00"))
-        gap_ok = (current - last_dt).total_seconds() <= max(180, float(state["interval_seconds"]) * 2.5)
+    gap_seconds = state.get("previous_sample_gap_seconds")
+    gap_ok = gap_seconds is None or float(gap_seconds) <= max(180, float(state["interval_seconds"]) * 2.5)
     base_ok = chain["valid"] and len(health) > 0 and not unhealthy and gap_ok
     stability_events_ok = {
         "autonomy_cycle_started", "autonomy_authorization_observed",
@@ -341,6 +338,7 @@ def run_once(evidence_dir: Path, now: Optional[datetime] = None) -> Dict[str, An
     previous = state.get("last_sample_at_utc")
     if previous:
         prev_dt = datetime.fromisoformat(previous.replace("Z", "+00:00"))
+        state["previous_sample_gap_seconds"] = (current - prev_dt).total_seconds()
         if current < prev_dt:
             state["status"] = "FAILED"
             state["failure_reason"] = "system_clock_moved_backwards"
@@ -424,6 +422,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     init.add_argument("--backup-dir", default=None)
     once = sub.add_parser("once", help="Perform one real health sample and update gates")
     once.add_argument("--evidence-dir", required=True)
+    watch = sub.add_parser("watch", help="Continuously sample runtime health until stopped")
+    watch.add_argument("--evidence-dir", required=True)
     verify = sub.add_parser("verify", help="Verify hash chain and report gate status")
     verify.add_argument("--evidence-dir", required=True)
     args = parser.parse_args(argv)
@@ -438,6 +438,19 @@ def main(argv: Optional[list[str]] = None) -> int:
             result = run_once(root)
             print(json.dumps(result, indent=2))
             return 0 if result["evaluation"]["event_chain"]["valid"] else 2
+        if args.command == "watch":
+            print("Isaac proof supervisor active. Stop only if you intend to invalidate continuity.")
+            while True:
+                result = run_once(root)
+                print(json.dumps({
+                    "at": result["state"].get("last_sample_at_utc"),
+                    "status": result["state"].get("status"),
+                    "gates": result["state"].get("gates"),
+                    "official_elapsed_days": result["evaluation"].get("official_elapsed_days"),
+                }, sort_keys=True), flush=True)
+                if result["state"].get("status") in ("FAILED", "COMPLETE"):
+                    return 0 if result["state"]["status"] == "COMPLETE" else 2
+                time.sleep(int(result["state"]["interval_seconds"]))
         records = read_events(root)
         chain = verify_chain(records)
         state_path = root / "run_state.json"
