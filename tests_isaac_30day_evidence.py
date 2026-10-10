@@ -99,6 +99,25 @@ class TestIsaac30DayEvidence(unittest.TestCase):
             append_event(self.root, kind, payload, source=source, event_time=timestamp)
         result = evaluate_gates(state, read_events(self.root), now=start_dt + timedelta(hours=73))
         self.assertTrue(result["gates"]["AUTONOMY_72H"]["passed"])
+        self.assertTrue(result["audit_coverage_complete"])
+
+        # The same otherwise-valid evidence must fail closed without readiness.
+        no_audit_root = self.root / "without-audit-readiness"
+        for event in read_events(self.root):
+            if event.get("event_type") == "proof_audit_readiness":
+                continue
+            append_event(
+                no_audit_root,
+                event["event_type"],
+                event.get("payload") or {},
+                source=event.get("source", "supervisor"),
+                event_time=event.get("timestamp_utc"),
+            )
+        no_audit_result = evaluate_gates(
+            state, read_events(no_audit_root), now=start_dt + timedelta(hours=73)
+        )
+        self.assertFalse(no_audit_result["gates"]["AUTONOMY_72H"]["passed"])
+        self.assertFalse(no_audit_result["audit_coverage_complete"])
 
         missing_root = self.root / "without-learning"
         for kind, source, payload in [

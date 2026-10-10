@@ -408,7 +408,7 @@ def evaluate_gates(state: Dict[str, Any], records: list[Dict[str, Any]],
                 elapsed_reached and base_ok
                 and state.get("gates", {}).get("PREFLIGHT_24H", {}).get("passed", False)
                 and state.get("gates", {}).get("STABILITY_48H", {}).get("passed", False)
-                and stability_events_ok and learning_ok and interest_ok and forbidden_count == 0
+                and stability_events_ok and learning_ok and interest_ok and audit_ready and forbidden_count == 0
             )
             reason = "72h autonomy gate evidence present" if passed else "requires passed earlier gates, cycle/learning/interest evidence, complete mutation/execution audit coverage, and zero forbidden events"
         gates[gate] = {"passed": bool(passed), "elapsed_hours": round(elapsed, 4), "required_hours": hours, "reason": reason}
