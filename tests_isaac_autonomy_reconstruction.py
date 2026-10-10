@@ -82,6 +82,8 @@ class TestIsaacAutonomyReconstruction(unittest.TestCase):
         self.assertTrue(result["cycle"]["authorization_event_id"])
         self.assertFalse(result["cycle"]["execution_event_id"])
         self.assertFalse(result["cycle"]["learning_id"])
+        self.assertFalse(result["valid"])
+        self.assertIn("execution_event_id", result["missing_required"])
 
 
 
