@@ -398,7 +398,11 @@ class BrowserManager:
                 override_reason="owner_equivalent_mode" if owner else "",
             ),
         )
-        from isaac_runtime_audit import current_action_id, record_tool_authorization_decision
+        from isaac_runtime_audit import (
+            current_action_id,
+            record_tool_authorization_decision,
+            record_tool_execution_result,
+        )
 
         action_id = current_action_id()
         if gate.get("allowed"):
@@ -411,9 +415,14 @@ class BrowserManager:
         blocked = ", ".join(gate.get("blocked_by") or [])
         if action_id:
             import uuid
+            boundary_action_id = uuid.uuid4().hex
             record_tool_authorization_decision(
-                uuid.uuid4().hex, False, "browser_missions", action,
+                boundary_action_id, False, "browser_missions", action,
                 "constitution_denied", parent_action_id=action_id,
+            )
+            record_tool_execution_result(
+                boundary_action_id, False, False, "browser_missions", action,
+                parent_action_id=action_id,
             )
         return f"Verfassung blockiert Browser: {blocked}"
 
