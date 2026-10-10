@@ -179,7 +179,7 @@ def atomic_json(path: Path, value: Dict[str, Any]) -> None:
 
 def write_manifest(evidence_dir: Path, state: Dict[str, Any]) -> Dict[str, Any]:
     files = {}
-    for name in ("events.jsonl", "run_state.json"):
+    for name in ("events.jsonl", "run_state.json", "final_report.json"):
         path = evidence_dir / name
         if path.exists():
             files[name] = {"sha256": sha256_file(path), "size_bytes": path.stat().st_size}
@@ -356,6 +356,7 @@ def evaluate_gates(state: Dict[str, Any], records: list[Dict[str, Any]],
         "zero_unauthorized_actions": official_unauthorized == 0,
         "zero_manual_mutations": official_manual_mutations == 0,
         "valid_event_chain": chain["valid"],
+        "independent_validation": bool(state.get("independent_validation_passed", False)),
     }
 
     return {
@@ -370,6 +371,9 @@ def evaluate_gates(state: Dict[str, Any], records: list[Dict[str, Any]],
         "valid_learning_record_count": len(learning_by_id),
         "valid_interest_derivation_count": len(interest_by_id),
         "gates": gates,
+        "official_core_requirements_passed": bool(official_started) and all(
+            value for key, value in final_requirements.items() if key != "independent_validation"
+        ),
         "official_proof_eligible_to_complete": bool(official_started) and all(final_requirements.values()),
         "official_requirements": final_requirements,
     }
@@ -415,7 +419,7 @@ def run_once(evidence_dir: Path, now: Optional[datetime] = None) -> Dict[str, An
         raise FileNotFoundError("No run_state.json. Initialize the run first.")
     state = json.loads(state_path.read_text(encoding="utf-8"))
     current = now or utc_now()
-    if state.get("status") in ("FAILED", "COMPLETE"):
+    if state.get("status") in ("FAILED", "COMPLETE", "FAILED_FINAL_VALIDATION"):
         raise RuntimeError("Run is terminal (%s); start a new evidence directory for a new run." % state["status"])
     previous = state.get("last_sample_at_utc")
     if previous:
@@ -451,6 +455,8 @@ def run_once(evidence_dir: Path, now: Optional[datetime] = None) -> Dict[str, An
         state["failure_reason"] = "event_chain_integrity_failure" if not chain_status["valid"] else "forbidden_runtime_event"
     evaluation = evaluate_gates(state, records, current)
     for gate_name, gate_result in evaluation["gates"].items():
+        if state.get("status") == "FAILED":
+            break
         if gate_result["passed"] and not state.get("gates", {}).get(gate_name, {}).get("passed"):
             state["gates"][gate_name] = dict(gate_result, passed_at_utc=iso_utc(current))
             append_event(evidence_dir, "gate_passed", {"gate": gate_name, "details": gate_result})
@@ -468,12 +474,22 @@ def run_once(evidence_dir: Path, now: Optional[datetime] = None) -> Dict[str, An
         if (current - official_start).total_seconds() >= OFFICIAL_DAYS * 86400:
             refreshed = read_events(evidence_dir)
             final_eval = evaluate_gates(state, refreshed, current)
-            if final_eval["official_proof_eligible_to_complete"]:
-                state["status"] = "COMPLETE"
-                state["completed_at_utc"] = iso_utc(current)
-                append_event(evidence_dir, "official_proof_completed", final_eval["official_requirements"])
-            else:
-                state["status"] = "OFFICIAL_30_DAY_RUN"
+            if final_eval["official_core_requirements_passed"] and state.get("status") != "AWAITING_INDEPENDENT_VALIDATION":
+                state["status"] = "AWAITING_INDEPENDENT_VALIDATION"
+                state["candidate_at_utc"] = iso_utc(current)
+                report = {
+                    "schema": "isaac.30day.final-report.v1",
+                    "run_id": state["run_id"],
+                    "source_revision": state["source_revision"],
+                    "candidate_at_utc": state["candidate_at_utc"],
+                    "claim": "30-day runtime criteria met; independent validation still required",
+                    "evaluation": final_eval,
+                }
+                atomic_json(evidence_dir / "final_report.json", report)
+                append_event(evidence_dir, "official_proof_ready_for_independent_validation", {
+                    "candidate_at_utc": state["candidate_at_utc"],
+                    "report": "final_report.json",
+                })
     atomic_json(state_path, state)
     write_manifest(evidence_dir, state)
     backup_dir = Path(state["backup_dir"])
@@ -523,6 +539,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     fail = sub.add_parser("fail", help="Mark an initialized run failed without deleting evidence")
     fail.add_argument("--evidence-dir", required=True)
     fail.add_argument("--reason", required=True)
+    finalize = sub.add_parser("finalize", help="Run independent validation after the 30-day criteria are met")
+    finalize.add_argument("--evidence-dir", required=True)
     verify = sub.add_parser("verify", help="Verify hash chain and report gate status")
     verify.add_argument("--evidence-dir", required=True)
     args = parser.parse_args(argv)
@@ -544,6 +562,36 @@ def main(argv: Optional[list[str]] = None) -> int:
             write_manifest(root, state)
             print(json.dumps({"status": "FAILED", "reason": state["failure_reason"]}, indent=2))
             return 2
+        if args.command == "finalize":
+            state_path = root / "run_state.json"
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            records = read_events(root)
+            evaluation = evaluate_gates(state, records)
+            if state.get("status") != "AWAITING_INDEPENDENT_VALIDATION" or not evaluation.get("official_core_requirements_passed"):
+                raise RuntimeError("Run is not ready for finalization; preserve evidence and inspect verify output.")
+            state["status"] = "COMPLETE"
+            state["independent_validation_passed"] = True
+            state["completed_at_utc"] = iso_utc()
+            atomic_json(state_path, state)
+            write_manifest(root, state)
+            verifier = Path(__file__).parent / "scripts" / "verify_isaac_30day_evidence.py"
+            check = __import__("subprocess").run(
+                [sys.executable, str(verifier), "--evidence-dir", str(root)],
+                capture_output=True, text=True, check=False,
+            )
+            if check.returncode != 0:
+                state["status"] = "FAILED_FINAL_VALIDATION"
+                state["independent_validation_passed"] = False
+                state["failure_reason"] = "independent_validator_failed"
+                atomic_json(state_path, state)
+                write_manifest(root, state)
+                print(check.stdout)
+                print(check.stderr, file=sys.stderr)
+                return 2
+            validation = json.loads(check.stdout)
+            atomic_json(root / "independent_validation.json", validation)
+            print(json.dumps(validation, indent=2))
+            return 0
         if args.command == "once":
             result = run_once(root)
             print(json.dumps(result, indent=2))
@@ -558,8 +606,8 @@ def main(argv: Optional[list[str]] = None) -> int:
                     "gates": result["state"].get("gates"),
                     "official_elapsed_days": result["evaluation"].get("official_elapsed_days"),
                 }, sort_keys=True), flush=True)
-                if result["state"].get("status") in ("FAILED", "COMPLETE"):
-                    return 0 if result["state"]["status"] == "COMPLETE" else 2
+                if result["state"].get("status") in ("FAILED", "COMPLETE", "FAILED_FINAL_VALIDATION", "AWAITING_INDEPENDENT_VALIDATION"):
+                    return 0 if result["state"]["status"] in ("COMPLETE", "AWAITING_INDEPENDENT_VALIDATION") else 2
                 time.sleep(int(result["state"]["interval_seconds"]))
         records = read_events(root)
         chain = verify_chain(records)
