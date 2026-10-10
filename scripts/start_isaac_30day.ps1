@@ -77,7 +77,9 @@ try {
         stdout_sha256 = (Get-FileHash (Join-Path $RunDirectory "preflight-tests.stdout.log") -Algorithm SHA256).Hash.ToLowerInvariant()
         stderr_sha256 = (Get-FileHash (Join-Path $RunDirectory "preflight-tests.stderr.log") -Algorithm SHA256).Hash.ToLowerInvariant()
     }
-    $TestReport | ConvertTo-Json -Depth 5 | Set-Content -Encoding UTF8 (Join-Path $RunDirectory "preflight-tests.json")
+    $TestReportPath = Join-Path $RunDirectory "preflight-tests.json"
+    $TestReportJson = ($TestReport | ConvertTo-Json -Depth 5) + [Environment]::NewLine
+    [System.IO.File]::WriteAllText($TestReportPath, $TestReportJson, [System.Text.UTF8Encoding]::new($false))
     & $Python $Runner --run-dir $RunDirectory backup-now
     if ($LASTEXITCODE -ne 0) { throw "Initiales Evidence-Backup fehlgeschlagen." }
 
