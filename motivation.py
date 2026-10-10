@@ -112,6 +112,8 @@ def _record_research_learning_and_interest(
         if validation.get("valid"):
             from isaac_autonomy_cycle import record_learning
             record_learning(task.decision_trace, cycle, learning_id=learning_id)
+        else:
+            learning_record = None
     except Exception:
         if os.getenv("ISAAC_30DAY_OFFICIAL", "").strip() == "1":
             raise
@@ -553,7 +555,7 @@ async def run_goal_motivation_cycle(
                         if entry.phase == TracePhase.EXECUTION
                         and entry.event in {
                             "execution_succeeded", "execution_failed", "model_call", "model_call_failed",
-                            "search_completed", "search_failed",
+                            "search_completed", "search_failed", "research_sources_collected",
                         }
                     ]
                     evaluation_entries = [
