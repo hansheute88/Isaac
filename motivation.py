@@ -150,7 +150,7 @@ def _record_research_learning_and_interest(
                     owner_goal_id=goal.id,
                     subgoal_id=subgoal.id,
                     observation_research_id=str(task.id),
-                    new_information=answer[:1200],
+                    new_information=(f"Research evidence {evidence_id}; answer_sha256={answer_digest}; source_count={len(source_refs)}"),
                     inference=(
                         f"Die Recherche-Empfehlung ist mit dem aktiven Ziel "
                         f"'{goal.title[:160]}' und dem Teilziel '{subgoal.title[:160]}' verknüpft."
