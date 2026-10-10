@@ -71,6 +71,55 @@ def bind_action_id(action_id: str) -> Iterator[None]:
         _ACTION_ID.reset(token)
 
 
+def record_tool_authorization_decision(
+    action_id: str, allowed: bool, surface: str, operation: str, reason: str = ""
+) -> None:
+    _emit("tool_authorization_decision", {
+        "action_id": str(action_id or ""),
+        "allowed": bool(allowed),
+        "surface": surface,
+        "operation": operation,
+        "reason": str(reason or "")[:160],
+    })
+
+
+def record_tool_execution_result(
+    action_id: str, invoked: bool, ok: bool, surface: str, operation: str
+) -> None:
+    _emit("tool_execution_result", {
+        "action_id": str(action_id or ""),
+        "invoked": bool(invoked),
+        "ok": bool(ok),
+        "surface": surface,
+        "operation": operation,
+    })
+
+
+def _record_boundary_decision(surface: str, operation: str, action_id: str, result: Any) -> None:
+    denied = False
+    if surface == "browser_missions":
+        denied = bool(
+            isinstance(result, dict)
+            and (
+                result.get("source") == "constitution"
+                or "Verfassung blockiert" in str(result.get("error") or "")
+            )
+        )
+    elif surface == "filesystem_state":
+        denied = bool(
+            isinstance(result, tuple)
+            and result
+            and "Verfassung blockiert" in str(result[0])
+        )
+    else:
+        return
+    reason = "constitution_denied" if denied else ""
+    record_tool_authorization_decision(action_id, not denied, surface, operation, reason)
+    record_tool_execution_result(
+        action_id, invoked=not denied, ok=_result_ok(result), surface=surface, operation=operation
+    )
+
+
 def audited_surface(surface: str) -> Callable:
     """Decorate a real runtime entry point with start/finish evidence events."""
     if surface not in REQUIRED_SURFACES:
@@ -118,6 +167,7 @@ def audited_surface(surface: str) -> Callable:
                 try:
                     result = await function(*args, **kwargs)
                     ok = _result_ok(result)
+                    _record_boundary_decision(surface, operation, action_id, result)
                     return result
                 except Exception as exc:
                     phase, ok, error_type = "failed", False, type(exc).__name__
@@ -136,6 +186,7 @@ def audited_surface(surface: str) -> Callable:
                 try:
                     result = function(*args, **kwargs)
                     ok = _result_ok(result)
+                    _record_boundary_decision(surface, operation, action_id, result)
                     return result
                 except Exception as exc:
                     phase, ok, error_type = "failed", False, type(exc).__name__
