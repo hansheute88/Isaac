@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from isaac_30day_evidence import append_event, evaluate_gates, iso_utc, read_events, verify_chain, _unauthorized_execution_count
+from isaac_30day_evidence import append_event, evaluate_gates, iso_utc, read_events, verify_chain, _unauthorized_execution_count, _pid_alive
 from isaac_interest_derivation import build_interest_derivation
 from isaac_learning_causality import build_learning_record
 
@@ -18,6 +19,11 @@ class TestIsaac30DayEvidence(unittest.TestCase):
 
     def tearDown(self):
         self.temp.cleanup()
+
+    def test_pid_liveness_check_is_non_destructive_and_rejects_invalid_pid(self):
+        self.assertTrue(_pid_alive(os.getpid()))
+        self.assertFalse(_pid_alive(0))
+        self.assertFalse(_pid_alive(-1))
 
     def test_hash_chain_detects_tampering(self):
         append_event(self.root, "health_sample", {"healthy": True})
