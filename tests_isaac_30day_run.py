@@ -14,6 +14,10 @@ from scripts.isaac_30day_run import (
     init_run,
     runtime_trace_stats,
     verify_journal,
+    verify_backup,
+    sha256_file,
+    load_state,
+    atomic_json,
 )
 
 
@@ -71,6 +75,20 @@ class TestIsaac30DayRunEvidence(unittest.TestCase):
         self.assertTrue(row["data"]["authorization"]["authorized"])
         self.assertEqual(row["data"]["authorization"]["token"], "[REDACTED]")
         self.assertEqual(runtime_trace_stats(self.run_dir)["entries"], 1)
+
+    def test_backup_manifest_is_bound_to_journal(self):
+        init_run(self.run_dir, "d" * 40, self.backup_dir)
+        report = backup(self.run_dir, self.backup_dir)
+        manifest = self.backup_dir / "run" / "backup-manifest.json"
+        append_event(self.run_dir, "backup_completed", {
+            "files": report["files"],
+            "manifest_sha256": sha256_file(manifest),
+        })
+        state = load_state(self.run_dir)
+        from datetime import datetime, timezone
+        state["last_backup_at_utc"] = datetime.now(timezone.utc).isoformat()
+        atomic_json(self.run_dir / "run-state.json", state)
+        self.assertTrue(verify_backup(self.run_dir, load_state(self.run_dir))["valid"])
 
     def test_trace_persistence_disabled_by_default(self):
         trace_path = self.run_dir / "runtime-trace.jsonl"
