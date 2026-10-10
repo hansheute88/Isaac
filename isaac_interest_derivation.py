@@ -147,4 +147,7 @@ def record_interest_derivation(
         "interest_derivation_recorded",
         payload,
     )
+    if validation.get("valid"):
+        from isaac_30day_evidence import emit_runtime_event
+        emit_runtime_event("interest_derivation_recorded", payload)
     return validation
