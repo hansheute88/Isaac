@@ -3,7 +3,12 @@ from __future__ import annotations
 import unittest
 
 from decision_trace import DecisionTrace
-from isaac_autonomy_cycle import begin_cycle, record_authorization
+from isaac_autonomy_cycle import (
+    begin_cycle,
+    record_authorization,
+    record_evaluation,
+    record_execution,
+)
 from isaac_autonomy_verification import (
     GATE_BASELINE,
     GATE_CYCLE,
@@ -156,6 +161,10 @@ class TestIsaacAutonomyVerification(unittest.TestCase):
         trace = DecisionTrace()
         cycle = begin_cycle(trace, intent="Observe system health")
         record_authorization(trace, cycle, authorization_event_id="auth-99", allowed=True)
+        record_execution(trace, cycle, execution_event_id="exec-99")
+        record_evaluation(
+            trace, cycle, evaluation_event_id="eval-99", outcome="success"
+        )
 
         metrics = AutonomyRunMetrics(
             has_lifecycle_trace=True,
