@@ -74,9 +74,17 @@ class TestIsaac30DayEvidence(unittest.TestCase):
         records = read_events(self.root)
         result = evaluate_gates(state, records, now=start_dt + timedelta(hours=73))
         self.assertTrue(result["gates"]["AUTONOMY_72H"]["passed"])
-        records = [r for r in records if r["event_type"] != "autonomy_learning_recorded"]
-        # A missing learning event must block the gate even when the chain is otherwise valid.
-        result = evaluate_gates(state, records, now=start_dt + timedelta(hours=73))
+        missing_root = self.root / "without-learning"
+        for kind, source, payload in [
+            ("health_sample", "supervisor", {"healthy": True}),
+            ("autonomy_cycle_started", "isaac_runtime", {"cycle_id": "c-1"}),
+            ("autonomy_authorization_observed", "isaac_runtime", {"cycle_id": "c-1", "allowed": True}),
+            ("autonomy_execution_observed", "isaac_runtime", {"cycle_id": "c-1"}),
+            ("autonomy_evaluation_recorded", "isaac_runtime", {"cycle_id": "c-1"}),
+            ("interest_derivation_recorded", "isaac_runtime", {"interest_id": "i-1"}),
+        ]:
+            append_event(missing_root, kind, payload, source=source, event_time=iso_utc(start_dt + timedelta(hours=73)))
+        result = evaluate_gates(state, read_events(missing_root), now=start_dt + timedelta(hours=73))
         self.assertFalse(result["gates"]["AUTONOMY_72H"]["passed"])
 
     def test_no_event_chain_can_pass_if_a_record_is_modified(self):
