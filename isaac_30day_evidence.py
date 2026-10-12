@@ -115,29 +115,35 @@ def _unlock_file(handle: Any) -> None:
         fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
-def _last_record(path: Path) -> Optional[Dict[str, Any]]:
-    if not path.exists() or path.stat().st_size == 0:
+def _last_record(handle: Any) -> Optional[Dict[str, Any]]:
+    """Read the last JSONL record from the already-open ledger handle.
+
+    Reusing the locked handle avoids a second open of the ledger on Windows.
+    """
+    handle.seek(0, os.SEEK_END)
+    end = handle.tell()
+    if end == 0:
         return None
-    with path.open("rb") as handle:
-        handle.seek(0, os.SEEK_END)
-        end = handle.tell()
-        pos = end - 1
-        # Skip trailing newlines, then scan backwards to the prior line boundary.
-        while pos >= 0:
-            handle.seek(pos)
-            if handle.read(1) != b"\n":
-                break
-            pos -= 1
-        if pos < 0:
-            return None
-        end = pos + 1
-        while pos >= 0:
-            handle.seek(pos)
-            if handle.read(1) == b"\n":
-                break
-            pos -= 1
-        handle.seek(pos + 1)
-        line = handle.read(end - pos - 1).strip()
+
+    pos = end - 1
+    while pos >= 0:
+        handle.seek(pos)
+        if handle.read(1) != b"\n":
+            break
+        pos -= 1
+
+    if pos < 0:
+        return None
+
+    end = pos + 1
+    while pos >= 0:
+        handle.seek(pos)
+        if handle.read(1) == b"\n":
+            break
+        pos -= 1
+
+    handle.seek(pos + 1)
+    line = handle.read(end - pos - 1).strip()
     return json.loads(line.decode("utf-8")) if line else None
 
 
@@ -149,7 +155,7 @@ def append_event(evidence_dir: Path, event_type: str, payload: Optional[Dict[str
     with ledger.open("a+b") as handle:
         _lock_file(handle)
         try:
-            previous = _last_record(ledger)
+            previous = _last_record(handle)
             body = {
                 "schema": SCHEMA,
                 "sequence": int(previous["sequence"]) + 1 if previous else 1,
