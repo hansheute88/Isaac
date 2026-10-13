@@ -536,6 +536,7 @@ const STATE = {
   audioEnabled: false,
   speechEnabled: false,
   systemState: {},
+  hasReceivedInitialState: false,
   tasks: {},
   expandedTaskIds: new Set(),
   liveLogs: [],
@@ -1201,7 +1202,15 @@ function handleWSMessage(msg) {
         STATE.paused = !!msg.state.paused;
         $('pause-btn').textContent = STATE.paused ? 'Weiter' : 'Pause';
         $('hdr-provider').textContent = 'Relay: ' + (msg.state.settings?.active_provider || 'Default');
-        renderStage();
+
+        // State updates arrive in the background. Replacing stage.innerHTML on
+        // every update destroys active inputs, dropdowns and the code editor,
+        // causing focus/cursor loss and discarding unsaved edits. Render once
+        // after the initial state; navigation actions render their own view.
+        if (!STATE.hasReceivedInitialState) {
+          STATE.hasReceivedInitialState = true;
+          renderStage();
+        }
       }
       break;
     case 'tasks':
