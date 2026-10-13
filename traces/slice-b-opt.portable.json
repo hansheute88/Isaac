@@ -5,7 +5,8 @@
   "entries": [
     {
       "sequence": 1,
-      "ts": 1790250906.6362112,
+      "event_id": "97ef017a-ac13-4fd0-b665-60e7a00a40f1",
+      "ts": 1791507729.9000218,
       "phase": "classification",
       "event": "classified",
       "data": {
@@ -14,7 +15,8 @@
     },
     {
       "sequence": 2,
-      "ts": 1790250906.6362188,
+      "event_id": "18f74df1-f564-4c0d-b160-e605e4d9e5eb",
+      "ts": 1791507729.900039,
       "phase": "execution",
       "event": "model_call",
       "data": {
@@ -56,8 +58,8 @@
               "spanId": "root-slice-b-opt",
               "name": "isaac.request",
               "kind": "SERVER",
-              "startTimeUnixNano": 1790250906636211200,
-              "endTimeUnixNano": 1790250906636218880,
+              "startTimeUnixNano": 1791507729900021760,
+              "endTimeUnixNano": 1791507729900038912,
               "attributes": {
                 "isaac.request_id": "slice-b-opt",
                 "service.name": "isaac-cognitive-kernel"
@@ -70,14 +72,14 @@
               "parentSpanId": "root-slice-b-opt",
               "name": "isaac.classify",
               "kind": "INTERNAL",
-              "startTimeUnixNano": 1790250906636211200,
-              "endTimeUnixNano": 1790250906636211200,
+              "startTimeUnixNano": 1791507729900021760,
+              "endTimeUnixNano": 1791507729900021760,
               "attributes": {
                 "isaac.phase": "classification"
               },
               "events": [
                 {
-                  "timeUnixNano": 1790250906636211200,
+                  "timeUnixNano": 1791507729900021760,
                   "name": "classified",
                   "attributes": {
                     "class": "NORMAL_CHAT"
@@ -91,8 +93,8 @@
               "parentSpanId": "root-slice-b-opt",
               "name": "gen_ai.chat",
               "kind": "INTERNAL",
-              "startTimeUnixNano": 1790250906636218880,
-              "endTimeUnixNano": 1790250906636218880,
+              "startTimeUnixNano": 1791507729900038912,
+              "endTimeUnixNano": 1791507729900038912,
               "attributes": {
                 "isaac.phase": "execution",
                 "gen_ai.system": "groq",
@@ -104,7 +106,7 @@
               },
               "events": [
                 {
-                  "timeUnixNano": 1790250906636218880,
+                  "timeUnixNano": 1791507729900038912,
                   "name": "model_call",
                   "attributes": {
                     "provider": "groq",

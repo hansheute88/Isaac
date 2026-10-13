@@ -17,6 +17,8 @@ from mcp_registry import get_mcp_registry
 from task_tool_state import get_task_tool_state_store
 from tool_policy import ToolDecisionReason, ToolPolicy, ToolSelectionDecision
 from result_contract import ensure_result_contract, error_result
+from isaac_runtime_audit import audited_surface
+
 
 _browser = None
 
@@ -748,6 +750,7 @@ async def run_code_edit_from_model_text(
     )
 
 
+@audited_surface("executor_tools")
 async def run_selected_tool(
     selection: dict,
     prompt: str,
