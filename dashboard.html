@@ -1026,7 +1026,11 @@ function renderSettingsStage() {
               <option value="false" ${!set.browser_automation ? 'selected' : ''}>Deaktiviert</option>
             </select>
           </label>
-          <button class="btn btn-primary" onclick="saveSettings()">Einstellungen Übernehmen</button>
+          <div style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.45;">
+            Hinweis: Öffentliche Cloud-Instanzen können Browser-Automatisierung aus Sicherheitsgründen serverseitig blockieren. Die Oberfläche zeigt das Ergebnis der Speicherung an.
+          </div>
+          <div id="settings-feedback" role="status" aria-live="polite" style="font-size: 0.75rem; color: var(--text-muted);"></div>
+          <button class="btn btn-primary" id="save-settings-btn" onclick="saveSettings()">Einstellungen Übernehmen</button>
         </div>
       </div>
     </div>
@@ -1102,6 +1106,49 @@ function resumeTask(id) {
     .then(r => r.json()).then(j => alert(j.ok ? 'Task Resumed' : 'Error: ' + j.error));
 }
 function requestTasks() { send({ typ: 'tasks_request' }); }
+
+async function saveSettings() {
+  const button = $('save-settings-btn');
+  const feedback = $('settings-feedback');
+  const requestedValue = $('set-browser').value === 'true';
+  if (button) button.disabled = true;
+  if (feedback) {
+    feedback.style.color = 'var(--text-muted)';
+    feedback.textContent = 'Speichere Einstellung …';
+  }
+
+  try {
+    const response = await fetch('/api/runtime/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ settings: { browser_automation: requestedValue } })
+    });
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok || result.ok !== true) {
+      const message = result.error || `HTTP ${response.status}`;
+      if (feedback) {
+        feedback.style.color = 'var(--accent-rose)';
+        feedback.textContent = 'Nicht gespeichert: ' + message;
+      }
+      send({ typ: 'state_request' });
+      return;
+    }
+
+    if (feedback) {
+      feedback.style.color = 'var(--accent-emerald)';
+      feedback.textContent = 'Einstellung gespeichert.';
+    }
+    send({ typ: 'state_request' });
+  } catch (error) {
+    if (feedback) {
+      feedback.style.color = 'var(--accent-rose)';
+      feedback.textContent = 'Speichern fehlgeschlagen: ' + (error.message || 'Verbindungsfehler');
+    }
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
 
 function addDirective() {
   const t = $('dir-text').value.trim(); if (!t) return;
