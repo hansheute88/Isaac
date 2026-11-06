@@ -20,6 +20,7 @@ import uuid
 import json
 import logging
 import ast
+import hashlib
 import os
 import tempfile
 from pathlib import Path
@@ -52,6 +53,13 @@ from decision_trace import (
     maybe_export_portable_trace,
 )
 from result_contract import ensure_result_contract
+from isaac_capabilities import (
+    Capability,
+    CapabilityRequest,
+    RWXPolicy,
+    RWXRegistry,
+    evaluate_with_audit,
+)
 from tool_policy import (
     ToolPolicy,
     ToolDecisionReason,
@@ -219,6 +227,9 @@ class Task:
     outcome: dict = field(default_factory=dict)
     learned_from: list = field(default_factory=list)
 
+    # Runtime causal lineage: populated only with explicit, persisted event IDs.
+    causal_refs: dict = field(default_factory=dict)
+
     @property
     def task_id(self) -> str:
         return self.id
@@ -276,6 +287,7 @@ class Task:
             "outcome": dict(self.outcome),
             "errors": [self.fehler] if self.fehler else [],
             "learned_from": list(self.learned_from),
+            "causal_refs": dict(self.causal_refs),
             "decision_trace": self.decision_trace.to_list(),
             "timestamps": {
                 "created_at": self.erstellt,
@@ -404,6 +416,7 @@ class Executor:
         self.logic      = get_logic()
         self.relay      = get_relay()
         self.gate       = get_gate()
+        self.rwx_registry = RWXRegistry()
         self._watchdog  = None   # lazy
         self._dispatcher= None   # lazy
         self._search    = None   # lazy
@@ -517,7 +530,8 @@ class Executor:
                     allow_followup: Optional[bool] = None,
                     allow_provider_switch: Optional[bool] = None,
                     tool_policy: Optional[ToolPolicy] = None,
-                    retrieved_context: Optional[dict] = None) -> Task:
+                    retrieved_context: Optional[dict] = None,
+                    required_capabilities: Optional[list] = None) -> Task:
         if strategy is None:
             strategy = Strategy(
                 allow_tools=True if allow_tools is None else allow_tools,
@@ -541,9 +555,12 @@ class Executor:
             interaction_class = interaction_class,
             classification = classification,
             retrieved_context = retrieved_context or {},
+            required_capabilities = list(required_capabilities or []),
         )
         self._tasks[task.id] = task
-        AuditLog.task(task.id, "created", task.beschreibung[:100])
+        created_audit = AuditLog.task(task.id, "created", task.beschreibung[:100])
+        if created_audit:
+            task.causal_refs["task_created_audit_event_id"] = created_audit.get("event_id", "")
         return task
 
 
@@ -607,6 +624,123 @@ class Executor:
                 self.resume_task(task.id)
 
     # ── Pre-Flight-Validation ─────────────────────────────────────────────────
+    def set_capability_policy(self, policy: RWXPolicy) -> RWXPolicy:
+        """Register an explicit Isaac 2.0 R/W/X policy without replacing legacy gates."""
+        return self.rwx_registry.set_policy(policy)
+
+    def _check_required_capabilities(self, task: Task) -> Optional[str]:
+        """Enforce only capabilities explicitly declared by the task contract."""
+        for required in getattr(task, "required_capabilities", []) or []:
+            if isinstance(required, dict):
+                resource = str(required.get("resource") or "").strip()
+                capability = required.get("capability")
+                reason = str(required.get("reason") or "task-declared capability")
+            else:
+                raw = str(required or "").strip()
+                if ":" not in raw:
+                    return f"Ungültige R/W/X-Anforderung: {raw!r}"
+                capability, resource = raw.split(":", 1)
+                capability = capability.strip()
+                resource = resource.strip()
+                reason = "task-declared capability"
+            if not resource:
+                return "R/W/X resource fehlt"
+            try:
+                request = CapabilityRequest(
+                    resource=resource,
+                    capability=capability,
+                    principal="isaac-task",
+                    reason=reason,
+                    task_id=task.id,
+                )
+                decision = evaluate_with_audit(self.rwx_registry, request)
+            except (TypeError, ValueError) as exc:
+                return f"Ungültige R/W/X-Anforderung: {exc}"
+            capability_entry = task.decision_trace.add(
+                TracePhase.GOVERNANCE,
+                "capability_decision",
+                decision.as_dict(),
+            )
+            task.causal_refs["capability_trace_event_id"] = capability_entry.event_id
+            if decision.audit_event_id:
+                task.causal_refs["capability_audit_event_id"] = decision.audit_event_id
+            if not decision.allowed:
+                return (
+                    f"R/W/X blockiert: {decision.capability.value} "
+                    f"auf {decision.resource} ({decision.reason})"
+                )
+        return None
+
+    def _check_tool_execution_capability(self, task: Task, selection: dict) -> Optional[str]:
+        """Enforce an explicitly declared execute capability at the real tool boundary.
+
+        Compatibility rule: tasks that do not declare a tool:* capability keep the
+        existing path. Once a tool capability is declared, the selected tool must
+        be explicitly authorized for execution.
+        """
+        identifier = str(selection.get("identifier") or "").strip()
+        if not identifier:
+            return "R/W/X tool resource fehlt"
+
+        declared = []
+        for required in getattr(task, "required_capabilities", []) or []:
+            if not isinstance(required, dict):
+                continue
+            resource = str(required.get("resource") or "").strip()
+            if resource.startswith("tool:"):
+                declared.append(required)
+
+        if not declared:
+            return None
+
+        resource = f"tool:{identifier}"
+        matching = [
+            item for item in declared
+            if str(item.get("resource") or "").strip() == resource
+        ]
+        if not matching:
+            decision = evaluate_with_audit(
+                self.rwx_registry,
+                CapabilityRequest(
+                    resource=resource,
+                    capability=Capability.EXECUTE,
+                    principal="isaac-task",
+                    reason="selected tool execution",
+                    task_id=task.id,
+                ),
+            )
+        else:
+            item = matching[0]
+            decision = evaluate_with_audit(
+                self.rwx_registry,
+                CapabilityRequest(
+                    resource=resource,
+                    capability=Capability.EXECUTE,
+                    principal="isaac-task",
+                    reason=str(item.get("reason") or "selected tool execution"),
+                    task_id=task.id,
+                ),
+            )
+
+        trace_entry = task.decision_trace.add(
+            TracePhase.GOVERNANCE,
+            "tool_execution_capability",
+            {
+                **decision.as_dict(),
+                "tool_identifier": identifier,
+            },
+        )
+        task.causal_refs["tool_capability_trace_event_id"] = trace_entry.event_id
+        if decision.audit_event_id:
+            task.causal_refs["tool_capability_audit_event_id"] = decision.audit_event_id
+
+        if not decision.allowed:
+            return (
+                f"R/W/X blockiert: execute auf {resource} "
+                f"({decision.reason})"
+            )
+        return None
+
     def _preflight(self, task: Task) -> Optional[str]:
         """
         Prüft einen Task bevor er ausgeführt wird.
@@ -619,6 +753,10 @@ class Executor:
         wortanzahl = len(task.prompt.split())
         if wortanzahl < 1:
             return "Leerer Prompt"
+
+        capability_error = self._check_required_capabilities(task)
+        if capability_error:
+            return capability_error
 
         return None
 
@@ -822,7 +960,7 @@ class Executor:
             )
             task.log(f"Tool-Auswahl: {selection.get('name')} [{selection.get('kind')}/{selection.get('category')}]")
             self._notify(task)
-            task.decision_trace.add(
+            execution_started = task.decision_trace.add(
                 TracePhase.EXECUTION,
                 "execution_started",
                 {
@@ -830,8 +968,13 @@ class Executor:
                     "name": selection.get("name", ""),
                     "iteration": iteration,
                     "run_index": tool_runs + 1,
+                    **(
+                        {"authorized_by_event_id": task.causal_refs["capability_trace_event_id"]}
+                        if task.causal_refs.get("capability_trace_event_id") else {}
+                    ),
                 },
             )
+            task.causal_refs["last_action_trace_event_id"] = execution_started.event_id
             self._checkpoint(
                 task,
                 CheckpointState.TOOL_PENDING,
@@ -855,20 +998,51 @@ class Executor:
             blocked = constitution_gate_for_tool(
                 selection, prompt, override_ctx=override_ctx,
             )
-            if blocked:
-                result = ensure_result_contract(blocked, source="constitution")
-            else:
-                result = ensure_result_contract(
-                    await run_selected_tool(
-                        selection,
-                        prompt,
-                        override_ctx=override_ctx,
-                        skip_constitution=True,
-                    ),
-                    source="executor_boundary",
-                )
+            capability_block = self._check_tool_execution_capability(task, selection)
             identifier = selection.get("identifier", "")
             name = selection.get("name", identifier)
+            action_id = "%s:%s" % (task.id, execution_started.event_id)
+            authorized = not bool(capability_block) and not bool(blocked)
+            from isaac_30day_evidence import emit_runtime_event
+            emit_runtime_event("tool_authorization_decision", {
+                "action_id": action_id,
+                "task_id": task.id,
+                "tool_identifier": identifier,
+                "allowed": authorized,
+                "policy_event_id": (
+                    task.causal_refs.get("tool_capability_trace_event_id")
+                    or task.causal_refs.get("capability_trace_event_id")
+                    or ""
+                ),
+            })
+            execution_invoked = False
+            if capability_block:
+                result = ensure_result_contract(
+                    {"ok": False, "error": capability_block, "via": "rwx"},
+                    source="rwx_capability",
+                )
+            elif blocked:
+                result = ensure_result_contract(blocked, source="constitution")
+            else:
+                execution_invoked = True
+                from isaac_runtime_audit import bind_action_id
+                with bind_action_id(action_id):
+                    result = ensure_result_contract(
+                        await run_selected_tool(
+                            selection,
+                            prompt,
+                            override_ctx=override_ctx,
+                            skip_constitution=True,
+                        ),
+                        source="executor_boundary",
+                    )
+            emit_runtime_event("tool_execution_result", {
+                "action_id": action_id,
+                "task_id": task.id,
+                "tool_identifier": identifier,
+                "invoked": execution_invoked,
+                "ok": bool(result.get("ok")),
+            })
             kind = selection.get("kind", "")
             category = selection.get("category", "general")
             via = result.get('via') or selection.get('source') or kind
@@ -909,6 +1083,7 @@ class Executor:
                         "error": result.get("error", ""),
                         "blocked_by": list(meta.get("blocked_by") or []),
                         "source": meta.get("source") or via,
+                        "caused_by_event_id": execution_started.event_id,
                     },
                 )
                 task.decision_trace.add(
@@ -930,6 +1105,7 @@ class Executor:
                     "name": name,
                     "via": via,
                     "status_code": result.get("status_code"),
+                    "caused_by_event_id": execution_started.event_id,
                 },
             )
             used_tool_ids.add(identifier)
@@ -945,7 +1121,9 @@ class Executor:
             task.used_tools.append(tool_note)
             task.used_tools = task.used_tools[-12:]
             task.log(f"Tool genutzt: {name}")
-            AuditLog.action("Executor", "tool_used", f"task={task.id} tool={name}", Level.ISAAC)
+            audit_action = AuditLog.action("Executor", "tool_used", f"task={task.id} tool={name}", Level.ISAAC)
+            if audit_action:
+                task.causal_refs["last_action_audit_event_id"] = audit_action.get("event_id", "")
             context_blocks.append(self._tool_context_block(name, kind, via, result))
             task.decision_trace.add(
                 TracePhase.CONTEXT_INTEGRATION,
@@ -954,6 +1132,10 @@ class Executor:
                     "identifier": identifier,
                     "name": name,
                     "via": via,
+                    **(
+                        {"derived_from_event_id": task.causal_refs["last_action_audit_event_id"]}
+                        if task.causal_refs.get("last_action_audit_event_id") else {}
+                    ),
                 },
             )
             successful_outputs.append(f"{name}:\n{str(result.get('output') or result.get('error') or '').strip()[:1600]}")
@@ -1207,8 +1389,24 @@ class Executor:
             if task.allow_provider_switch and (decision.switch_provider or stale_rounds >= 1):
                 next_prov = self._pick_followup_provider(prov)
                 if next_prov and next_prov != prov:
+                    previous_prov = prov
                     current_prov = next_prov
                     task.log(f"Provider: {prov} → {current_prov}")
+                    switch_audit = AuditLog.action(
+                        "Executor", "provider_switch",
+                        f"task={task.id} {previous_prov} -> {current_prov}", Level.ISAAC
+                    )
+                    switch_data = {
+                        "from_provider": previous_prov or "",
+                        "to_provider": current_prov or "",
+                        "iteration": iteration,
+                    }
+                    if switch_audit:
+                        switch_data["audit_event_id"] = switch_audit.get("event_id", "")
+                    switch_entry = task.decision_trace.add(
+                        TracePhase.FOLLOWUP, "provider_switched", switch_data
+                    )
+                    task.causal_refs["provider_switch_trace_event_id"] = switch_entry.event_id
                 elif decision.switch_provider:
                     task.log(f"Provider-Switch übersprungen (kein gesunder Fallback für {prov})")
 
@@ -1345,6 +1543,49 @@ class Executor:
             load_fulltext=True,
             engines=["ddg", "brave", "wikipedia", "searxng", "reddit", "arxiv", "github"],
         )
+        source_refs: list[str] = []
+        for hit in list(getattr(result, "hits", []) or [])[:12]:
+            if isinstance(hit, dict):
+                raw_url = str(hit.get("url") or hit.get("link") or "")
+                title = str(hit.get("title") or hit.get("titel") or hit.get("name") or "")
+            else:
+                raw_url = str(getattr(hit, "url", "") or getattr(hit, "link", "") or "")
+                title = str(getattr(hit, "title", "") or getattr(hit, "titel", "") or getattr(hit, "name", "") or "")
+            if raw_url:
+                from urllib.parse import urlsplit
+                parsed = urlsplit(raw_url)
+                safe_url = (
+                    f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+                    if parsed.scheme and parsed.netloc else ""
+                )
+                if safe_url:
+                    source_refs.append((title[:160] + " | " + safe_url[:300]).strip(" |"))
+            elif title:
+                source_refs.append(title[:300])
+        evidence_id = f"research_evidence_{uuid.uuid4().hex}"
+        evidence_entry = task.decision_trace.add(
+            TracePhase.EXECUTION,
+            "research_sources_collected",
+            {
+                "evidence_id": evidence_id,
+                "hit_count": len(getattr(result, "hits", []) or []),
+                "source_refs": source_refs,
+                "query_sha256": hashlib.sha256(query.encode("utf-8")).hexdigest(),
+            },
+        )
+        task.causal_refs["research_evidence_id"] = evidence_id
+        task.causal_refs["research_evidence_trace_event_id"] = evidence_entry.event_id
+        from isaac_30day_evidence import emit_runtime_event
+        emit_runtime_event("research_sources_collected", {
+            "evidence_id": evidence_id,
+            "task_id": task.id,
+            "goal_id": task.retrieved_context.get("goal_id", ""),
+            "subgoal_id": task.retrieved_context.get("subgoal_id", ""),
+            "cycle_id": task.retrieved_context.get("autonomy_cycle_id", ""),
+            "trace_event_id": evidence_entry.event_id,
+            "hit_count": len(getattr(result, "hits", []) or []),
+            "source_refs": source_refs,
+        })
         task.progress = 0.65
         self._notify(task)
 
@@ -1400,6 +1641,17 @@ class Executor:
         task.provider_used = prov
         task.status = TaskStatus.DONE
         task.score = self.logic.evaluate(antwort, query, task.id)
+        task.decision_trace.add(
+            TracePhase.EVALUATION,
+            "quality_scored",
+            {
+                "score_total": round(float(task.score.total), 3) if task.score else 0.0,
+                "acceptable": bool(getattr(task.score, "acceptable", False)),
+                "via": "research",
+                "hit_count": len(getattr(result, "hits", []) or []),
+                "research_evidence_id": evidence_id,
+            },
+        )
         task.log(f"Recherche: {len(result.hits)} Hits aus {result.quellen} q={query[:60]!r}")
 
     # ── Multi-KI-Task ─────────────────────────────────────────────────────────

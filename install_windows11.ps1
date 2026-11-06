@@ -1,4 +1,4 @@
-# Isaac – Windows 11 Setup
+﻿# Isaac – Windows 11 Setup
 [CmdletBinding()]
 param([switch]$SkipPlaywright,[switch]$SkipOptionalMemory,[switch]$NoStart)
 $ErrorActionPreference="Stop"; Set-StrictMode -Version Latest
@@ -37,7 +37,7 @@ function Find-PythonExecutable {
  foreach($candidate in $candidates){
   if((Has $candidate) -or (Test-Path $candidate)){
    try {
-    $v = & $candidate -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')"
+    $v = & $candidate -c "import sys; print('.'.join(map(str, sys.version_info[:3])))"
     $p = $v.Trim().Split(".")
     if([int]$p[0] -gt 3 -or ([int]$p[0] -eq 3 -and [int]$p[1] -ge 12)){
      return $candidate
@@ -54,8 +54,9 @@ if(-not [Environment]::Is64BitOperatingSystem){Write-Host "ERROR: Isaac benötig
 Step "Prüfe Python 3.12+"
 $python = Find-PythonExecutable
 
-if($null -eq $python -and (Has "winget")){
- Step "Python fehlt – Installation über winget"
+$wingetAvailable = [bool](Get-Command -Name winget -ErrorAction SilentlyContinue)
+if (($null -eq $python) -and $wingetAvailable) {
+ Step 'Python fehlt – Installation über winget'
  & winget install --id Python.Python.3.12 --exact --accept-package-agreements --accept-source-agreements --silent
  $python = Find-PythonExecutable
 }
@@ -111,7 +112,10 @@ ISAAC_PRIVILEGE_MODE=user
 }
 
 Step "Validiere Isaac"
-& $VenvPython -c "import flask, aiohttp, websockets, dotenv; import app; print('Isaac Python-Import: OK')"
+$pythonCheck = "import flask, aiohttp, websockets, dotenv; import app"
+& $VenvPython -c $pythonCheck
+if ($LASTEXITCODE -ne 0) { throw "Isaac Python-Import fehlgeschlagen." }
+Write-Host "Isaac Python-Import: OK" -ForegroundColor Green
 & $VenvPython -m py_compile isaac_core.py executor.py low_complexity.py memory.py relay.py logic.py watchdog.py task_checkpoint.py
 $env:ISAAC_DISABLE_VECTOR_MEMORY="1"
 & $VenvPython -m unittest tests_provider_configuration -q

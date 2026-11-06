@@ -1,5 +1,5 @@
 {
-  "timestamp": 1790913531.0080914,
+  "timestamp": 1791507772.256918,
   "suite": "kernel_benchmark",
   "passed": 100,
   "total": 100,
@@ -17,7 +17,7 @@
     "cost_latency": {
       "total_tokens": 0,
       "api_cost_estimate_eur": 0.0,
-      "total_runtime_seconds": 47.693699999999986,
+      "total_runtime_seconds": 38.336099999999995,
       "total_tool_calls": 0,
       "provider_switches": 0
     }
@@ -31,7 +31,7 @@
       "detail": {
         "category": "1_classification_intent",
         "response_length": 37,
-        "duration": 0.3424,
+        "duration": 0.3427,
         "detected_intent": "chat",
         "expected_intent": "CHAT",
         "interaction_class": "NORMAL_CHAT"
@@ -45,7 +45,7 @@
       "detail": {
         "category": "1_classification_intent",
         "response_length": 37,
-        "duration": 0.3348,
+        "duration": 0.344,
         "detected_intent": "chat",
         "expected_intent": "CHAT",
         "interaction_class": "NORMAL_CHAT"
@@ -59,7 +59,7 @@
       "detail": {
         "category": "1_classification_intent",
         "response_length": 37,
-        "duration": 0.3389,
+        "duration": 0.348,
         "detected_intent": "chat",
         "expected_intent": "CHAT",
         "interaction_class": "NORMAL_CHAT"
@@ -72,8 +72,8 @@
       "ok": true,
       "detail": {
         "category": "1_classification_intent",
-        "response_length": 37,
-        "duration": 0.3337,
+        "response_length": 89,
+        "duration": 0.3438,
         "detected_intent": "chat",
         "expected_intent": "STATUS",
         "interaction_class": "NORMAL_CHAT"
@@ -86,8 +86,8 @@
       "ok": true,
       "detail": {
         "category": "1_classification_intent",
-        "response_length": 209,
-        "duration": 0.005,
+        "response_length": 43,
+        "duration": 0.007,
         "detected_intent": "goal_set",
         "expected_intent": "GOAL_SET",
         "interaction_class": "NORMAL_CHAT"
@@ -101,7 +101,7 @@
       "detail": {
         "category": "1_classification_intent",
         "response_length": 37,
-        "duration": 0.3344,
+        "duration": 0.3471,
         "detected_intent": "chat",
         "expected_intent": "GOAL_LIST",
         "interaction_class": "NORMAL_CHAT"
@@ -114,8 +114,8 @@
       "ok": true,
       "detail": {
         "category": "1_classification_intent",
-        "response_length": 37,
-        "duration": 10.8618,
+        "response_length": 36,
+        "duration": 0.3472,
         "detected_intent": "chat",
         "expected_intent": "SEARCH",
         "interaction_class": "TOOL_REQUEST"
@@ -128,8 +128,8 @@
       "ok": true,
       "detail": {
         "category": "1_classification_intent",
-        "response_length": 37,
-        "duration": 0.636,
+        "response_length": 107,
+        "duration": 0.3405,
         "detected_intent": "chat",
         "expected_intent": "SEARCH",
         "interaction_class": "TOOL_REQUEST"
@@ -142,8 +142,8 @@
       "ok": true,
       "detail": {
         "category": "1_classification_intent",
-        "response_length": 3722,
-        "duration": 4.7485,
+        "response_length": 3674,
+        "duration": 4.0528,
         "detected_intent": "chat",
         "expected_intent": "BROWSER",
         "interaction_class": "TOOL_REQUEST"
@@ -156,8 +156,8 @@
       "ok": true,
       "detail": {
         "category": "1_classification_intent",
-        "response_length": 109,
-        "duration": 0.0084,
+        "response_length": 103,
+        "duration": 0.377,
         "detected_intent": "translate",
         "expected_intent": "TRANSLATE",
         "interaction_class": "NORMAL_CHAT"
@@ -171,7 +171,7 @@
       "detail": {
         "category": "1_classification_intent",
         "response_length": 264,
-        "duration": 0.1733,
+        "duration": 0.1806,
         "detected_intent": "chat",
         "expected_intent": "CODE",
         "interaction_class": "NORMAL_CHAT"
@@ -185,7 +185,7 @@
       "detail": {
         "category": "1_classification_intent",
         "response_length": 37,
-        "duration": 0.0018,
+        "duration": 0.0017,
         "detected_intent": "fact_set",
         "expected_intent": "FACT_SET",
         "interaction_class": "NORMAL_CHAT"
@@ -199,7 +199,7 @@
       "detail": {
         "category": "1_classification_intent",
         "response_length": 160,
-        "duration": 0.0044,
+        "duration": 0.0011,
         "detected_intent": "directive",
         "expected_intent": "DIRECTIVE",
         "interaction_class": "NORMAL_CHAT"
@@ -213,7 +213,7 @@
       "detail": {
         "category": "1_classification_intent",
         "response_length": 37,
-        "duration": 0.3531,
+        "duration": 0.3511,
         "detected_intent": "chat",
         "expected_intent": "CHAT",
         "interaction_class": "NORMAL_CHAT"
@@ -227,7 +227,7 @@
       "detail": {
         "category": "1_classification_intent",
         "response_length": 37,
-        "duration": 0.3391,
+        "duration": 0.3451,
         "detected_intent": "chat",
         "expected_intent": "CODE",
         "interaction_class": "NORMAL_CHAT"
@@ -241,7 +241,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 37,
-        "duration": 0.3376,
+        "duration": 0.3524,
         "retrieval_context_built": true
       }
     },
@@ -253,7 +253,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 37,
-        "duration": 0.3407,
+        "duration": 0.342,
         "retrieval_context_built": true
       }
     },
@@ -265,7 +265,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.3388,
+        "duration": 0.3438,
         "retrieval_context_built": true
       }
     },
@@ -277,7 +277,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.3395,
+        "duration": 0.3441,
         "retrieval_context_built": true
       }
     },
@@ -289,7 +289,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.3392,
+        "duration": 0.3474,
         "retrieval_context_built": true
       }
     },
@@ -301,7 +301,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.3378,
+        "duration": 0.3492,
         "retrieval_context_built": true
       }
     },
@@ -313,7 +313,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.3387,
+        "duration": 0.3496,
         "retrieval_context_built": true
       }
     },
@@ -325,7 +325,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.3393,
+        "duration": 0.3436,
         "retrieval_context_built": true
       }
     },
@@ -337,7 +337,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.3381,
+        "duration": 0.3512,
         "retrieval_context_built": true
       }
     },
@@ -349,7 +349,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.3401,
+        "duration": 0.3589,
         "retrieval_context_built": true
       }
     },
@@ -361,7 +361,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.342,
+        "duration": 0.3608,
         "retrieval_context_built": true
       }
     },
@@ -373,7 +373,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.3406,
+        "duration": 0.354,
         "retrieval_context_built": true
       }
     },
@@ -385,7 +385,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.3397,
+        "duration": 0.3484,
         "retrieval_context_built": true
       }
     },
@@ -397,7 +397,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.3405,
+        "duration": 0.3507,
         "retrieval_context_built": true
       }
     },
@@ -409,7 +409,7 @@
       "detail": {
         "category": "2_memory_context",
         "response_length": 129,
-        "duration": 0.3421,
+        "duration": 0.3516,
         "retrieval_context_built": true
       }
     },
@@ -421,7 +421,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 37,
-        "duration": 0.3374,
+        "duration": 0.345,
         "strategy_response_ok": true
       }
     },
@@ -433,7 +433,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 37,
-        "duration": 0.3382,
+        "duration": 0.3514,
         "strategy_response_ok": true
       }
     },
@@ -445,7 +445,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.3389,
+        "duration": 0.3469,
         "strategy_response_ok": true
       }
     },
@@ -457,7 +457,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.3371,
+        "duration": 0.347,
         "strategy_response_ok": true
       }
     },
@@ -469,7 +469,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.3381,
+        "duration": 0.3489,
         "strategy_response_ok": true
       }
     },
@@ -481,7 +481,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.3385,
+        "duration": 0.3506,
         "strategy_response_ok": true
       }
     },
@@ -493,7 +493,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.3392,
+        "duration": 0.3489,
         "strategy_response_ok": true
       }
     },
@@ -505,7 +505,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.3394,
+        "duration": 0.3497,
         "strategy_response_ok": true
       }
     },
@@ -517,7 +517,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.3398,
+        "duration": 0.3451,
         "strategy_response_ok": true
       }
     },
@@ -529,7 +529,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.3381,
+        "duration": 0.3487,
         "strategy_response_ok": true
       }
     },
@@ -541,7 +541,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.341,
+        "duration": 0.3497,
         "strategy_response_ok": true
       }
     },
@@ -553,7 +553,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.339,
+        "duration": 0.3467,
         "strategy_response_ok": true
       }
     },
@@ -565,7 +565,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.339,
+        "duration": 0.3472,
         "strategy_response_ok": true
       }
     },
@@ -577,7 +577,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.3379,
+        "duration": 0.3492,
         "strategy_response_ok": true
       }
     },
@@ -589,7 +589,7 @@
       "detail": {
         "category": "3_strategy_decomposition",
         "response_length": 129,
-        "duration": 0.338,
+        "duration": 0.3483,
         "strategy_response_ok": true
       }
     },
@@ -601,7 +601,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 37,
-        "duration": 0.3372,
+        "duration": 0.3417,
         "require_sudo": false,
         "governance_ok": true
       }
@@ -614,7 +614,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 37,
-        "duration": 0.3361,
+        "duration": 0.3468,
         "require_sudo": false,
         "governance_ok": true
       }
@@ -627,7 +627,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.3382,
+        "duration": 0.3481,
         "require_sudo": true,
         "governance_ok": true
       }
@@ -640,7 +640,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.3375,
+        "duration": 0.347,
         "require_sudo": false,
         "governance_ok": true
       }
@@ -653,7 +653,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.3385,
+        "duration": 0.3483,
         "require_sudo": false,
         "governance_ok": true
       }
@@ -666,7 +666,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.3372,
+        "duration": 0.3444,
         "require_sudo": true,
         "governance_ok": true
       }
@@ -679,7 +679,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.3384,
+        "duration": 0.3455,
         "require_sudo": false,
         "governance_ok": true
       }
@@ -692,7 +692,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.3382,
+        "duration": 0.3466,
         "require_sudo": false,
         "governance_ok": true
       }
@@ -705,7 +705,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.3393,
+        "duration": 0.3506,
         "require_sudo": true,
         "governance_ok": true
       }
@@ -718,7 +718,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.3361,
+        "duration": 0.3507,
         "require_sudo": false,
         "governance_ok": true
       }
@@ -731,7 +731,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.3374,
+        "duration": 0.3447,
         "require_sudo": false,
         "governance_ok": true
       }
@@ -744,7 +744,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.3367,
+        "duration": 0.3431,
         "require_sudo": true,
         "governance_ok": true
       }
@@ -757,7 +757,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.3386,
+        "duration": 0.3442,
         "require_sudo": false,
         "governance_ok": true
       }
@@ -770,7 +770,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.3365,
+        "duration": 0.3431,
         "require_sudo": false,
         "governance_ok": true
       }
@@ -783,7 +783,7 @@
       "detail": {
         "category": "4_governance_security",
         "response_length": 129,
-        "duration": 0.3369,
+        "duration": 0.3509,
         "require_sudo": true,
         "governance_ok": true
       }
@@ -796,7 +796,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 37,
-        "duration": 0.3406,
+        "duration": 0.3512,
         "graph_nodes": 2
       }
     },
@@ -808,7 +808,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 37,
-        "duration": 0.3396,
+        "duration": 0.3411,
         "graph_nodes": 1
       }
     },
@@ -820,7 +820,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.343,
+        "duration": 0.3444,
         "graph_nodes": 2
       }
     },
@@ -832,7 +832,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.341,
+        "duration": 0.3456,
         "graph_nodes": 1
       }
     },
@@ -844,7 +844,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.3409,
+        "duration": 0.3484,
         "graph_nodes": 2
       }
     },
@@ -856,7 +856,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.3404,
+        "duration": 0.3494,
         "graph_nodes": 1
       }
     },
@@ -868,7 +868,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.3403,
+        "duration": 0.3497,
         "graph_nodes": 2
       }
     },
@@ -880,7 +880,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.3413,
+        "duration": 0.3503,
         "graph_nodes": 1
       }
     },
@@ -892,7 +892,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.3383,
+        "duration": 0.3573,
         "graph_nodes": 2
       }
     },
@@ -904,7 +904,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.3398,
+        "duration": 0.3537,
         "graph_nodes": 1
       }
     },
@@ -916,7 +916,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.3399,
+        "duration": 0.3508,
         "graph_nodes": 2
       }
     },
@@ -928,7 +928,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.3385,
+        "duration": 0.3504,
         "graph_nodes": 1
       }
     },
@@ -940,7 +940,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.3404,
+        "duration": 0.3688,
         "graph_nodes": 2
       }
     },
@@ -952,7 +952,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.3409,
+        "duration": 0.3657,
         "graph_nodes": 1
       }
     },
@@ -964,7 +964,7 @@
       "detail": {
         "category": "5_execution_taskgraph",
         "response_length": 129,
-        "duration": 0.3392,
+        "duration": 0.3997,
         "graph_nodes": 2
       }
     },
@@ -976,7 +976,7 @@
       "detail": {
         "category": "6_evaluation_selfcorrection",
         "response_length": 37,
-        "duration": 0.3416,
+        "duration": 0.3764,
         "score": 0.88
       }
     },
@@ -988,7 +988,7 @@
       "detail": {
         "category": "6_evaluation_selfcorrection",
         "response_length": 37,
-        "duration": 0.3426,
+        "duration": 0.3872,
         "score": 0.88
       }
     },
@@ -1000,7 +1000,7 @@
       "detail": {
         "category": "6_evaluation_selfcorrection",
         "response_length": 129,
-        "duration": 0.3422,
+        "duration": 0.3945,
         "score": 0.88
       }
     },
@@ -1012,7 +1012,7 @@
       "detail": {
         "category": "6_evaluation_selfcorrection",
         "response_length": 129,
-        "duration": 0.3408,
+        "duration": 0.3901,
         "score": 0.88
       }
     },
@@ -1024,7 +1024,7 @@
       "detail": {
         "category": "6_evaluation_selfcorrection",
         "response_length": 129,
-        "duration": 0.343,
+        "duration": 0.4048,
         "score": 0.88
       }
     },
@@ -1036,7 +1036,7 @@
       "detail": {
         "category": "6_evaluation_selfcorrection",
         "response_length": 129,
-        "duration": 0.3421,
+        "duration": 0.4033,
         "score": 0.88
       }
     },
@@ -1048,7 +1048,7 @@
       "detail": {
         "category": "6_evaluation_selfcorrection",
         "response_length": 129,
-        "duration": 0.3423,
+        "duration": 0.3957,
         "score": 0.88
       }
     },
@@ -1060,7 +1060,7 @@
       "detail": {
         "category": "6_evaluation_selfcorrection",
         "response_length": 129,
-        "duration": 0.3403,
+        "duration": 0.3955,
         "score": 0.88
       }
     },
@@ -1072,7 +1072,7 @@
       "detail": {
         "category": "6_evaluation_selfcorrection",
         "response_length": 129,
-        "duration": 0.3407,
+        "duration": 0.384,
         "score": 0.88
       }
     },
@@ -1084,7 +1084,7 @@
       "detail": {
         "category": "6_evaluation_selfcorrection",
         "response_length": 129,
-        "duration": 0.3432,
+        "duration": 0.3829,
         "score": 0.88
       }
     },
@@ -1096,7 +1096,7 @@
       "detail": {
         "category": "7_decision_trace",
         "response_length": 103,
-        "duration": 0.3411,
+        "duration": 0.3973,
         "phases_count": 12,
         "redacted": true
       }
@@ -1109,7 +1109,7 @@
       "detail": {
         "category": "7_decision_trace",
         "response_length": 103,
-        "duration": 0.3392,
+        "duration": 0.3828,
         "phases_count": 12,
         "redacted": true
       }
@@ -1122,7 +1122,7 @@
       "detail": {
         "category": "7_decision_trace",
         "response_length": 129,
-        "duration": 0.3404,
+        "duration": 0.3829,
         "phases_count": 12,
         "redacted": true
       }
@@ -1135,7 +1135,7 @@
       "detail": {
         "category": "7_decision_trace",
         "response_length": 129,
-        "duration": 0.3397,
+        "duration": 0.3771,
         "phases_count": 12,
         "redacted": true
       }
@@ -1148,7 +1148,7 @@
       "detail": {
         "category": "7_decision_trace",
         "response_length": 129,
-        "duration": 0.3398,
+        "duration": 0.3717,
         "phases_count": 12,
         "redacted": true
       }
@@ -1161,7 +1161,7 @@
       "detail": {
         "category": "7_decision_trace",
         "response_length": 129,
-        "duration": 0.3418,
+        "duration": 0.3756,
         "phases_count": 12,
         "redacted": true
       }
@@ -1174,7 +1174,7 @@
       "detail": {
         "category": "7_decision_trace",
         "response_length": 129,
-        "duration": 0.3407,
+        "duration": 0.382,
         "phases_count": 12,
         "redacted": true
       }
@@ -1187,8 +1187,8 @@
       "detail": {
         "category": "8_learning_commit",
         "response_length": 37,
-        "duration": 0.342,
-        "commit_hash": "2b14d7601f42c63e"
+        "duration": 0.3785,
+        "commit_hash": "aae5e00e57524ad1"
       }
     },
     {
@@ -1199,8 +1199,8 @@
       "detail": {
         "category": "8_learning_commit",
         "response_length": 37,
-        "duration": 0.3413,
-        "commit_hash": "d956a24dd5095786"
+        "duration": 0.3743,
+        "commit_hash": "b4b521a3e32e57c1"
       }
     },
     {
@@ -1211,8 +1211,8 @@
       "detail": {
         "category": "8_learning_commit",
         "response_length": 129,
-        "duration": 0.3418,
-        "commit_hash": "94fc4b18cce6c148"
+        "duration": 0.3885,
+        "commit_hash": "f4837175e7f8839e"
       }
     },
     {
@@ -1223,8 +1223,8 @@
       "detail": {
         "category": "8_learning_commit",
         "response_length": 129,
-        "duration": 0.3418,
-        "commit_hash": "9478a84c7868c510"
+        "duration": 0.3765,
+        "commit_hash": "b3996c40901ed316"
       }
     },
     {
@@ -1235,8 +1235,8 @@
       "detail": {
         "category": "8_learning_commit",
         "response_length": 129,
-        "duration": 0.344,
-        "commit_hash": "de3c4d22b272021b"
+        "duration": 0.381,
+        "commit_hash": "9fd39699c6e0e8aa"
       }
     },
     {
@@ -1247,8 +1247,8 @@
       "detail": {
         "category": "8_learning_commit",
         "response_length": 129,
-        "duration": 0.3409,
-        "commit_hash": "f0e405b47e15df70"
+        "duration": 0.3666,
+        "commit_hash": "83a448aa02a8483a"
       }
     },
     {
@@ -1259,8 +1259,8 @@
       "detail": {
         "category": "8_learning_commit",
         "response_length": 129,
-        "duration": 0.341,
-        "commit_hash": "fda1be03b2c95ac3"
+        "duration": 0.3802,
+        "commit_hash": "7c085b6201f9c161"
       }
     },
     {
@@ -1271,8 +1271,8 @@
       "detail": {
         "category": "8_learning_commit",
         "response_length": 129,
-        "duration": 0.3426,
-        "commit_hash": "6f40941dc39cd014"
+        "duration": 0.3838,
+        "commit_hash": "83f28dc603c4c1da"
       }
     }
   ]
