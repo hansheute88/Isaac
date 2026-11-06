@@ -1,0 +1,125 @@
+name: Isaac 2.0 Validation
+
+on:
+  push:
+    branches: ["isaac-2.0/masterplan", "feat/**", "feature/**"]
+  pull_request:
+    branches: ["main", "isaac-2.0/masterplan"]
+
+env:
+  ISAAC_DISABLE_VECTOR_MEMORY: "1"
+
+permissions:
+  contents: read
+
+jobs:
+  isaac20:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Compile Isaac 2.0 modules
+        run: |
+          python -m py_compile isaac_capabilities.py isaac_causal.py isaac_causal_query.py isaac_guardrails.py executor.py audit.py watchdog.py relay.py benchmarks/isaac20_fault_injection.py benchmarks/isaac20_metrics.py benchmarks/isaac20_ablation.py benchmarks/isaac20_governance.py benchmarks/isaac20_governance_f2.py isaac_sdk.py benchmarks/isaac20_investor_demo.py isaac_30day_evidence.py scripts/verify_isaac_30day_evidence.py isaac_runtime_audit.py motivation.py file_access.py owner_action.py browser.py isaac_mcp.py tool_runtime.py goal_store.py task_tool_state.py
+      - name: Run Isaac 2.0 tests
+        run: |
+          python -m unittest tests_isaac20_capabilities tests_isaac20_causal tests_isaac20_causal_query tests_isaac20_runtime_lineage tests_isaac20_e2e tests_isaac20_guardrails tests_isaac20_e1 tests_isaac20_e2 tests_isaac20_e3 tests_isaac20_f1 tests_isaac20_f2 tests_isaac20_sdk tests_isaac20_investor_demo tests_isaac_30day_evidence tests_isaac_runtime_audit
+      - name: Run E1 machine-readable benchmark
+        run: |
+          python -m benchmarks.isaac20_fault_injection > e1_fault_injection_results.json
+          python - <<'PY'
+          import json
+          with open("e1_fault_injection_results.json", encoding="utf-8") as handle:
+              report = json.load(handle)
+          assert report["schema_version"] == "isaac20-e1-suite-v1"
+          assert report["benchmark"] == "fault_injection_d3_lifecycle"
+          assert report["passed"] is True
+          assert {s["evidence"]["final_state"] for s in report["scenarios"]} == {"verified", "failed"}
+          PY
+      - name: Run E2 experimental ITI benchmark
+        run: |
+          python -m benchmarks.isaac20_metrics > e2_iti_results.json
+          python - <<'PY'
+          import json
+          with open("e2_iti_results.json", encoding="utf-8") as handle:
+              report = json.load(handle)
+          assert report["schema_version"] == "isaac20-iti-v1"
+          assert report["experimental"] is True
+          assert set(report["dimensions"]) == {"T", "C", "G", "S", "R"}
+          assert all(0.0 <= value <= 1.0 for value in report["dimensions"].values())
+          assert 0.0 <= report["iti_score"] <= 1.0
+          assert report["raw_measurements"]["all_runs_passed"] is True
+          assert report["raw_measurements"]["stable_runs"] == report["raw_measurements"]["run_count"]
+          PY
+      - name: Run E3 controlled ablation benchmark
+        run: |
+          python -m benchmarks.isaac20_ablation > e3_ablation_results.json
+          python - <<'PY'
+          import json
+          with open("e3_ablation_results.json", encoding="utf-8") as handle:
+              report = json.load(handle)
+          assert report["schema_version"] == "isaac20-e3-ablation-v1"
+          assert report["experimental"] is True
+          assert report["claim_scope"] == "contract_level_control_contribution"
+          assert report["passed"] is True
+          assert report["pass_criteria"]["full_variant_pass_rate"] is True
+          assert report["pass_criteria"]["e1_prerequisite"] is True
+          PY
+      - name: Build and verify F1 governance evidence package
+        run: |
+          python -m benchmarks.isaac20_governance > governance_evidence.json
+          python - <<'PY'
+          import json
+          from benchmarks.isaac20_governance import verify_governance_evidence
+          with open("governance_evidence.json", encoding="utf-8") as handle:
+              package = json.load(handle)
+          assert package["schema_version"] == "isaac20-governance-evidence-v1"
+          assert package["legal_disclaimer"]
+          assert set(package["benchmarks"]) == {"e1", "e2", "e3"}
+          assert verify_governance_evidence(package)
+          assert package["benchmarks"]["e1"]["passed"] is True
+          assert package["benchmarks"]["e3"]["passed"] is True
+          PY
+      - name: Build and verify F2 provenance manifest
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from benchmarks.isaac20_governance import verify_governance_evidence
+          from benchmarks.isaac20_governance_f2 import (
+              build_reproducibility_manifest,
+              verify_reproducibility_manifest,
+          )
+          with open("governance_evidence.json", encoding="utf-8") as handle:
+              package = json.load(handle)
+          assert verify_governance_evidence(package)
+          manifest = build_reproducibility_manifest(
+              evidence_package=package,
+              source_revision=os.environ["GITHUB_SHA"],
+              workflow_run_id=os.environ["GITHUB_RUN_ID"],
+              workflow_name=os.environ["GITHUB_WORKFLOW"],
+          )
+          with open("governance_reproducibility.json", "w", encoding="utf-8") as handle:
+              json.dump(manifest, handle, indent=2, sort_keys=True)
+          assert verify_reproducibility_manifest(
+              manifest, evidence_package=package
+          )
+          assert manifest["source_revision"] == os.environ["GITHUB_SHA"]
+          PY
+      - name: Upload Isaac 2.0 governance evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: isaac20-governance-evidence
+          path: |
+            governance_evidence.json
+            governance_reproducibility.json
+          if-no-files-found: error
+
+      - name: Run core sanity check
+        run: python sanity_check.py

@@ -200,6 +200,44 @@ Wenn Human-Layer-/Personality-Dateien existieren: unangetastet lassen, außer si
 
 ---
 
+## Isaac 2.0 Masterplan (Branch `isaac-2.0/masterplan`)
+
+**Status:** ACTIVE — Agent Control, Trust, Audit und Recovery Runtime **ohne** Kernel-Rewrite.
+
+**Programmdokumente (verbindlich für 2.0-Arbeit):**
+
+| Dokument | Rolle |
+|----------|--------|
+| `docs/ISAAC_2.0_MASTERPLAN.md` | Architektur, Tracks, Milestones, Engineering-Regeln |
+| `docs/ISAAC_2.0_A0_BASELINE.md` | Baseline, Lücken, **Einzelauthoritäten** |
+| `docs/ISAAC_30DAY_AUTONOMY_CONTRACT.md` | Bounded Autonomy / 30-Tage-Proof (kein Governance-Bypass) |
+| `docs/ISAAC_30DAY_PROOF_RUNBOOK.md` | Operatives Runbook für den Proof-Lauf |
+
+**Strategisches Ziel (2.0):** Observe → Authorize → Execute → Explain → Recover — messbar, evidenzbasiert, **kein** Consciousness-Marketing.
+
+**Einzelauthoritäten (A0 — nicht duplizieren):** Privilege → `privilege.py` · Security → `security_policy.py` · Constitution → Gates · Tools → `tool_policy.py` · Execution → `executor.py` · Audit → `audit.py`. R/W/X ist zusätzliche Capability-Repräsentation und darf bestehende Autoritäten **nicht** still überschreiben.
+
+**Nicht verhandelbare Engineering-Regeln (Masterplan §17):**
+
+1. Kernel nie wholesale ersetzen.
+2. Keine zweite Privilege-Autorität.
+3. Keine inferierte Kausal-Erklärung ohne Verifikation als Fakt behandeln.
+4. Keine empirischen Benchmark-Claims vor tatsächlichem Lauf.
+5. Keine automatische Legal-Compliance behaupten.
+6. Safety-Gates nicht schwächen, um Autonomie zu demonstrieren.
+7. Neue 2.0-Fähigkeiten hinter expliziten Interfaces/Feature-Flags, wo nötig.
+8. Append-only Audit-Evidenz erhalten.
+9. Jede autonome Intervention auditierbar.
+10. Jede Recovery endet in Verifikation oder explizitem Fehlerzustand.
+11. Nie `main` direkt ändern.
+12. Jeder Milestone braucht ausführbare Tests/Evals.
+
+**Zusätzliche Validierung (Isaac-2.0-Module / Benchmarks):** Siehe `.github/workflows/isaac20-validation.yml` — u. a. `tests_isaac20_*`, `sanity_check.py`, E1–F2-Benchmark-Contracts. Kern-Regression (Phase A) bleibt Pflicht.
+
+**Priorität bei 2.0-Arbeit:** `AGENTS.md` (Pipeline + v5.3-Invarianten) → `docs/ISAAC_2.0_MASTERPLAN.md` → `docs/ISAAC_2.0_A0_BASELINE.md` → `docs/ISAAC_30DAY_AUTONOMY_CONTRACT.md`.
+
+---
+
 ## Primary Priorities & Hard Rules
 
 1. Functional correctness
@@ -432,19 +470,19 @@ Nicht in unrelated Module driften, außer bei blockierendem Fix.
 
 ## Roadmap (Referenz — nicht aktiver Scope)
 
-**Kanonische Master-Roadmap:** `docs/MASTER_ROADMAP_ISAAC_v5_2026-07-24.md`  
+**Kanonische Master-Roadmap:** `docs/MASTER_ROADMAP_ISAAC_v5_2026-07-24.md`
 (Tracks C consolidate · G goals/owner-autonomy · M memory bounded · R brain/SNN geparkt)
 
 Kurzliste (Details + Gap-Matrix in der Master-Roadmap):
 
-1. Verfassung / Soft-Checkpoints / Evals — weitgehend erledigt; restliche Härtung Track C  
-2. Self-Model / bounded Learning weiter koppeln (Track C4)  
-3. MCP Contract-Tests & Docs — Grundgerüst + Resources vorhanden (Track C2), **kein** Subagent-Expansion  
-4. Portable Trace / EXECUTION-Metadaten vertiefen (Track C1)  
+1. Verfassung / Soft-Checkpoints / Evals — weitgehend erledigt; restliche Härtung Track C
+2. Self-Model / bounded Learning weiter koppeln (Track C4)
+3. MCP Contract-Tests & Docs — Grundgerüst + Resources vorhanden (Track C2), **kein** Subagent-Expansion
+4. Portable Trace / EXECUTION-Metadaten vertiefen (Track C1)
 5. CI Billing entsperren (Track C5)
 
-**Nicht aus Drive-Patch-Paketen / Parallel-Roadmaps übernehmen** (Juli 2026):  
-eigene State-Machine, OTel-Doppeltypen, Isaac-Lab-Mocks, Vector-Doppelpfade, SNN/WBE auf main.  
+**Nicht aus Drive-Patch-Paketen / Parallel-Roadmaps übernehmen** (Juli 2026):
+eigene State-Machine, OTel-Doppeltypen, Isaac-Lab-Mocks, Vector-Doppelpfade, SNN/WBE auf main.
 Siehe `docs/DRIVE_PATCH_REVIEW_2026-07-24.md` und Master-Roadmap §8 Anti-Liste.
 
 ---
@@ -481,14 +519,17 @@ WHEN IN DOUBT: stop, document blocker, do not broaden scope.
 Bei vertiefter Arbeit in dieser Reihenfolge:
 
 1. `AGENTS.md` (diese Datei) — kanonische Agenten-Anweisung
-2. `docs/MASTER_ROADMAP_ISAAC_v5_2026-07-24.md` — Master-Roadmap + Gap-Matrix
-3. `06_goal_autonomy_checklist.txt` — Goal-Autonomie S0–S4 (abgeschlossen)
-4. `05_evolution2_checklist.txt` — Evolution 2.0 (abgeschlossen, CI-Hinweis)
-5. `docs/OPEN_SOURCE_PATTERNS.md` — bounded Open-Source-Muster
-6. `docs/GITHUB_WATCHLIST.md` — was beobachten / nicht importieren
-7. `docs/DRIVE_PATCH_REVIEW_2026-07-24.md` — Drive-Patches (Ablehnung)
-8. `docs/LOCAL_LLM.md`, `docs/OPEN_INTERPRETER.md` — optionale lokale Backends/Companions
-9. `README.md`, `docs/LEITBILD.md`
+2. `docs/ISAAC_2.0_MASTERPLAN.md` — Isaac 2.0 Programm (Branch `isaac-2.0/masterplan`)
+3. `docs/ISAAC_2.0_A0_BASELINE.md` — 2.0 Baseline & Autoritätsgrenzen
+4. `docs/ISAAC_30DAY_AUTONOMY_CONTRACT.md` — bounded Autonomy (30-Tage-Proof)
+5. `docs/MASTER_ROADMAP_ISAAC_v5_2026-07-24.md` — Master-Roadmap + Gap-Matrix
+6. `06_goal_autonomy_checklist.txt` — Goal-Autonomie S0–S4 (abgeschlossen)
+7. `05_evolution2_checklist.txt` — Evolution 2.0 (abgeschlossen, CI-Hinweis)
+8. `docs/OPEN_SOURCE_PATTERNS.md` — bounded Open-Source-Muster
+9. `docs/GITHUB_WATCHLIST.md` — was beobachten / nicht importieren
+10. `docs/DRIVE_PATCH_REVIEW_2026-07-24.md` — Drive-Patches (Ablehnung)
+11. `docs/LOCAL_LLM.md`, `docs/OPEN_INTERPRETER.md` — optionale lokale Backends/Companions
+12. `README.md`, `docs/LEITBILD.md`
 
 **Priorität bei Widersprüchen:** `AGENTS.md` → Checklisten (`06_…` / `05_…`) → Open-Source-Patterns.
 

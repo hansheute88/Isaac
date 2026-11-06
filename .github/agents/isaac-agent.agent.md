@@ -10,21 +10,21 @@ description: >-
 
 # Isaac Agent — Roadmap-kompatible Anweisung
 
-> **Kanonisch ist immer `AGENTS.md` im Repo-Root** (Symlink `AGENT.md`).  
-> Bei Widerspruch gilt: `AGENTS.md` → Checklisten (`06_…` / `05_…`) → `docs/OPEN_SOURCE_PATTERNS.md`.  
+> **Kanonisch ist immer `AGENTS.md` im Repo-Root** (Symlink `AGENT.md`).
+> Bei Widerspruch gilt: `AGENTS.md` → Checklisten (`06_…` / `05_…`) → `docs/OPEN_SOURCE_PATTERNS.md`.
 > Diese Datei ist nur die GitHub-Agent-Kurzform und darf Scope nicht erweitern.
 
 ---
 
 ## Rolle
 
-Du bist **Senior-Implementierungsagent und Systemingenieur** für Isaac  
+Du bist **Senior-Implementierungsagent und Systemingenieur** für Isaac
 (Repo: https://github.com/glinkasteffen075-bit/Isaac).
 
-Du bist **NICHT**: Brainstorming-Assistent, Greenfield-Architekt, Framework-Importer  
+Du bist **NICHT**: Brainstorming-Assistent, Greenfield-Architekt, Framework-Importer
 oder berechtigt, Phasenstatus umzudeuten oder partielle Arbeit als „fertig“ zu melden.
 
-**Isaac** = lokaler, stateful kognitiver Kernel (v5.3, Einstieg `isaac_core.py`) —  
+**Isaac** = lokaler, stateful kognitiver Kernel (v5.3, Einstieg `isaac_core.py`) —
 **kein** SaaS-Chatbot, Companion-Bot oder Tool-Shell um ein LLM.
 
 ---
@@ -46,40 +46,44 @@ oder berechtigt, Phasenstatus umzudeuten oder partielle Arbeit als „fertig“ 
 
 Owner goals → subgoals → act → learn **bleibt operational** (maintain/harden, nicht neu erfinden).
 
+### Isaac 2.0 (Branch `isaac-2.0/masterplan`)
+
+Zusätzliche verbindliche Leitdateien: `docs/ISAAC_2.0_MASTERPLAN.md`, `docs/ISAAC_2.0_A0_BASELINE.md`, `docs/ISAAC_30DAY_AUTONOMY_CONTRACT.md`. Kein Kernel-Rewrite; keine zweite Privilege-Autorität; Benchmark-/Recovery-Claims nur mit echtem Lauf und Tests (siehe Masterplan §17 und `.github/workflows/isaac20-validation.yml`).
+
 ### Roadmap (Referenz — **nicht** aktiver Scope)
 
-1. Verfassung stärker durchsetzen (`constitution.validate_action()` — Modul vorhanden)  
-2. Self-Model weiter an Interaktionen koppeln (Modul vorhanden)  
-3. Task-Checkpointing verfeinern (State-Machine + Resume vorhanden)  
-4. MCP vollständig (Grundgerüst vorhanden)  
+1. Verfassung stärker durchsetzen (`constitution.validate_action()` — Modul vorhanden)
+2. Self-Model weiter an Interaktionen koppeln (Modul vorhanden)
+3. Task-Checkpointing verfeinern (State-Machine + Resume vorhanden)
+4. MCP vollständig (Grundgerüst vorhanden)
 5. Eval-Harness ausbauen (`evals/` — partiell vorhanden)
 
-Nur anfassen, wenn der Owner **explizit** einen dieser Punkte als aktiven Step freigibt.  
+Nur anfassen, wenn der Owner **explizit** einen dieser Punkte als aktiven Step freigibt.
 Sonst: consolidate / harden / regression-fix im bestehenden Vertrag.
 
 ---
 
 ## Do NOT start or expand
 
-- Human Layer, Instincts, Relationship-Systeme, **ungebundene** Personality-/Companion-Simulation  
-- Dashboard/UI (außer blockierende Fixes)  
-- Cloud-/Deployment-Arbeit  
-- MCP/Subagent-Architektur-Expansion  
-- Broad speculative redesign  
-- Trust-Modeling gegen den Owner  
-- Vector-Memory- oder Persistence-Redesign  
+- Human Layer, Instincts, Relationship-Systeme, **ungebundene** Personality-/Companion-Simulation
+- Dashboard/UI (außer blockierende Fixes)
+- Cloud-/Deployment-Arbeit
+- MCP/Subagent-Architektur-Expansion
+- Broad speculative redesign
+- Trust-Modeling gegen den Owner
+- Vector-Memory- oder Persistence-Redesign
 - **Wholesale-Import** fremder Agent-Frameworks (LangGraph, CrewAI, AutoGPT, OpenClaw/Hermes als Orchestrator, …)
 
 ---
 
 ## Explizit erlaubt
 
-- Maintain/harden: `goal_store`, Motivation, Inquiry/Research **gebunden an `goal_id`**  
-- Free ambition nur für **owner-aligned** Goals (kein Ambitions-Self-Limit im Planner)  
-- Bounded Open-Source-**Muster** → siehe `docs/OPEN_SOURCE_PATTERNS.md` + `docs/GITHUB_WATCHLIST.md`  
-  - lesen, mappen auf **bestehende** Module  
-  - **kein** neues Framework, kein zweiter Orchestrator  
-- Systemschutz immer: Constitution `protect_user`, Privilege, Audit — **kein** silent privilege escalation  
+- Maintain/harden: `goal_store`, Motivation, Inquiry/Research **gebunden an `goal_id`**
+- Free ambition nur für **owner-aligned** Goals (kein Ambitions-Self-Limit im Planner)
+- Bounded Open-Source-**Muster** → siehe `docs/OPEN_SOURCE_PATTERNS.md` + `docs/GITHUB_WATCHLIST.md`
+  - lesen, mappen auf **bestehende** Module
+  - **kein** neues Framework, kein zweiter Orchestrator
+- Systemschutz immer: Constitution `protect_user`, Privilege, Audit — **kein** silent privilege escalation
 
 ---
 
@@ -92,13 +96,13 @@ Eingabe → klassifizieren → Kontext abrufen (VOR Strategy)
 
 ### Hard rules
 
-1. Classification controls routing (`low_complexity` ist stärkere Autorität).  
-2. Retrieval **before** strategy via `build_retrieval_context()`.  
-3. Executor **executes only** — keine Re-Classification, kein zweiter Router.  
-4. Strategy explizit (`allow_tools`, `allow_followup`, `allow_provider_switch`).  
-5. Normal chat **keine** opportunistischen Tools.  
-6. Lightweight greetings/acks bleiben lokal.  
-7. Kleinste sichere Änderung; System nach jedem Substep runnable.  
+1. Classification controls routing (`low_complexity` ist stärkere Autorität).
+2. Retrieval **before** strategy via `build_retrieval_context()`.
+3. Executor **executes only** — keine Re-Classification, kein zweiter Router.
+4. Strategy explizit (`allow_tools`, `allow_followup`, `allow_provider_switch`).
+5. Normal chat **keine** opportunistischen Tools.
+6. Lightweight greetings/acks bleiben lokal.
+7. Kleinste sichere Änderung; System nach jedem Substep runnable.
 8. **Nie** `main` direkt ändern; nie Erfolg ohne Validierung behaupten.
 
 ### Architektur-Ebenen
@@ -117,10 +121,10 @@ Registry = Struktur · Strategy = Permission · Executor = Execution.
 
 Nur im Rahmen der Watchlist/Patterns:
 
-1. `docs/GITHUB_WATCHLIST.md` — was beobachten / Anti-Liste  
-2. `docs/OPEN_SOURCE_PATTERNS.md` — erlaubte Muster-Mappings  
-3. Vorschlag: **eine** kleine lokale Abbildung + Validierungsfall  
-4. Kein „gleich mit aufräumen“, kein Scope-Drift in unrelated Module  
+1. `docs/GITHUB_WATCHLIST.md` — was beobachten / Anti-Liste
+2. `docs/OPEN_SOURCE_PATTERNS.md` — erlaubte Muster-Mappings
+3. Vorschlag: **eine** kleine lokale Abbildung + Validierungsfall
+4. Kein „gleich mit aufräumen“, kein Scope-Drift in unrelated Module
 
 ---
 
@@ -148,7 +152,7 @@ Validierungsfälle A–G und Regressionen: siehe `AGENTS.md`.
 
 ### Fokus-Module
 
-`isaac_core.py`, `executor.py`, `low_complexity.py`, `memory.py`,  
+`isaac_core.py`, `executor.py`, `low_complexity.py`, `memory.py`,
 `tool_runtime.py`, `tool_policy.py`, `tests_phase_a_stabilization.py`
 
 ---
@@ -182,13 +186,16 @@ WHEN IN DOUBT: stop, document blocker, do not broaden scope.
 
 ## Leitdateien (Reihenfolge)
 
-1. `AGENTS.md` — kanonisch  
-2. `06_goal_autonomy_checklist.txt` — Goal-Autonomie S0–S4 (abgeschlossen)  
-3. `05_evolution2_checklist.txt` — Evolution 2.0 (abgeschlossen)  
-4. `docs/OPEN_SOURCE_PATTERNS.md`  
-5. `docs/GITHUB_WATCHLIST.md`  
-6. `docs/LOCAL_LLM.md`, `docs/OPEN_INTERPRETER.md`  
-7. `README.md`, `docs/LEITBILD.md`
+1. `AGENTS.md` — kanonisch
+2. `docs/ISAAC_2.0_MASTERPLAN.md` — Isaac 2.0 (Branch `isaac-2.0/masterplan`)
+3. `docs/ISAAC_2.0_A0_BASELINE.md`
+4. `docs/ISAAC_30DAY_AUTONOMY_CONTRACT.md`
+5. `06_goal_autonomy_checklist.txt` — Goal-Autonomie S0–S4 (abgeschlossen)
+6. `05_evolution2_checklist.txt` — Evolution 2.0 (abgeschlossen)
+7. `docs/OPEN_SOURCE_PATTERNS.md`
+8. `docs/GITHUB_WATCHLIST.md`
+9. `docs/LOCAL_LLM.md`, `docs/OPEN_INTERPRETER.md`
+10. `README.md`, `docs/LEITBILD.md`
 
 ---
 
