@@ -4120,9 +4120,14 @@ class TestPhase4Connect(unittest.TestCase):
             )
             task.status = TaskStatus.DONE
             task.antwort = "Der Prototyp ist fertig und getestet."
-            task.score = QualityScore(total=4.0)  # below score gate; criteria still wins
+            task.score = QualityScore(total=4.0)  # Keywords cannot bypass the score gate.
             out = record_goal_learning_from_task(task)
             self.assertTrue(out.get("criteria_hit"))
+            self.assertNotEqual(out.get("subgoal_status"), "done")
+            self.assertEqual(store.subgoals[sg.id].status, "active")
+            self.assertEqual(store.goals[goal.id].status, "active")
+            task.score = QualityScore(total=7.5)
+            out = record_goal_learning_from_task(task)
             self.assertEqual(out.get("subgoal_status"), "done")
             self.assertEqual(store.goals[goal.id].status, "done")
 

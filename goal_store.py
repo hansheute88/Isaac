@@ -277,7 +277,7 @@ class GoalStore:
         )
 
     def maybe_complete_goal(self, goal_id: str) -> bool:
-        """Mark goal done when all subgoals are terminal (done/failed) and ≥1 done.
+        """Mark goal done only when every subgoal is done.
 
         Returns True if goal was completed.
         """
@@ -287,10 +287,8 @@ class GoalStore:
         subs = [s for s in self.subgoals.values() if s.parent_goal_id == goal_id]
         if not subs:
             return False
-        active = [s for s in subs if s.status == "active"]
-        if active:
-            return False
-        if not any(s.status == "done" for s in subs):
+        # Failed, paused or unknown states are not evidence of completion.
+        if not all(s.status == "done" for s in subs):
             return False
         g.status = "done"
         g.updated_at = _now()
