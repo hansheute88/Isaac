@@ -3,10 +3,12 @@ from __future__ import annotations
 import asyncio
 import unittest
 from typing import Any
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 from decision_trace import DecisionTrace, TracePhase
 from executor import Executor, Strategy, Task, TaskStatus, TaskType, get_executor
-from learning_engine import CandidateStatus, get_learning_engine
+from learning_engine import CandidateStatus, LearningCandidate, LearningEngine, get_learning_engine
 from memory import EpistemicClass, Memory, get_memory
 from evals.kernel_benchmark import run as run_kernel_benchmark
 from evals.kernel_metrics import KernelMetricsEvaluator, KernelMetricsReport
@@ -144,6 +146,151 @@ class TestProveTheKernelPillars(unittest.TestCase):
         self.assertEqual(report.unauthorized_action_rate, 0.0)
         self.assertEqual(report.trace_completeness, 1.0)
         self.assertEqual(report.autonomy_without_loss_of_control, 1.0)
+
+
+class TestLearningEvidenceVerification(unittest.TestCase):
+    def setUp(self):
+        self.learning = LearningEngine()
+        self.candidate = LearningCandidate(
+            candidate_id="evidence_candidate",
+            ts=0.0,
+            observation="Korrektur einer fehlgeschlagenen Aufgabe",
+            relevance_notes="Regressionstest",
+            evidence_task_ids=["evidence_task"],
+        )
+        self.lookup = Mock()
+        self.executor = SimpleNamespace(get_task=self.lookup)
+        candidate_patch = patch.object(
+            self.learning, "get_candidate", return_value=self.candidate
+        )
+        candidate_patch.start()
+        self.addCleanup(candidate_patch.stop)
+        executor_patch = patch("executor.get_executor", return_value=self.executor)
+        self.get_executor = executor_patch.start()
+        self.addCleanup(executor_patch.stop)
+
+    def _task(self, task_id="evidence_task", traced=False):
+        task = Task(
+            id=task_id,
+            typ=TaskType.RESEARCH,
+            prompt="Evidenz prüfen",
+            beschreibung="Test-Evidenz",
+        )
+        if traced:
+            task.decision_trace.add(
+                TracePhase.EXECUTION, "execution_failed", {"ok": False}
+            )
+        return task
+
+    def test_bug_evidence_executor_error_fails_closed(self):
+        self.get_executor.side_effect = RuntimeError("private detail")
+        result = self.learning.verify_candidate_evidence(self.candidate.candidate_id)
+        self.assertFalse(result["verified"])
+        self.assertEqual(result["valid_task_count"], 0)
+        self.assertNotIn("private detail", result["error"])
+
+    def test_bug_evidence_lookup_error_after_valid_task_fails_closed(self):
+        self.candidate.evidence_task_ids = ["first", "second"]
+        self.lookup.side_effect = [self._task("first"), RuntimeError("lookup failed")]
+        result = self.learning.verify_candidate_evidence(self.candidate.candidate_id)
+        self.assertFalse(result["verified"])
+        self.assertEqual(result["valid_task_count"], 1)
+
+    def test_bug_evidence_requires_every_linked_task(self):
+        self.candidate.evidence_task_ids = ["first", "missing", "last"]
+        tasks = {"first": self._task("first"), "last": self._task("last")}
+        self.lookup.side_effect = tasks.get
+        result = self.learning.verify_candidate_evidence(self.candidate.candidate_id)
+        self.assertFalse(result["verified"])
+        self.assertEqual(result["evidence_task_count"], 3)
+        self.assertEqual(result["valid_task_count"], 2)
+        self.assertEqual(result["missing_task_ids"], ["missing"])
+        self.assertEqual(self.lookup.call_count, 3)
+
+    def test_bug_evidence_optional_does_not_accept_broken_references(self):
+        self.lookup.return_value = None
+        result = self.learning.verify_candidate_evidence(
+            self.candidate.candidate_id, require_evidence_tasks=False
+        )
+        self.assertFalse(result["verified"])
+
+    def test_bug_evidence_trace_remains_optional_by_default(self):
+        self.lookup.return_value = self._task()
+        result = self.learning.verify_candidate_evidence(self.candidate.candidate_id)
+        self.assertTrue(result["verified"])
+
+    def test_bug_evidence_trace_requirement_rejects_absent_or_empty_trace(self):
+        for trace in (None, DecisionTrace(), {"entries": ["untyped"]}):
+            with self.subTest(trace=trace):
+                task = self._task()
+                task.decision_trace = trace
+                self.lookup.return_value = task
+                result = self.learning.verify_candidate_evidence(
+                    self.candidate.candidate_id, require_decision_trace=True
+                )
+                self.assertFalse(result["verified"])
+                self.assertEqual(result["missing_trace_task_ids"], ["evidence_task"])
+
+    def test_bug_evidence_trace_required_for_every_task(self):
+        self.candidate.evidence_task_ids = ["traced", "untraced"]
+        tasks = {
+            "traced": self._task("traced", traced=True),
+            "untraced": self._task("untraced"),
+        }
+        self.lookup.side_effect = tasks.get
+        result = self.learning.verify_candidate_evidence(
+            self.candidate.candidate_id, require_decision_trace=True
+        )
+        self.assertFalse(result["verified"])
+        self.assertEqual(result["missing_trace_task_ids"], ["untraced"])
+
+    def test_bug_evidence_failure_trace_can_support_learning(self):
+        task = self._task(traced=True)
+        task.status = TaskStatus.FAILED
+        self.lookup.return_value = task
+        result = self.learning.verify_candidate_evidence(
+            self.candidate.candidate_id, require_decision_trace=True
+        )
+        self.assertTrue(result["verified"])
+        self.assertEqual(result["valid_task_count"], 1)
+        self.assertFalse(self.candidate.replay_passed)
+        self.assertFalse(self.candidate.regression_check_passed)
+        self.assertFalse(self.candidate.governance_approved)
+        self.assertEqual(self.candidate.status, CandidateStatus.CANDIDATE)
+
+    def test_bug_evidence_empty_ids_respect_both_requirements(self):
+        self.candidate.evidence_task_ids = []
+        for require_tasks, require_trace, expected in (
+            (True, False, False), (True, True, False),
+            (False, True, False), (False, False, True),
+        ):
+            with self.subTest(require_tasks=require_tasks, require_trace=require_trace):
+                result = self.learning.verify_candidate_evidence(
+                    self.candidate.candidate_id,
+                    require_evidence_tasks=require_tasks,
+                    require_decision_trace=require_trace,
+                )
+                self.assertEqual(result["verified"], expected)
+        self.get_executor.assert_not_called()
+
+    def test_bug_evidence_missing_candidate_is_rejected(self):
+        with patch.object(self.learning, "get_candidate", return_value=None):
+            result = self.learning.verify_candidate_evidence("missing")
+        self.assertFalse(result["verified"])
+        self.get_executor.assert_not_called()
+
+    def test_bug_unverifiable_evidence_blocks_commit_even_with_passed_evaluations(self):
+        self.candidate.replay_passed = True
+        self.candidate.regression_check_passed = True
+        self.candidate.governance_approved = True
+        self.get_executor.side_effect = RuntimeError("unavailable")
+        with patch.object(self.learning, "_save_candidate") as save:
+            result = self.learning.commit_candidate(
+                self.candidate.candidate_id, verify_evidence=True
+            )
+        self.assertEqual(result.status, CandidateStatus.REJECTED)
+        self.assertEqual(result.commit_hash, "")
+        save.assert_called_once_with(result)
 
 
 if __name__ == "__main__":
