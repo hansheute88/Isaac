@@ -470,19 +470,19 @@ Nicht in unrelated Module driften, außer bei blockierendem Fix.
 
 ## Roadmap (Referenz — nicht aktiver Scope)
 
-**Kanonische Master-Roadmap:** `docs/MASTER_ROADMAP_ISAAC_v5_2026-07-24.md`  
+**Kanonische Master-Roadmap:** `docs/MASTER_ROADMAP_ISAAC_v5_2026-07-24.md`
 (Tracks C consolidate · G goals/owner-autonomy · M memory bounded · R brain/SNN geparkt)
 
 Kurzliste (Details + Gap-Matrix in der Master-Roadmap):
 
-1. Verfassung / Soft-Checkpoints / Evals — weitgehend erledigt; restliche Härtung Track C  
-2. Self-Model / bounded Learning weiter koppeln (Track C4)  
-3. MCP Contract-Tests & Docs — Grundgerüst + Resources vorhanden (Track C2), **kein** Subagent-Expansion  
-4. Portable Trace / EXECUTION-Metadaten vertiefen (Track C1)  
+1. Verfassung / Soft-Checkpoints / Evals — weitgehend erledigt; restliche Härtung Track C
+2. Self-Model / bounded Learning weiter koppeln (Track C4)
+3. MCP Contract-Tests & Docs — Grundgerüst + Resources vorhanden (Track C2), **kein** Subagent-Expansion
+4. Portable Trace / EXECUTION-Metadaten vertiefen (Track C1)
 5. CI Billing entsperren (Track C5)
 
-**Nicht aus Drive-Patch-Paketen / Parallel-Roadmaps übernehmen** (Juli 2026):  
-eigene State-Machine, OTel-Doppeltypen, Isaac-Lab-Mocks, Vector-Doppelpfade, SNN/WBE auf main.  
+**Nicht aus Drive-Patch-Paketen / Parallel-Roadmaps übernehmen** (Juli 2026):
+eigene State-Machine, OTel-Doppeltypen, Isaac-Lab-Mocks, Vector-Doppelpfade, SNN/WBE auf main.
 Siehe `docs/DRIVE_PATCH_REVIEW_2026-07-24.md` und Master-Roadmap §8 Anti-Liste.
 
 ---
