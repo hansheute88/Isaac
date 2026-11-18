@@ -2,12 +2,22 @@
 # Hinweis: Constitution, Privilege-Gates und Audit bleiben aktiv (kein „Governance-Aus").
 [CmdletBinding()]
 param(
-    [string]$RepoRoot = (Split-Path -Parent $PSScriptRoot),
+    [string]$RepoRoot = "",
     [switch]$RegisterWatchdogTask,
     [switch]$ApplyPowerPlanHint
 )
 
 $ErrorActionPreference = "Stop"
+
+if (-not $RepoRoot) {
+    if ($PSScriptRoot) {
+        $RepoRoot = Split-Path -Parent $PSScriptRoot
+    } elseif ($MyInvocation.MyCommand.Path) {
+        $RepoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+    } else {
+        $RepoRoot = (Get-Location).Path
+    }
+}
 Set-Location $RepoRoot
 
 function Step([string]$m) { Write-Host "`n==> $m" -ForegroundColor Cyan }

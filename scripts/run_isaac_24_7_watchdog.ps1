@@ -1,6 +1,13 @@
 ﻿# Isaac 24/7 — startet isaac_core.py und startet nach Absturz neu (Backoff max 60s).
 $ErrorActionPreference = "Continue"
-$RepoRoot = Split-Path -Parent $PSScriptRoot
+
+if ($PSScriptRoot) {
+    $RepoRoot = Split-Path -Parent $PSScriptRoot
+} elseif ($MyInvocation.MyCommand.Path) {
+    $RepoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+} else {
+    $RepoRoot = (Get-Location).Path
+}
 Set-Location $RepoRoot
 
 $venvPy = Join-Path $RepoRoot ".venv\Scripts\python.exe"
