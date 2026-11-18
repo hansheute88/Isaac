@@ -330,6 +330,21 @@ def record_goal_learning_from_task(task: Any) -> dict[str, Any]:
     if not goal_id:
         return {"ok": False, "reason": "no_goal_id"}
 
+    # Reject stale or misbound results before writing goal memory or inquiries.
+    try:
+        gs = get_goal_store()
+        goal = gs.goals.get(goal_id)
+        if goal is None:
+            return {"ok": False, "reason": "unknown_goal"}
+        if goal.status != "active":
+            return {"ok": False, "reason": "inactive_goal"}
+        if subgoal_id:
+            sg = gs.subgoals.get(subgoal_id)
+            if sg is None or sg.parent_goal_id != goal_id:
+                return {"ok": False, "reason": "invalid_subgoal"}
+    except Exception:
+        return {"ok": False, "reason": "goal_store_unavailable"}
+
     antwort = str(getattr(task, "antwort", "") or "").strip()
     status = getattr(getattr(task, "status", None), "value", str(getattr(task, "status", "")))
     score = float(task.score.total) if getattr(task, "score", None) else 0.0
@@ -402,8 +417,13 @@ def record_goal_learning_from_task(task: Any) -> dict[str, Any]:
     try:
         gs = get_goal_store()
         goal = gs.goals.get(goal_id)
-        if subgoal_id and subgoal_id in gs.subgoals:
-            sg = gs.subgoals[subgoal_id]
+        sg = gs.subgoals.get(subgoal_id)
+        if (
+            goal is not None
+            and goal.status == "active"
+            and sg is not None
+            and sg.parent_goal_id == goal_id
+        ):
             sg.last_outcome = (antwort or status)[:300]
             sg.updated_at = _now()
             status_l = str(status or "").lower()
@@ -412,10 +432,24 @@ def record_goal_learning_from_task(task: Any) -> dict[str, Any]:
             criteria_hit = bool(
                 goal and gs.criteria_satisfied(goal, antwort)
             )
+            # Keyword overlap is a hint, not proof that an action succeeded.
+            # Plans and clarification questions do not complete the work.
+            ctx = getattr(task, "retrieved_context", None) or {}
+            mode = str(ctx.get("mode") or "").strip().lower() if isinstance(ctx, dict) else ""
+            if not mode:
+                match = re.match(
+                    r"^\[Goal-Autonomie\s*·\s*mode=(plan|research|inquiry|work)\]",
+                    str(getattr(task, "prompt", "") or ""),
+                    flags=re.IGNORECASE,
+                )
+                if match:
+                    mode = match.group(1).lower()
+            result["criteria_hit"] = criteria_hit
             success = (
                 status_l in {"done", "completed", "success"}
                 and score >= done_min
-            ) or criteria_hit
+                and mode in {"", "work", "research"}
+            )
 
             if success and sg.status == "active":
                 sg.status = "done"
@@ -423,13 +457,7 @@ def record_goal_learning_from_task(task: Any) -> dict[str, Any]:
                 result["criteria_hit"] = criteria_hit
                 gs.subgoals[subgoal_id] = sg
                 gs.save()
-                if goal and criteria_hit:
-                    goal.status = "done"
-                    goal.updated_at = _now()
-                    gs.goals[goal.id] = goal
-                    gs.save()
-                    result["goal_status"] = "done"
-                elif gs.maybe_complete_goal(goal_id):
+                if gs.maybe_complete_goal(goal_id):
                     result["goal_status"] = "done"
             elif status_l in {"failed", "error", "cancelled"} and sg.status == "active":
                 # Cap recovery: only one active recovery; never recover from recovery forever
