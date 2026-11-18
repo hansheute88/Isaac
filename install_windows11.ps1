@@ -111,7 +111,7 @@ ISAAC_PRIVILEGE_MODE=user
 }
 
 Step "Validiere Isaac"
-& $VenvPython -c "import flask, aiohttp, websockets, dotenv; import app; print('Isaac Python-Import: OK')"
+& $VenvPython -c 'import flask, aiohttp, websockets, dotenv; import app; print("Isaac Python-Import: OK")'
 & $VenvPython -m py_compile isaac_core.py executor.py low_complexity.py memory.py relay.py logic.py watchdog.py task_checkpoint.py
 $env:ISAAC_DISABLE_VECTOR_MEMORY="1"
 & $VenvPython -m unittest tests_provider_configuration -q
