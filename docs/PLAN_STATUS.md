@@ -78,3 +78,25 @@ Legende: ✅ umgesetzt & getestet · ⏸ bewusst zurückgestellt · ⏳ Owner-Au
 - Masterplan §14 (CLI) und §15 (Dashboard-Views) — nur dokumentiert.
 - Offizieller 30-Tage-Proof-Lauf, Sentry-Item-Auflösung, CI-Billing-Entsperrung (Owner).
 - `web/`-Monorepo (next-forge) — unberührt.
+
+## 7. Wie das geprüft wird
+
+```bash
+python3 -m py_compile isaac_core.py isaac_capabilities.py isaac_causal.py \
+  isaac_causal_query.py isaac_guardrails.py isaac_sdk.py isaac_runtime_audit.py \
+  isaac_30day_evidence.py executor.py audit.py watchdog.py relay.py
+ISAAC_DISABLE_VECTOR_MEMORY=1 python3 sanity_check.py
+ISAAC_DISABLE_VECTOR_MEMORY=1 python3 -m unittest \
+  tests_phase_a_stabilization tests_state_io tests_provider_configuration \
+  tests_isaac20_capabilities tests_isaac20_causal tests_isaac20_guardrails \
+  tests_isaac20_e1 tests_isaac20_e2 tests_isaac20_e3 tests_isaac20_f1 \
+  tests_isaac20_f2 tests_isaac20_sdk tests_isaac20_investor_demo \
+  tests_isaac_30day_evidence tests_isaac_runtime_audit tests_isaac_remote
+ISAAC_DISABLE_VECTOR_MEMORY=1 python3 -m evals.eval_runner
+python3 -m benchmarks.isaac20_fault_injection
+python3 -m benchmarks.isaac20_governance
+```
+
+CI: `.github/workflows/python-package.yml` (validate 3.9/3.10/3.11),
+`.github/workflows/isaac20-validation.yml` (2.0-Tests + E1/E2/E3/F1/F2),
+`mcp_ci`, `windows-installer`.
