@@ -4456,6 +4456,12 @@ async def main():
         from tool_catalog import ensure_catalog_tools_registered
 
         bootstrap_secrets()
+        try:
+            from key_health import maybe_log_key_health
+
+            maybe_log_key_health()
+        except Exception as _kh_exc:  # reachability must never block startup
+            logging.getLogger("Isaac").debug("Key health check skipped: %s", _kh_exc)
         ensure_bridge_tools_registered()
         added = ensure_catalog_tools_registered(bundle_id="professional_core")
         if added:

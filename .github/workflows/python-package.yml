@@ -61,7 +61,8 @@ jobs:
             tests_isaac20_causal \
             tests_jules_agent \
             tests_isaac_30day_evidence \
-            tests_isaac_runtime_audit
+            tests_isaac_runtime_audit \
+            tests_key_health
 
       - name: Run eval harness
         run: python -m evals.eval_runner

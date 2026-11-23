@@ -19,14 +19,66 @@ Secrets live in **environment**, **Render env**, or **local** `data/` (gitignore
 
 `secrets_bootstrap.bootstrap_secrets()` (from `isaac_core.main`):
 
-1. Loads missing keys from `data/cli_auth_backup/all_cli_api_keys.env` and `.env` into `os.environ`
+1. Loads missing keys from every key file into `os.environ` (see below)
 2. Mirrors known keys into `SecretsStore` (`provider.*`, `github.token`, `sentry.dsn`, …)
-3. Never logs secret **values**
+3. Imports browser logins from `BROWSER_*` variables into `data/browser_creds.json`
+4. Never logs secret **values**
 
 ```bash
 # Refresh local backup from installed CLIs
 bash scripts/export_cli_auth.sh
 ```
+
+### Key files Isaac reads (in this order)
+
+The same loader also runs from `config.py` before providers/flags are read, so
+values from these files are effective at import time:
+
+| # | Source | Note |
+|---|--------|------|
+| 1 | Process environment | always wins |
+| 2 | `ISAAC_SECRET_FILES` | os.pathsep-separated explicit paths |
+| 3 | `.env` | primary local secrets |
+| 4 | `.env.local` | device-specific (admin mode, S8, keys) |
+| 5 | `data/*.env` | e.g. `data/isaac_active_keys.env` |
+| 6 | `data/cli_auth_backup/*.env` | `all_cli_api_keys.env`, … |
+
+Imported are provider/runtime keys: everything in `IMPORT_ENV_KEYS`, plus keys
+whose name starts with `ISAAC_`, `GROQ_`, `OPENROUTER_`, `OPENAI_`, `GOOGLE_`,
+`GEMINI_`, `ANTHROPIC_`, `XAI_`, `GITHUB_`, `GH_`, `COPILOT_`, `SENTRY_`,
+`COGNEE_`, `RENDER_`, `OPENCODE_`, `BROWSER_`, `OLLAMA_`, `LOCAL_LLM_`, or
+`ACTIVE_PROVIDER`, plus any name ending in `_API_KEY`, `_TOKEN`, `_DSN`,
+`_SECRET` or `_PASSWORD`. So a full key export
+(`# comments`, `KEY=VALUE` lines, `BROWSER_*` triples, `BROWSER_CREDS_JSON_PLAINTEXT`)
+can be dropped into `data/` as-is.
+
+Browser logins: `BROWSER_<HOST>_{DOMAIN,USERNAME,PASSWORD,LOGIN_URL}` triples or
+`BROWSER_CREDS_JSON_PLAINTEXT` are merged into `data/browser_creds.json`
+(chmod 0600); existing entries are kept unless the importer is called with
+`overwrite=True`. Disable with `ISAAC_IMPORT_BROWSER_CREDS=0`.
+
+### Reachability check before use
+
+Every provider key can be probed with one cheap authenticated GET
+(`openrouter.api/v1/key`, `api.groq.com/openai/v1/models`,
+`generativelanguage.googleapis.com/v1beta/models`, `api.openai.com/v1/models`,
+`api.anthropic.com/v1/models`, `api.x.ai/v1/models`, `api.github.com/user`,
+`api.render.com/v1/owners`). Keys are never printed — only status, HTTP code and
+a masked hint:
+
+```bash
+python3 scripts/check_key_health.py            # table
+python3 scripts/check_key_health.py --json     # machine-readable
+python3 scripts/check_key_health.py --no-bootstrap --timeout 5
+```
+
+Statuses: `ok`, `unauthorized` (key rejected), `blocked` (quota, rate limit,
+Cloudflare/IP block — key not judged), `unreachable`, `error`, `missing`,
+`format_ok` (Sentry DSN / Cognee / OpenCode: presence check only).
+The report is written to `data/key_health.json` (gitignored).
+
+Opt-in at startup: `ISAAC_KEY_HEALTH_ON_START=1` runs the same check once after
+`bootstrap_secrets()` and logs one line per provider.
 
 ### Resolve a secret in code
 
