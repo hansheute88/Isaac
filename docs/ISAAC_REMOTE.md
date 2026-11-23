@@ -16,6 +16,7 @@ lokal (dieser Kernel)  ──cloud:──►  isaac-free.onrender.com
 | `ISAAC_REMOTE_FREE_URL` | `https://isaac-free.onrender.com` | HTTP-Base der Remote-Instanz |
 | `ISAAC_REMOTE_TIMEOUT` | `120` | Sekunden pro Cloud-Chat |
 | `ISAAC_REMOTE_LABEL` | `isaac-free` | Anzeigename |
+| `ISAAC_WS_URL` | abgeleitet aus der HTTP-Base | optionaler WS-Endpunkt (lokal z. B. `ws://127.0.0.1:8765/ws`, wenn Health auf `:8766` liegt) |
 
 Auch akzeptiert: `ISAAC_CLOUD_URL`, `RENDER_URL`.
 
@@ -55,6 +56,11 @@ Wie Dashboard / `scripts/render_chat_smoke.py`:
 ```
 
 Health: `GET {base}/healthz`
+
+Lokaler Port-Split: Läuft der HTTP-/Health-Endpunkt auf `MONITOR_HTTP_PORT` (Default
+8766), der WebSocket aber auf `MONITOR_PORT` (Default 8765), setzt du `ISAAC_WS_URL`
+explizit. `remote_smoke.configured_ws_url()` nutzt sonst die aus der HTTP-Base
+abgeleitete Adresse.
 
 ## Architekturgrenzen
 

@@ -210,13 +210,13 @@ Jeder Track: **klein, testbar, ROT/BLAU/GRÜN-Ownership, nach jedem Substep runn
 - [x] Digest Fingerprint  
 - [x] Retrieval active_goals  
 - [x] goal_eval suite  
-- [ ] Live-Ops: Intervalle/Env in OWNER_COMMANDS pflegen  
+- [x] Live-Ops: Intervalle/Env in OWNER_COMMANDS pflegen (Goal-Autonomie-Tabelle)  
 
 #### G2 — Owner-scheduled autonomy
 
 - [x] owner_autonomy + Constitution vor Execute  
 - [x] max_per_cycle, failure backoff, windows  
-- [ ] Status-Inspectability in Docs/Status-Block prüfen  
+- [x] Status-Inspectability in Docs/Status-Block geprüft (`autonomy_status()` + `isaac status`)  
 
 #### G3 — Schutz
 
@@ -355,8 +355,9 @@ Validierungsfälle A–G: `evals/replay_eval` (erweitert H–J).
 - [x] Drive-Patches bewertet und abgelehnt wo redundant/gefährlich  
 - [x] Eval-Harness deckt Governance, Routing, Goals, MCP ab (96+)  
 - [x] Track C1–C2 abgeschlossen (portable+MCP Contracts)  
-- [ ] CI grün (Billing)  
-- [ ] Research-Brain nicht mit Kernel-main vermischt  
+- [x] Isaac-2.0-Code auf main integriert (Status: `docs/PLAN_STATUS.md`)  
+- [ ] CI grün (Billing) — Owner-Aufgabe  
+- [x] Research-Brain nicht mit Kernel-main vermischt  
 
 ---
 

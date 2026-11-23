@@ -84,6 +84,7 @@ URL/Ziel, Browser aus, 2FA/Captcha, Mission-Schritt). Kein Spam bei normalen Feh
 | `ISAAC_REMOTE_SMOKE=1` | Background keep-alive gegen isaac-free (wake ≤10 Min) |
 | `ISAAC_REMOTE_SMOKE_WAKE_INTERVAL_S=600` | Anti-Sleep-Intervall |
 | `ISAAC_REMOTE_FREE_URL=https://isaac-free.onrender.com` | Smoke-Ziel |
+| `ISAAC_WS_URL=ws://127.0.0.1:8765/ws` | optionaler WS-Endpunkt, wenn Health (`:8766`) und WS (`:8765`) getrennt laufen |
 
 ### Owner-Push / ntfy (Chat)
 
@@ -215,6 +216,24 @@ Proaktive geplante Tasks nur im Admin-Modus (`owner_autonomy.py`):
 
 Grenzen: Constitution-Gate vor Ausführung, Failure-Backoff, inspectable Status in `isaac status`
 (inkl. **Nächster Lauf** pro Task: Fenster + Intervall, ohne Akku-Hartfilter).
+
+### Goal-Autonomie (Live-Ops)
+
+Ziel-Motivation läuft im Background-Tick (`GOAL_AUTONOMY_INTERVAL = 900s`), gebunden an
+`goal_store`-Ziele. Alle Werte sind per `.env` steuerbar (`motivation.py`, `goal_inquiry.py`,
+`goal_digest.py`):
+
+| Env | Default | Wirkung |
+|-----|---------|---------|
+| `ISAAC_GOAL_AUTONOMY` | `1` | Master-Schalter der Ziel-Motivation |
+| `ISAAC_GOAL_AUTONOMY_MAX_PER_TICK` | `3` | max. Ziel-Tasks pro Tick (Meltdown-Schutz, kein Ambitions-Cap) |
+| `ISAAC_GOAL_SUBGOAL_COOLDOWN_S` | `1800` | Anti-Spam-Cooldown pro Subgoal |
+| `ISAAC_GOAL_MAX_SUBGOAL_ATTEMPTS` | `8` | danach `failed` + Inquiry an den Owner |
+| `ISAAC_GOAL_SUBGOAL_DONE_MIN_SCORE` | `5.5` | Score-Schwelle für `subgoal done` |
+| `ISAAC_GOAL_DIGEST_MIN_INTERVAL_S` | `900` | Mindestabstand der Goal-Digests |
+
+Status: `isaac status` zeigt aktive Ziele und den nächsten Motivation-Lauf; `autonomy_status()`
+liefert dieselben Felder maschinenlesbar (`tests_phase_a_stabilization` prüft die Inspectability).
 
 ---
 

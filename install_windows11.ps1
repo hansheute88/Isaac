@@ -87,7 +87,7 @@ Step "Installiere Isaac-Abhaengigkeiten"
 $coreReq = Join-Path $RepoRoot "requirements-free.txt"
 & $VenvPython -m pip install -r $coreReq
 & $VenvPython -m pip install "Flask>=3.0.0" "sentry-sdk>=2.60.0" "playwright>=1.40.0"
-Write-Host "chromadb (Vector-Memory): optional — master-install -WithVectorMemory oder manuell pip install chromadb."
+Write-Host "chromadb (Vector-Memory): optional - master-install -WithVectorMemory oder manuell pip install chromadb."
 if(-not $SkipOptionalMemory){Write-Host "Optionale Memory-Adapter bleiben deaktiviert; Isaac Core benoetigt sie nicht."}
 if(-not $SkipPlaywright){Step "Installiere Playwright Chromium";& $VenvPython -m playwright install chromium}
 
