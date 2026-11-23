@@ -21,6 +21,7 @@ import ipaddress
 import os
 import threading
 import time
+import uuid
 from dataclasses import dataclass
 from typing import Any, Mapping
 
@@ -28,6 +29,13 @@ from audit import AuditLog
 from config import Level
 from mcp_registry import MCPRegistry, get_mcp_registry
 from result_contract import ensure_result_contract
+from isaac_runtime_audit import (
+    audited_surface,
+    bind_action_id,
+    current_action_id,
+    record_tool_authorization_decision,
+    record_tool_execution_result,
+)
 
 
 DEFAULT_MAX_BODY_BYTES = 256 * 1024
@@ -206,6 +214,7 @@ class IsaacMCPService:
 
         return True, "OK"
 
+    @audited_surface("mcp_tools")
     def invoke(
         self,
         tool_name: str,
@@ -216,8 +225,18 @@ class IsaacMCPService:
         trusted_internal: bool = False,
     ) -> dict[str, Any]:
         args = dict(arguments or {})
+        parent_action_id = current_action_id()
+        action_id = uuid.uuid4().hex
         raw_size = len(repr(args).encode("utf-8", errors="replace"))
         if raw_size > self.max_argument_bytes():
+            record_tool_authorization_decision(
+                action_id, False, "mcp_tools", tool_name, "argument_size_limit",
+                parent_action_id=parent_action_id,
+            )
+            record_tool_execution_result(
+                action_id, False, False, "mcp_tools", tool_name,
+                parent_action_id=parent_action_id,
+            )
             return self._deny(tool_name, "MCP arguments exceed configured size limit")
 
         ok, reason = self.authorize_request(
@@ -227,7 +246,15 @@ class IsaacMCPService:
             arguments=args,
             trusted_internal=trusted_internal,
         )
+        record_tool_authorization_decision(
+            action_id, ok, "mcp_tools", tool_name, "" if ok else reason,
+            parent_action_id=parent_action_id,
+        )
         if not ok:
+            record_tool_execution_result(
+                action_id, False, False, "mcp_tools", tool_name,
+                parent_action_id=parent_action_id,
+            )
             return self._deny(tool_name, reason)
 
         # Never permit an external caller to smuggle an owner context into the
@@ -244,19 +271,25 @@ class IsaacMCPService:
             erfolg=True,
         )
         try:
-            result = self.registry.invoke_tool(
-                tool_name,
-                args,
-                caller=caller,
-                caller_level=caller_level,
-                allow_owner_override=trusted_internal,
-            )
+            with bind_action_id(action_id):
+                result = self.registry.invoke_tool(
+                    tool_name,
+                    args,
+                    caller=caller,
+                    caller_level=caller_level,
+                    allow_owner_override=trusted_internal,
+                )
         except TypeError:
             # Backward-compatible fallback for third-party/custom registries
             # implementing the old two-argument invoke_tool contract.
-            result = self.registry.invoke_tool(tool_name, args)
+            with bind_action_id(action_id):
+                result = self.registry.invoke_tool(tool_name, args)
         except Exception as exc:
             AuditLog.error("MCP", "tool_invoke_failed", type(exc).__name__)
+            record_tool_execution_result(
+                action_id, True, False, "mcp_tools", tool_name,
+                parent_action_id=parent_action_id,
+            )
             return ensure_result_contract(
                 {"ok": False, "error": "MCP tool execution failed"},
                 source=f"isaac_mcp:{tool_name}",
@@ -270,7 +303,12 @@ class IsaacMCPService:
                 level=int(caller_level),
                 erfolg=False,
             )
-        return ensure_result_contract(result, source=f"isaac_mcp:{tool_name}")
+        final_result = ensure_result_contract(result, source=f"isaac_mcp:{tool_name}")
+        record_tool_execution_result(
+            action_id, True, bool(final_result.get("ok")), "mcp_tools", tool_name,
+            parent_action_id=parent_action_id,
+        )
+        return final_result
 
     def list_tools(
         self,

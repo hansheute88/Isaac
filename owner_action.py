@@ -19,6 +19,7 @@ from typing import Any, Callable, Optional
 from urllib.parse import quote_plus
 
 from audit import AuditLog
+from isaac_runtime_audit import audited_surface
 from config import BASE_DIR, DATA_DIR, LOG_DIR, WORKSPACE, get_config, is_owner_equivalent_mode
 
 log = logging.getLogger("Isaac.OwnerAction")
@@ -1486,6 +1487,7 @@ def _resolve_open_url(dest: str) -> str:
     return f"https://www.google.com/search?q={quote_plus(dest)}"
 
 
+@audited_surface("owner_actions")
 async def execute_owner_action(action: OwnerAction) -> tuple[str, bool]:
     handlers: dict[str, Callable] = {
         "photos_search": _photos_search,
