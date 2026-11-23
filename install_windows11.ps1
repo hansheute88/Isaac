@@ -120,8 +120,8 @@ $env:ISAAC_DISABLE_VECTOR_MEMORY="1"
 
 Write-Host "Windows-spezifische Basisvalidierung erfolgreich." -ForegroundColor Green
 Write-Host "Hinweis: plattformgebundene Unix-Permission-Tests laufen weiterhin in der Linux-CI."
-Write-Host "Start: .\start_isaac_windows.cmd"
+Write-Host "Start: powershell -ExecutionPolicy Bypass -File .\start_isaac_windows.ps1"
 Write-Host "API:   http://127.0.0.1:5000"
 Write-Host "UI:    http://127.0.0.1:8766"
 
-if(-not $NoStart){& (Join-Path $RepoRoot "start_isaac_windows.cmd")}
+if(-not $NoStart){& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $RepoRoot "start_isaac_windows.ps1")}

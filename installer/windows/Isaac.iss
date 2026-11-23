@@ -2,7 +2,7 @@
 #define AppName "Isaac"
 #define AppVersion "5.4.0"
 #define AppPublisher "Isaac"
-#define AppExeName "start_isaac_windows.cmd"
+#define AppExeName "start_isaac_windows.ps1"
 [Setup]
 AppId={{A6D5A7D7-1B4B-4C77-9D4A-ISAAC540WIN}}
 AppName={#AppName}
@@ -28,13 +28,13 @@ Name: "{app}\runtime"
 Name: "{app}\workspace"
 Name: "{app}\traces"
 [Icons]
-Name: "{group}\Isaac"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"
-Name: "{group}\Isaac API"; Filename: "{app}\start_isaac_api_windows.cmd"; WorkingDir: "{app}"
+Name: "{group}\Isaac"; Filename: "{sys}\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\{#AppExeName}"""; WorkingDir: "{app}"
+Name: "{group}\Isaac API"; Filename: "{sys}\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\start_isaac_api_windows.ps1"""; WorkingDir: "{app}"
 Name: "{group}\Uninstall Isaac"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\Isaac"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"
+Name: "{autodesktop}\Isaac"; Filename: "{sys}\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\{#AppExeName}"""; WorkingDir: "{app}"
 [Run]
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\install_windows11.ps1"" -NoStart"; WorkingDir: "{app}"; StatusMsg: "Isaac wird eingerichtet..."; Flags: waituntilterminated
-Filename: "{app}\start_isaac_windows.cmd"; WorkingDir: "{app}"; Description: "Isaac jetzt starten"; Flags: postinstall nowait skipifsilent
+Filename: "{sys}\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\{#AppExeName}"""; WorkingDir: "{app}"; Description: "Isaac jetzt starten"; Flags: postinstall nowait skipifsilent
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\runtime"
 Type: filesandordirs; Name: "{app}\logs"

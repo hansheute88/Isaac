@@ -94,7 +94,7 @@ Step "Start-Optionen"
 Write-Host @"
 
   Interaktiv (Fenster offen):
-    .\start_isaac_windows.cmd
+    powershell -ExecutionPolicy Bypass -File .\start_isaac_windows.ps1
 
   24/7 mit Auto-Neustart bei Absturz:
     powershell -ExecutionPolicy Bypass -File .\scripts\run_isaac_24_7_watchdog.ps1

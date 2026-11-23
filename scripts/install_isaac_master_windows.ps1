@@ -72,7 +72,7 @@ Write-Host @"
 ============================================================
  Isaac Master-Install abgeschlossen
 ============================================================
- Start:     .\start_isaac_windows.cmd
+ Start:     powershell -ExecutionPolicy Bypass -File .\start_isaac_windows.ps1
  24/7:      powershell -ExecutionPolicy Bypass -File .\scripts\run_isaac_24_7_watchdog.ps1
  Laptop:    powershell -ExecutionPolicy Bypass -File .\scripts\setup_laptop_24_7_autonomy.ps1
 
@@ -90,6 +90,6 @@ Write-Host @"
 if (-not $NoStart) {
     $start = Read-Host "Isaac jetzt starten? [j/N]"
     if ($start -match '^[jyJy]') {
-        & (Join-Path $RepoRoot "start_isaac_windows.cmd")
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $RepoRoot "start_isaac_windows.ps1")
     }
 }
