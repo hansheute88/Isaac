@@ -41,7 +41,8 @@ jobs:
             isaac_core.py executor.py low_complexity.py memory.py \
             relay.py logic.py watchdog.py task_checkpoint.py \
             isaac_runtime_audit.py motivation.py file_access.py owner_action.py browser.py \
-            isaac_mcp.py tool_runtime.py goal_store.py task_tool_state.py
+            isaac_mcp.py tool_runtime.py goal_store.py goal_inquiry.py learning_engine.py \
+            task_tool_state.py isaac_sentry.py
 
       - name: Sanity check
         run: python sanity_check.py
@@ -62,7 +63,10 @@ jobs:
             tests_jules_agent \
             tests_isaac_30day_evidence \
             tests_isaac_runtime_audit \
-            tests_key_health
+            tests_key_health \
+            tests_goal_completion \
+            tests_prove_the_kernel \
+            tests_sentry_privacy_defaults
 
       - name: Run eval harness
         run: python -m evals.eval_runner
