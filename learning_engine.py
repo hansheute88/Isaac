@@ -138,33 +138,64 @@ class LearningEngine:
         require_evidence_tasks: bool = True,
         require_decision_trace: bool = False,
     ) -> dict[str, Any]:
-        """Verifies candidate evidence against TaskGraph and DecisionTrace nodes."""
+        """Prüft Task-Referenzen und optional vorhandene DecisionTraces.
+
+        Dies prüft die Nachvollziehbarkeit der Evidenz, nicht den Lernerfolg.
+        Replay, Regression und Governance bleiben separate Prüfungen.
+        """
         cand = self.get_candidate(candidate_id)
         if not cand:
             return {"verified": False, "error": "Candidate not found"}
 
         task_ids = cand.evidence_task_ids or []
-        if require_evidence_tasks and not task_ids:
-            return {"verified": False, "error": "No evidence task IDs linked to candidate"}
+        result = {
+            "verified": False,
+            "candidate_id": candidate_id,
+            "evidence_task_count": len(task_ids),
+            "valid_task_count": 0,
+            "missing_task_ids": [],
+            "missing_trace_task_ids": [],
+        }
+        if not task_ids:
+            if require_evidence_tasks or require_decision_trace:
+                result["error"] = "No evidence task IDs linked to candidate"
+                return result
+            result["verified"] = True
+            return result
 
         try:
             from executor import get_executor
-            executor = get_executor()
-            valid_tasks = []
-            for tid in task_ids:
-                if executor.get_task(tid):
-                    valid_tasks.append(tid)
-            if require_evidence_tasks and not valid_tasks:
-                return {"verified": False, "error": "None of the evidence task IDs exist in Executor"}
-        except Exception as exc:
-            valid_tasks = task_ids
+            from decision_trace import DecisionTrace
 
-        return {
-            "verified": True,
-            "candidate_id": candidate_id,
-            "evidence_task_count": len(task_ids),
-            "valid_task_count": len(valid_tasks),
-        }
+            executor = get_executor()
+            for tid in task_ids:
+                task = executor.get_task(tid)
+                if task is None:
+                    result["missing_task_ids"].append(tid)
+                    continue
+
+                result["valid_task_count"] += 1
+                if require_decision_trace:
+                    trace = getattr(task, "decision_trace", None)
+                    if not isinstance(trace, DecisionTrace) or not trace.entries:
+                        result["missing_trace_task_ids"].append(tid)
+        except Exception as exc:
+            # Nicht prüfbare Evidenz darf niemals als verifiziert gelten.
+            # Exception-Inhalte können sensible Runtime-Daten enthalten.
+            result["error"] = (
+                f"Evidence verification unavailable ({type(exc).__name__})"
+            )
+            return result
+
+        if result["missing_task_ids"]:
+            result["error"] = "Some evidence task IDs do not exist in Executor"
+            return result
+        if result["missing_trace_task_ids"]:
+            result["error"] = "Some evidence tasks have no decision trace"
+            return result
+
+        result["verified"] = True
+        return result
 
     def commit_candidate(self, candidate_id: str, verify_evidence: bool = False) -> Optional[LearningCandidate]:
         cand = self.get_candidate(candidate_id)
