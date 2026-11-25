@@ -44,6 +44,35 @@ class TestIsaacRemoteHelpers(unittest.TestCase):
         self.assertIn("Hallo", s)
 
 
+class TestRemoteSmokeWsUrl(unittest.TestCase):
+    """T3.b: local WS port (:8765) can differ from the health port (:8766)."""
+
+    def test_configured_ws_url_derives_from_http_base(self):
+        from remote_smoke import configured_ws_url
+
+        with patch.dict(os.environ, {"ISAAC_WS_URL": ""}, clear=False):
+            os.environ.pop("ISAAC_WS_URL", None)
+            self.assertEqual(
+                configured_ws_url("http://127.0.0.1:8766"),
+                "ws://127.0.0.1:8766/ws",
+            )
+            self.assertEqual(
+                configured_ws_url("https://isaac-free.onrender.com"),
+                "wss://isaac-free.onrender.com/ws",
+            )
+
+    def test_configured_ws_url_env_override(self):
+        from remote_smoke import configured_ws_url
+
+        with patch.dict(
+            os.environ, {"ISAAC_WS_URL": "ws://127.0.0.1:8765/ws/"}, clear=False
+        ):
+            self.assertEqual(
+                configured_ws_url("http://127.0.0.1:8766"),
+                "ws://127.0.0.1:8765/ws",
+            )
+
+
 class TestRemoteIntent(unittest.TestCase):
     def test_detect_cloud_and_both(self):
         from isaac_core import Intent, detect_intent

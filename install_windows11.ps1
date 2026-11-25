@@ -1,4 +1,4 @@
-﻿# Isaac - Windows 11 Setup
+# Isaac - Windows 11 Setup
 [CmdletBinding()]
 param([switch]$SkipPlaywright,[switch]$SkipOptionalMemory,[switch]$NoStart)
 $ErrorActionPreference="Stop"; Set-StrictMode -Version Latest
@@ -87,7 +87,7 @@ Step "Installiere Isaac-Abhaengigkeiten"
 $coreReq = Join-Path $RepoRoot "requirements-free.txt"
 & $VenvPython -m pip install -r $coreReq
 & $VenvPython -m pip install "Flask>=3.0.0" "sentry-sdk>=2.60.0" "playwright>=1.40.0"
-Write-Host "chromadb (Vector-Memory): optional — master-install -WithVectorMemory oder manuell pip install chromadb."
+Write-Host "chromadb (Vector-Memory): optional - master-install -WithVectorMemory oder manuell pip install chromadb."
 if(-not $SkipOptionalMemory){Write-Host "Optionale Memory-Adapter bleiben deaktiviert; Isaac Core benoetigt sie nicht."}
 if(-not $SkipPlaywright){Step "Installiere Playwright Chromium";& $VenvPython -m playwright install chromium}
 
@@ -114,6 +114,10 @@ if (-not (Test-Path $EnvPath)) {
 }
 
 Step "Validiere Isaac"
+$pythonCheck = "import flask, aiohttp, websockets, dotenv; import app"
+& $VenvPython -c $pythonCheck
+if ($LASTEXITCODE -ne 0) { throw "Isaac Python-Import fehlgeschlagen." }
+Write-Host "Isaac Python-Import: OK" -ForegroundColor Green
 & $VenvPython -m py_compile app.py isaac_core.py executor.py low_complexity.py memory.py relay.py logic.py watchdog.py task_checkpoint.py
 $env:ISAAC_DISABLE_VECTOR_MEMORY="1"
 & $VenvPython -m unittest tests_provider_configuration -q

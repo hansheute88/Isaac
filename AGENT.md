@@ -200,9 +200,11 @@ Wenn Human-Layer-/Personality-Dateien existieren: unangetastet lassen, außer si
 
 ---
 
-## Isaac 2.0 Masterplan (Branch `isaac-2.0/masterplan`)
+## Isaac 2.0 Masterplan (Branch `isaac-2.0/masterplan`, integriert auf `main`)
 
 **Status:** ACTIVE — Agent Control, Trust, Audit und Recovery Runtime **ohne** Kernel-Rewrite.
+Der 2.0-Code (R/W/X, Causal, Guardrails, E1–E3, F1–F2, SDK, 30-Tage-Evidenz) liegt seit dem
+Integrations-Merge auch auf `main`; verbindlicher Ist-Stand: `docs/PLAN_STATUS.md`.
 
 **Programmdokumente (verbindlich für 2.0-Arbeit):**
 

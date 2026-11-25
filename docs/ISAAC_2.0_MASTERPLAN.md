@@ -714,6 +714,12 @@ The entire sequence must be reproducible from recorded evidence.
 
 # 19. First Implementation Sequence
 
+> **Hinweis (Integrationsstand):** Der 2.0-Code liegt zusätzlich zu
+> `isaac-2.0/masterplan` jetzt auch auf `main` (Integration über
+> `isaac-2.0/integration`). Maßgeblich für den tatsächlichen Stand ist
+> `docs/PLAN_STATUS.md`; §19/§20 beschreiben den Programmstand des
+> Masterplan-Branches.
+
 ### Milestone 2.0-A0
 Freeze and document baseline.
 
@@ -766,7 +772,8 @@ Build investor demonstration. **Complete:** reproducible evidence-first demo exe
 
 # 20. Current Implementation Position
 
-A0-C foundations and the initial B2 runtime enforcement work are complete on isaac-2.0/masterplan.
+A0-C foundations and the initial B2 runtime enforcement work are complete on isaac-2.0/masterplan
+(and, since the integration merge, on `main`; see `docs/PLAN_STATUS.md`).
 
 Current position:
 - B2: explicit tool:* execution capability is enforced at the real tool boundary.

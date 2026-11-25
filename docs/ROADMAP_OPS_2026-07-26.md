@@ -26,6 +26,23 @@ Dieser Pass **prüft und korrigiert** die detaillierte Ops-Roadmap gegen Code, L
 
 ---
 
+## Umsetzungsstand (nach Isaac-2.0-Integration)
+
+| Item | Status | Evidenz |
+|------|--------|---------|
+| T0.2 ISAAC-9 Ollama-Dämpfung | ✅ erledigt | `isaac_sentry._before_send`, `relay.py`; `tests_sentry_ai_monitoring.py` |
+| T0.1 / T0.3 Sentry-Items schließen | ⏳ Owner | braucht Sentry-Zugang, keine Code-Änderung |
+| T1 Follow-up-Continuity | ✅ erledigt | `isaac_core._is_short_followup`, `_strip_mission_noise_from_context`, Strategy-Note; `test_followup_und_continuity_no_credential_fishing` |
+| T2 Browser-E2E | 🔶 lokal | `tests_browser_live_playwright.py`; keine Credentials in CI |
+| T3.a Remote-Smoke-Runs | ⏳ read-only | manuell über `github_checks` |
+| T3.b `ISAAC_WS_URL` | ✅ erledigt | `remote_smoke.configured_ws_url()`, `tests_isaac_remote.py`, `docs/ISAAC_REMOTE.md` |
+| T4 Dashboard 6.1 | 🚫 Gate | nur blockierende Bugs / Owner-Ticket |
+| T5 glinka / T6 Secrets | ⏳ Owner | — |
+
+Gesamtstand aller Pläne: `docs/PLAN_STATUS.md`.
+
+---
+
 ## Evidenz-Checkliste (was stimmt / was nicht)
 
 ### Deploy & Tests

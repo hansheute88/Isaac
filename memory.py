@@ -23,6 +23,7 @@ from dataclasses import dataclass, field, asdict
 from typing import Optional, Any
 from contextlib import contextmanager
 from enum import Enum
+from isaac_runtime_audit import audited_surface
 
 
 class EpistemicClass(Enum):
@@ -311,6 +312,7 @@ class Memory:
         )
 
     # ── Konversation ──────────────────────────────────────────────────────────
+    @audited_surface("state_store_writes")
     def add_conversation(self, role: str, text: str,
                          task_id: str = "", provider: str = "",
                          quality: float = 0.0, metadata: dict = None,
@@ -372,6 +374,7 @@ class Memory:
             row = con.execute("SELECT * FROM facts WHERE key=?", (key,)).fetchone()
         return dict(row) if row else None
 
+    @audited_surface("state_store_writes")
     def update_fact_confidence(self, key: str, confidence: float) -> bool:
         ts = time.strftime("%Y-%m-%d %H:%M:%S")
         with _conn() as con:
@@ -381,6 +384,7 @@ class Memory:
             )
         return cur.rowcount > 0
 
+    @audited_surface("state_store_writes")
     def set_fact(self, key: str, value: str, source: str = "",
                  confidence: float = 1.0) -> bool:
         """Schreibt oder aktualisiert eine Tatsache."""
@@ -618,6 +622,7 @@ class Memory:
             ).fetchall()
         return {r["key"]: r["value"] for r in rows}
 
+    @audited_surface("state_store_writes")
     def delete_facts_matching(
         self,
         *,
@@ -712,6 +717,7 @@ class Memory:
             return {"deleted": len(set(to_del)), "keys": sorted(set(to_del))[:30]}
 
     # ── Direktiven ────────────────────────────────────────────────────────────
+    @audited_surface("state_store_writes")
     def save_directive(self, directive_id: str, text: str,
                        priority: int = 10):
         ts = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -722,6 +728,7 @@ class Memory:
                 (directive_id, ts, text, priority)
             )
 
+    @audited_surface("state_store_writes")
     def revoke_directive(self, directive_id: str):
         with _conn() as con:
             con.execute(
@@ -738,6 +745,7 @@ class Memory:
         return [dict(r) for r in rows]
 
     # ── Task-Ergebnisse ───────────────────────────────────────────────────────
+    @audited_surface("state_store_writes")
     def save_task_result(self, task_id: str, description: str,
                          result: str, score: float = 0.0,
                          iterations: int = 1, provider: str = "",
@@ -772,6 +780,7 @@ class Memory:
             ).fetchone()
         return dict(row) if row else None
 
+    @audited_surface("state_store_writes")
     def upsert_procedure(
         self,
         signature: str,
@@ -1284,6 +1293,7 @@ class Memory:
 
     # ── Statistiken ───────────────────────────────────────────────────────────
     # ── Epistemisches Memory (Säule 4 - Prove the Kernel) ─────────────────
+    @audited_surface("state_store_writes")
     def add_epistemic_memory(
         self,
         key: str,
@@ -1368,6 +1378,7 @@ class Memory:
             metadata=json.loads(r.get("metadata") or "{}"),
         )
 
+    @audited_surface("state_store_writes")
     def resolve_contradiction(
         self,
         memory_id: str,
@@ -1393,6 +1404,7 @@ class Memory:
             )
         return self.get_epistemic_memory(entry.memory_id)
 
+    @audited_surface("state_store_writes")
     def link_evidence_to_memory(
         self,
         memory_id: str,
@@ -1460,6 +1472,7 @@ class Memory:
             )
         return results
 
+    @audited_surface("state_store_writes")
     def mark_contradicted(self, memory_id: str, contradicting_ref: str) -> bool:
         entry = self.get_epistemic_memory(memory_id)
         if not entry:
@@ -1474,6 +1487,7 @@ class Memory:
             )
         return True
 
+    @audited_surface("state_store_writes")
     def mark_verified(self, memory_id: str) -> bool:
         entry = self.get_epistemic_memory(memory_id)
         if not entry:
@@ -1515,6 +1529,7 @@ class Memory:
         self._working = [dict(r) for r in reversed(rows)]
 
     # ── Entwicklungslog ───────────────────────────────────────────────────────
+    @audited_surface("state_store_writes")
     def log_development_event(
         self,
         event_type: str,
@@ -1563,6 +1578,7 @@ class Memory:
             ).fetchall()
         return [dict(r) for r in rows]
 
+    @audited_surface("state_store_writes")
     def archive_development_events(
         self, older_than_days: int = 90, keep_recent: int = 300
     ) -> int:
@@ -1644,6 +1660,7 @@ class Memory:
         }
 
     # ── Task-Checkpoints ──────────────────────────────────────────────────────
+    @audited_surface("state_store_writes")
     def save_task_checkpoint(
         self,
         task_id: str,
@@ -1731,6 +1748,7 @@ class Memory:
                 continue
         return None
 
+    @audited_surface("state_store_writes")
     def cleanup_task_checkpoints(
         self,
         *,

@@ -16,6 +16,17 @@ try:
 except Exception:
     pass
 
+# Zusaetzliche Key-Dateien (.env, .env.local, data/*.env,
+# data/cli_auth_backup/*.env, ISAAC_SECRET_FILES) laden, BEVOR Provider und
+# Feature-Flags gelesen werden. Vorhandene Prozess-Env gewinnt, Werte werden
+# nie geloggt.
+try:
+    from secrets_bootstrap import load_secret_files_into_environ
+
+    load_secret_files_into_environ()
+except Exception:
+    pass
+
 BASE_DIR = Path(__file__).parent
 
 # Vercel's deployment filesystem is read-only. Keep local behavior unchanged

@@ -18,6 +18,7 @@ Env:
   ISAAC_REMOTE_SMOKE_FULL_INTERVAL_S=7200  full suite every 2h
   ISAAC_REMOTE_SMOKE_WRITE_COGNEE=1
   ISAAC_REMOTE_SMOKE_PUSH_ON_FAIL=1
+  ISAAC_WS_URL=ws://127.0.0.1:8765/ws    optional WebSocket endpoint override
 """
 
 import json
@@ -205,6 +206,19 @@ def ws_url(http_url: str) -> str:
     if http_url.startswith("http://"):
         return "ws://" + http_url[len("http://") :] + "/ws"
     return "wss://" + http_url + "/ws"
+
+
+def configured_ws_url(base_url: Optional[str] = None) -> str:
+    """Resolve the WebSocket endpoint, honoring an explicit ``ISAAC_WS_URL``.
+
+    Local setups serve health on :8766 and the WebSocket on :8765, so the
+    endpoint cannot always be derived from the HTTP base. ``ISAAC_WS_URL``
+    wins when set; otherwise the HTTP base is converted as before.
+    """
+    explicit = (os.getenv("ISAAC_WS_URL") or "").strip().rstrip("/")
+    if explicit:
+        return explicit
+    return ws_url((base_url or target_url()).rstrip("/"))
 
 
 def classify_expectation(case_id: str, response: str) -> tuple[bool, str]:
@@ -420,6 +434,7 @@ async def run_full_smoke(
         "mode": "full",
         "ts": ts,
         "url": base,
+        "ws_url": configured_ws_url(base),
         "wake_interval_s": wake_interval_s(),
         "full_interval_s": full_interval_s(),
         "render_sleep_threshold_s": RENDER_SLEEP_THRESHOLD_S,
@@ -433,7 +448,7 @@ async def run_full_smoke(
 
     case_list = cases if cases is not None else list(CHAT_CASES)
     if health.get("ok"):
-        uri = ws_url(base)
+        uri = configured_ws_url(base)
         for case_id, text in case_list:
             try:
                 res = await one_chat(uri, text, timeout=chat_timeout)

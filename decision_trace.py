@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -45,6 +46,7 @@ class TraceEntry:
     phase: TracePhase
     event: str
     data: dict[str, Any] = field(default_factory=dict)
+    event_id: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -53,12 +55,14 @@ class TraceEntry:
             "phase": self.phase.value,
             "event": self.event,
             "data": self.data,
+            "event_id": self.event_id,
         }
 
 
 @dataclass
 class DecisionTrace:
     entries: list[TraceEntry] = field(default_factory=list)
+    trace_id: str = field(default_factory=lambda: str(uuid.uuid4()))
 
     def add(self, phase: TracePhase, event: str, data: dict[str, Any] | None = None) -> TraceEntry:
         payload = dict(data or {})
@@ -68,6 +72,7 @@ class DecisionTrace:
             phase=phase,
             event=event,
             data=payload,
+            event_id=str(uuid.uuid4()),
         )
         self.entries.append(entry)
         return entry
@@ -121,6 +126,7 @@ class DecisionTrace:
             redacted_entries.append(
                 {
                     "sequence": entry.sequence,
+                    "event_id": entry.event_id,
                     "ts": entry.ts,
                     "phase": phase_key,
                     "event": entry.event,
