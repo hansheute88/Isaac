@@ -3,6 +3,10 @@
 
 name: Python package
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: ["main", "feat/**", "feature/**", "isaac-2.0/masterplan"]
@@ -28,12 +32,14 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install flake8
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install --retries 5 --timeout 60 flake8
+          if [ -f requirements.txt ]; then pip install --retries 5 --timeout 60 -r requirements.txt; fi
 
       - name: Compile core modules
         run: |
@@ -48,9 +54,7 @@ jobs:
         run: python sanity_check.py
 
       - name: Lint with flake8
-        run: |
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 
       - name: Run test suite
         run: |
@@ -68,6 +72,8 @@ jobs:
             tests_prove_the_kernel \
             tests_sentry_privacy_defaults
 
+      # Same harness on every interpreter only repeats ~40s of work.
+      # Unit tests stay on 3.9, 3.10 and 3.11.
       - name: Run eval harness
+        if: matrix.python-version == '3.11'
         run: python -m evals.eval_runner
-        continue-on-error: false
