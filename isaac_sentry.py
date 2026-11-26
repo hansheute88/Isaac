@@ -5,14 +5,14 @@ No-op when SENTRY_DSN is unset. Manual gen_ai spans for the custom aiohttp relay
 
 Env:
   SENTRY_DSN                      — enable Sentry (required)
-  SENTRY_TRACES_SAMPLE_RATE       — default 1.0 (full tracing)
+  SENTRY_TRACES_SAMPLE_RATE       — default 0.05 (bounded tracing)
   SENTRY_PROFILES_SAMPLE_RATE     — default same as traces (or 1.0)
-  SENTRY_PROFILE_SESSION_SAMPLE_RATE — continuous profiling session (default 1.0)
+  SENTRY_PROFILE_SESSION_SAMPLE_RATE — continuous profiling session (default 0.0)
   SENTRY_ERROR_SAMPLE_RATE        — default 1.0
   SENTRY_ENVIRONMENT              — development / production
   SENTRY_RELEASE                  — default isaac@5.3
-  SENTRY_INCLUDE_PROMPTS          — default 1 (PII for AI spans)
-  SENTRY_ENABLE_LOGS              — default 1
+  SENTRY_INCLUDE_PROMPTS          — default 0 (explicit opt-in)
+  SENTRY_ENABLE_LOGS              — default 0
   SENTRY_ENABLE_METRICS           — default 1
   SENTRY_DEBUG                    — default 0
   SENTRY_ATTACH_STACKTRACE        — default 1
@@ -37,7 +37,7 @@ from typing import Any, Iterator, Optional
 log = logging.getLogger("Isaac.Sentry")
 
 _initialized = False
-_include_prompts = True
+_include_prompts = False
 _session_conversation_id: Optional[str] = None
 
 
@@ -223,7 +223,7 @@ def init_sentry() -> bool:
         log.warning("Sentry: sentry-sdk not installed (pip install 'sentry-sdk>=2.60.0')")
         return False
 
-    _include_prompts = _env_bool("SENTRY_INCLUDE_PROMPTS", True)
+    _include_prompts = _env_bool("SENTRY_INCLUDE_PROMPTS", False)
 
     environment = (
         os.getenv("SENTRY_ENVIRONMENT")
@@ -232,14 +232,14 @@ def init_sentry() -> bool:
     ).strip() or "development"
 
     # Full tracing by default (user-requested); override via env for cost control
-    traces = max(0.0, min(1.0, _env_float("SENTRY_TRACES_SAMPLE_RATE", 1.0)))
+    traces = max(0.0, min(1.0, _env_float("SENTRY_TRACES_SAMPLE_RATE", 0.05)))
     profiles = max(
         0.0,
         min(1.0, _env_float("SENTRY_PROFILES_SAMPLE_RATE", traces)),
     )
     profile_session = max(
         0.0,
-        min(1.0, _env_float("SENTRY_PROFILE_SESSION_SAMPLE_RATE", 1.0)),
+        min(1.0, _env_float("SENTRY_PROFILE_SESSION_SAMPLE_RATE", 0.0)),
     )
     error_rate = max(0.0, min(1.0, _env_float("SENTRY_ERROR_SAMPLE_RATE", 1.0)))
 
@@ -276,7 +276,7 @@ def init_sentry() -> bool:
     init_kwargs["profile_lifecycle"] = os.getenv("SENTRY_PROFILE_LIFECYCLE", "trace")
 
     # Structured logs + metrics (SDK 2.x)
-    if _env_bool("SENTRY_ENABLE_LOGS", True):
+    if _env_bool("SENTRY_ENABLE_LOGS", False):
         init_kwargs["enable_logs"] = True
     if _env_bool("SENTRY_ENABLE_METRICS", True):
         init_kwargs["enable_metrics"] = True
@@ -322,7 +322,8 @@ def init_sentry() -> bool:
 
     owner = (os.getenv("ISAAC_OWNER") or "owner").strip() or "owner"
     try:
-        sentry_sdk.set_user({"id": owner, "username": owner})
+        if _include_prompts:
+            sentry_sdk.set_user({"id": owner, "username": owner})
         sentry_sdk.set_tag("service", "isaac-kernel")
         sentry_sdk.set_tag("component", "kernel")
         sentry_sdk.set_context(
@@ -384,7 +385,6 @@ def request_transaction(
     with sentry_sdk.start_transaction(op=op, name=name) as tx:
         try:
             if user_input:
-                tx.set_tag("input_preview", (user_input or "")[:80])
                 tx.set_data("isaac.input_chars", len(user_input or ""))
             sentry_sdk.set_tag("transaction_name", name)
         except Exception:

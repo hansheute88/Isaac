@@ -1,5 +1,9 @@
 name: Isaac 2.0 Validation
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: ["isaac-2.0/masterplan", "feat/**", "feature/**"]
@@ -20,10 +24,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements.txt ]; then pip install --retries 5 --timeout 60 -r requirements.txt; fi
       - name: Compile Isaac 2.0 modules
         run: |
           python -m py_compile isaac_capabilities.py isaac_causal.py isaac_causal_query.py isaac_guardrails.py executor.py audit.py watchdog.py relay.py benchmarks/isaac20_fault_injection.py benchmarks/isaac20_metrics.py benchmarks/isaac20_ablation.py benchmarks/isaac20_governance.py benchmarks/isaac20_governance_f2.py isaac_sdk.py benchmarks/isaac20_investor_demo.py isaac_30day_evidence.py scripts/verify_isaac_30day_evidence.py isaac_runtime_audit.py motivation.py file_access.py owner_action.py browser.py isaac_mcp.py tool_runtime.py goal_store.py task_tool_state.py
