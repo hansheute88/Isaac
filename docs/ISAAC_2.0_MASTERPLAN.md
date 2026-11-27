@@ -571,7 +571,7 @@ DoD:
 
 ## Track D — Cybernetic Guardrail
 
-Status: D3 runtime lifecycle implemented
+Status: D3 runtime lifecycle implemented; D4 runtime recovery wired (opt-in, default off)
 
 Deliverables:
 - provider trust state
@@ -590,6 +590,8 @@ Completed:
 - release occurs only after a controlled verification probe returns success
 - failed recovery/probe produces an explicit FAILED state and does not release an existing quarantine
 - recovery and verification event IDs can be attached to Task.causal_refs
+- D4: runtime recovery is wired into the watchdog (`TaskWatchdog._maybe_recover_quarantined_providers`) and releases a provider only after a successful reachability probe (`key_health.probe_provider`); it is opt-in (`ISAAC_GUARDRAIL_AUTO_RECOVERY=1`) because automatic release would loosen an existing safety quarantine
+- quarantine state is still in-memory; across a process restart it is not persisted (see `docs/PLAN_STATUS.md` §7)
 - no guardrail primitive can escalate privileges or replace existing authorization gates
 
 DoD:

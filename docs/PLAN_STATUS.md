@@ -14,9 +14,9 @@ Legende: ✅ umgesetzt & getestet · ⏸ bewusst zurückgestellt · ⏳ Owner-Au
 | Track | Status | Evidenz |
 |---|---|---|
 | A — Architecture Contract | ✅ | `docs/ISAAC_2.0_MASTERPLAN.md`, `docs/ISAAC_2.0_A0_BASELINE.md`, `docs/ISAAC_2.0_B2_CAPABILITY_CONTRACT.md`, `docs/ISAAC_2.0_B3_CAUSAL_EVENT_SCHEMA.md` |
-| B — R/W/X Capability | ✅ | `isaac_capabilities.py`; Enforcement am Tool-Boundary in `tool_runtime.py`; `tests_isaac20_capabilities.py`, `tests_isaac20_e2e.py` |
+| B — R/W/X Capability | ✅ Contract · 🔶 Live-Pfad beratend | `isaac_capabilities.py`; Enforcement am Tool-Boundary in `tool_runtime.py`; beratende Evidenz im Live-Pfad (`executor._check_tool_execution_capability`, opt-out `ISAAC_RWX_ADVISORY=0`); Regression `tests_phase_a_stabilization.TestRwxCapabilityContract`; `tests_isaac20_capabilities.py`, `tests_isaac20_e2e.py` |
 | C — Causal Memory | ✅ | `isaac_causal.py`, `isaac_causal_query.py`; lineage via `audit.py`/`decision_trace.py`; `tests_isaac20_causal.py`, `tests_isaac20_causal_query.py`, `tests_isaac20_runtime_lineage.py` |
-| D — Cybernetic Guardrail | ✅ | `isaac_guardrails.py`, `watchdog.py`, `relay.py`; Quarantäne/Recovery-Lifecycle; `tests_isaac20_guardrails.py` |
+| D — Cybernetic Guardrail | ✅ | `isaac_guardrails.py`, `watchdog.py`, `relay.py`; Quarantäne/Recovery-Lifecycle; Runtime-Recovery `TaskWatchdog._maybe_recover_quarantined_providers` (opt-in `ISAAC_GUARDRAIL_AUTO_RECOVERY=1`, Probe über `key_health`); `tests_isaac20_guardrails.py` |
 | E — Metrics & Benchmarks | ✅ | `benchmarks/isaac20_fault_injection.py` (E1), `benchmarks/isaac20_metrics.py` (E2), `benchmarks/isaac20_ablation.py` (E3); `tests_isaac20_e1/e2/e3.py`; CI-Job `isaac20` |
 | F — Governance Evidence | ✅ | `benchmarks/isaac20_governance.py` (F1), `benchmarks/isaac20_governance_f2.py` (F2); `tests_isaac20_f1.py`, `tests_isaac20_f2.py` |
 | G — SDK / CLI | ✅ SDK / ⏸ CLI | `isaac_sdk.py`, `tests_isaac20_sdk.py`; CLI (§14) bewusst zurückgestellt — nur dokumentiert |
@@ -79,7 +79,18 @@ Legende: ✅ umgesetzt & getestet · ⏸ bewusst zurückgestellt · ⏳ Owner-Au
 - Offizieller 30-Tage-Proof-Lauf, Sentry-Item-Auflösung, CI-Billing-Entsperrung (Owner).
 - `web/`-Monorepo (next-forge) — unberührt.
 
-## 7. Wie das geprüft wird
+## 7. Offene Punkte (bewusst nicht in diesem Schritt)
+
+- **Quarantäne-Persistenz:** Der Guardrail-Status ist in-memory; ein Prozess-Neustart hebt eine
+  Safety-Quarantäne ohne Verifikation auf. Persistenz ist ein eigener, größerer Schritt.
+- **Automatische Recovery ist opt-in** (`ISAAC_GUARDRAIL_AUTO_RECOVERY=1`), weil sie eine
+  bestehende Safety-Quarantäne lockern würde. Die Probe prüft Key-/Endpoint-Erreichbarkeit
+  (`key_health.probe_provider`), nicht die Modell-Qualität.
+- **R/W/X-Durchsetzung im Live-Pfad** verlangt explizit registrierte Policies
+  (`executor.set_capability_policy` / `isaac_sdk.py`) plus kanonische Task-Deklaration
+  (dict-Form). Bis dahin ist die Live-Evidenz beratend, nicht blockierend.
+
+## 8. Wie das geprüft wird
 
 ```bash
 python3 -m py_compile isaac_core.py isaac_capabilities.py isaac_causal.py \
