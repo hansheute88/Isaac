@@ -67,7 +67,7 @@ Legende: ✅ umgesetzt & getestet · ⏸ bewusst zurückgestellt · ⏳ Owner-Au
 
 | Säule | Status | Evidenz |
 |---|---|---|
-| 1 E2E-Benchmark (100 Tasks) | ✅ | `evals/kernel_benchmark.py`, `evals/tasks_100_e2e.json`, `evals/eval_runner.py` |
+| 1 E2E-Benchmark (100 Tasks) | ✅ | `evals/kernel_benchmark.py` (Harness bindet `BenchmarkRelay` explizit an Kernel und Executor; `ok` schlägt bei Pipeline-Fehlermarkern oder unbenutztem Stub fehl), `evals/tasks_100_e2e.json`, `evals/eval_runner.py` |
 | 2 TaskGraph-Modell | ✅ | `executor.Task` (dependencies/goal/evidence/decision_trace), `evals/replay_eval.py` |
 | 3 Learning-Commit-Pipeline | ✅ | `learning_engine.py`, `learning_policy.py`, `evals/learning_eval.py` |
 | 4 Epistemisches Memory | ✅ | `memory.py` (`EpistemicClass`, `add_epistemic_memory`), `tests_prove_the_kernel.py` |
@@ -81,11 +81,27 @@ Legende: ✅ umgesetzt & getestet · ⏸ bewusst zurückgestellt · ⏳ Owner-Au
 
 ## 7. Offene Punkte (bewusst nicht in diesem Schritt)
 
+- **Der 100-Task-Benchmark belegt die Pipeline, nicht die Provider-Anbindung.** Er läuft gegen
+  den deterministischen Stub `BenchmarkRelay` (`evals/kernel_benchmark.py`) und damit ohne echte
+  LLM-Antwort. Belegt sind Routing, Retrieval-Aufruf, Strategy, Governance-Pfad, TaskGraph,
+  DecisionTrace und Learning-Commit — nicht Antwortqualität und nicht Live-Provider-Fallback.
+  Ein Lauf gegen echte Provider ist offen (Owner: API-Keys).
+- **Frühere `ok=True`-Meldung war maskiert:** `ok` prüfte nur „Antwort nicht leer". Ein Text wie
+  `[RELAY] Alle Provider fehlgeschlagen` galt damit als Erfolg. Seit PR #59 wertet der Benchmark
+  die Fehlermarker in `PIPELINE_ERROR_MARKERS` als Fehlschlag und meldet Harness-Fehler separat.
+
 - **Quarantäne-Persistenz:** Der Guardrail-Status ist in-memory; ein Prozess-Neustart hebt eine
   Safety-Quarantäne ohne Verifikation auf. Persistenz ist ein eigener, größerer Schritt.
 - **Automatische Recovery ist opt-in** (`ISAAC_GUARDRAIL_AUTO_RECOVERY=1`), weil sie eine
   bestehende Safety-Quarantäne lockern würde. Die Probe prüft Key-/Endpoint-Erreichbarkeit
   (`key_health.probe_provider`), nicht die Modell-Qualität.
+- **Ein `evals.eval_runner`-Lauf schreibt in das echte `data/`** (Memory, Learning, Self-Model,
+  Audit). In derselben Arbeitskopie kann die Kern-Testsuite danach abweichend laufen; beobachtet:
+  `tests_phase_a_stabilization.TestRwxCapabilityContract` fand nach 100 Benchmark-Tasks
+  `strategy.allow_tools=False` für `Suche: Wetter Berlin` und damit kein
+  `capability_declaration_skipped`. CI ist nicht betroffen (Unittests laufen **vor** dem Eval),
+  lokal gilt: `data/` vor dem Testlauf leer/neu starten. Eine Trennung von Eval- und
+  Laufzeit-Persistenz ist ein eigener Schritt.
 - **R/W/X-Durchsetzung im Live-Pfad** verlangt explizit registrierte Policies
   (`executor.set_capability_policy` / `isaac_sdk.py`) plus kanonische Task-Deklaration
   (dict-Form). Bis dahin ist die Live-Evidenz beratend, nicht blockierend.
