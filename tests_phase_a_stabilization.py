@@ -38,6 +38,48 @@ from mcp_registry import MCPRegistry
 from security_policy import ConfirmationPolicy
 
 
+class TestRwxCapabilityContract(unittest.TestCase):
+    """Regression: Kernel-Tasks dürfen den Pre-Flight nicht mit Nicht-Capabilities blockieren.
+
+    Validierungsfälle E/F scheiterten an ``required_capabilities=["tools"]``
+    (kanonisch ist ausschließlich ``capability:resource``).
+    """
+
+    def _run_kernel_preflight(self, prompt: str):
+        import executor as executor_mod
+
+        captured: dict[str, object] = {}
+
+        async def fake_submit_and_wait(_self, task, timeout=180.0):
+            captured["task"] = task
+            captured["preflight"] = executor_mod.get_executor()._preflight(task)
+            task.antwort = "stub"
+            task.status = TaskStatus.DONE
+            return task
+
+        async def _run():
+            kernel = IsaacKernel()
+            with patch.object(Executor, "submit_and_wait", new=fake_submit_and_wait):
+                await kernel.process(prompt)
+
+        asyncio.run(_run())
+        return captured["task"], captured["preflight"]
+
+    def test_bug_tool_intent_preflight_is_not_blocked(self):
+        task, preflight = self._run_kernel_preflight("Suche: Wetter Berlin")
+        self.assertIsNone(preflight)
+        self.assertEqual(task.required_capabilities, [])
+        events = [entry.event for entry in task.decision_trace.entries]
+        self.assertIn("capability_declaration_skipped", events)
+
+    def test_bug_code_intent_preflight_is_not_blocked(self):
+        task, preflight = self._run_kernel_preflight("code: sortiere eine Liste")
+        self.assertIsNone(preflight)
+        for required in task.required_capabilities:
+            raw = required if isinstance(required, str) else str(required.get("resource", ""))
+            self.assertIn(":", raw, f"nicht-kanonische Capability: {raw!r}")
+
+
 class TestCriticalBugs(unittest.TestCase):
     def setUp(self):
         self.kernel = object.__new__(IsaacKernel)

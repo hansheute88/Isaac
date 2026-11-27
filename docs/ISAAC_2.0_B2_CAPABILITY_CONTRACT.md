@@ -32,6 +32,17 @@ Canonical values are `read`, `write`, and `execute`.
 
 Tasks without `required_capabilities` preserve the existing execution path. Registry persistence is intentionally deferred.
 
+## Kernel integration (live path)
+
+The kernel declares no capability groups such as `tools` or `companions` — only canonical
+`capability:resource` entries are valid. Instead, the executor emits an advisory decision at
+the real tool boundary (`mode="advisory"`, `declared=False`): it is audited and attached to
+the decision trace, but it never blocks. Tool eligibility remains with `tool_policy`.
+Opt-out: `ISAAC_RWX_ADVISORY=0`.
+
+Enforcement (`mode="enforced"`) applies only to explicitly declared capabilities (dict form)
+and requires a registered policy; without one the canonical implicit deny blocks the tool.
+
 ## Safety invariant
 
 An R/W/X execute grant cannot authorize an operation rejected by `privilege.py`, `security_policy.py`, `constitution.py`, or another authoritative gate.

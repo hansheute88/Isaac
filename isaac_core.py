@@ -1085,11 +1085,10 @@ class IsaacKernel:
         )
         if hasattr(task, "risk_level"):
             task.risk_level = "high" if sudo_aktiv else ("medium" if strategy.allow_tools else "low")
-        if hasattr(task, "required_capabilities"):
-            if strategy.allow_tools:
-                task.required_capabilities.append("tools")
-            if strategy.allow_agent_companions:
-                task.required_capabilities.append("companions")
+        # R/W/X-Deklaration bleibt dem Task-/SDK-Vertrag vorbehalten: kanonisch ist
+        # "capability:resource" (docs/ISAAC_2.0_B2_CAPABILITY_CONTRACT.md). Gruppen wie
+        # "tools" sind dort nicht definiert und würden den Pre-Flight blockieren.
+        # Die Tool-Ausführung selbst wird am Tool-Boundary geprüft (advisory/enforced).
 
         if hasattr(task, "record_action"):
             task.record_action("classify", {"interaction_class": interaction_class, "intent": intent})
@@ -1103,6 +1102,17 @@ class IsaacKernel:
                 TracePhase.GOVERNANCE,
                 "constitution_allowed",
                 gate_trace_data(constitution_gate),
+            )
+        if strategy.allow_tools or strategy.allow_agent_companions:
+            task.decision_trace.add(
+                TracePhase.GOVERNANCE,
+                "capability_declaration_skipped",
+                {
+                    "reason": "no_explicit_rwx_policy_registered",
+                    "allow_tools": strategy.allow_tools,
+                    "allow_agent_companions": strategy.allow_agent_companions,
+                    "contract": "docs/ISAAC_2.0_B2_CAPABILITY_CONTRACT.md",
+                },
             )
         task.decision_trace.add(
             TracePhase.CLASSIFICATION,

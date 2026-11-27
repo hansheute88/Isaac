@@ -624,9 +624,17 @@ class Executor:
                 self.resume_task(task.id)
 
     # ── Pre-Flight-Validation ─────────────────────────────────────────────────
+    def _rwx_registry(self) -> RWXRegistry:
+        """Lazy accessor: partielle Executor-Instanzen (Tests) haben keine Registry."""
+        registry = getattr(self, "rwx_registry", None)
+        if registry is None:
+            registry = RWXRegistry()
+            self.rwx_registry = registry
+        return registry
+
     def set_capability_policy(self, policy: RWXPolicy) -> RWXPolicy:
         """Register an explicit Isaac 2.0 R/W/X policy without replacing legacy gates."""
-        return self.rwx_registry.set_policy(policy)
+        return self._rwx_registry().set_policy(policy)
 
     def _check_required_capabilities(self, task: Task) -> Optional[str]:
         """Enforce only capabilities explicitly declared by the task contract."""
@@ -653,7 +661,7 @@ class Executor:
                     reason=reason,
                     task_id=task.id,
                 )
-                decision = evaluate_with_audit(self.rwx_registry, request)
+                decision = evaluate_with_audit(self._rwx_registry(), request)
             except (TypeError, ValueError) as exc:
                 return f"Ungültige R/W/X-Anforderung: {exc}"
             capability_entry = task.decision_trace.add(
@@ -691,6 +699,36 @@ class Executor:
                 declared.append(required)
 
         if not declared:
+            # Beratende Evidenz im Live-Pfad (Masterplan Track B): die Entscheidung wird
+            # erzeugt und auditiert, blockiert aber nicht. Die Tool-Eligibility bleibt
+            # allein bei tool_policy. Opt-out: ISAAC_RWX_ADVISORY=0.
+            advisory = str(os.getenv("ISAAC_RWX_ADVISORY", "1")).strip().lower()
+            if advisory in {"0", "false", "no", "off"}:
+                return None
+            resource = f"tool:{identifier}"
+            decision = evaluate_with_audit(
+                self._rwx_registry(),
+                CapabilityRequest(
+                    resource=resource,
+                    capability=Capability.EXECUTE,
+                    principal="isaac-task",
+                    reason="advisory tool execution evaluation",
+                    task_id=task.id,
+                ),
+            )
+            advisory_entry = task.decision_trace.add(
+                TracePhase.GOVERNANCE,
+                "tool_execution_capability",
+                {
+                    **decision.as_dict(),
+                    "tool_identifier": identifier,
+                    "mode": "advisory",
+                    "declared": False,
+                },
+            )
+            task.causal_refs["tool_capability_advisory_trace_event_id"] = advisory_entry.event_id
+            if decision.audit_event_id:
+                task.causal_refs["tool_capability_advisory_audit_event_id"] = decision.audit_event_id
             return None
 
         resource = f"tool:{identifier}"
@@ -700,7 +738,7 @@ class Executor:
         ]
         if not matching:
             decision = evaluate_with_audit(
-                self.rwx_registry,
+                self._rwx_registry(),
                 CapabilityRequest(
                     resource=resource,
                     capability=Capability.EXECUTE,
@@ -712,7 +750,7 @@ class Executor:
         else:
             item = matching[0]
             decision = evaluate_with_audit(
-                self.rwx_registry,
+                self._rwx_registry(),
                 CapabilityRequest(
                     resource=resource,
                     capability=Capability.EXECUTE,
@@ -728,6 +766,8 @@ class Executor:
             {
                 **decision.as_dict(),
                 "tool_identifier": identifier,
+                "mode": "enforced",
+                "declared": True,
             },
         )
         task.causal_refs["tool_capability_trace_event_id"] = trace_entry.event_id
