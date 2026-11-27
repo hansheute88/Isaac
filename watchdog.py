@@ -17,6 +17,7 @@ Zwei Aufgaben:
 from __future__ import annotations
 
 import asyncio
+import os
 import time
 import logging
 from dataclasses import dataclass, field
@@ -26,6 +27,25 @@ from config import get_config
 from audit  import AuditLog
 
 log = logging.getLogger("Isaac.Watchdog")
+
+
+def _env_flag(name: str, default: str = "0") -> bool:
+    return str(os.getenv(name, default) or default).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _default_probe_resolver(provider: str):
+    """Synchronous reachability probe for one provider (no LLM call, no credits)."""
+    try:
+        from key_health import PROBES, probe_provider
+    except Exception:
+        return None
+    base = (provider or "").strip().lower().split(":", 1)[0]
+    for probe in PROBES:
+        if base == probe.provider or base.startswith(probe.provider):
+            def _probe(_probe=probe):
+                return probe_provider(_probe, timeout=5.0).get("status") == "ok"
+            return _probe
+    return None
 
 
 # ── Provider-Statistik ────────────────────────────────────────────────────────
@@ -43,6 +63,8 @@ class ProviderStats:
     guardrail_quarantined: bool = False
     guardrail_reason: str = ""
     guardrail_event_id: str = ""
+    guardrail_quarantined_at: float = 0.0    # time.monotonic() für Recovery-Cooldown
+    guardrail_quarantined_since: str = ""   # Wall-Clock für Telemetrie
 
     @property
     def fehlerquote(self) -> float:
@@ -95,6 +117,7 @@ class ProviderStats:
             "verfuegbar":  self.verfuegbar,
             "guardrail_quarantined": self.guardrail_quarantined,
             "guardrail_reason": self.guardrail_reason,
+            "guardrail_quarantined_since": self.guardrail_quarantined_since,
         }
 
 
@@ -162,6 +185,8 @@ class ProviderBlacklist:
         s.guardrail_quarantined = True
         s.guardrail_reason = (reason or "guardrail_quarantine")[:250]
         s.guardrail_event_id = source_event_id or ""
+        s.guardrail_quarantined_at = time.monotonic()
+        s.guardrail_quarantined_since = time.strftime("%Y-%m-%dT%H:%M:%S")
         s.blacklisted = True
         s.blacklist_bis = max(s.blacklist_bis, time.monotonic() + self.BLACKLIST_MAX)
         AuditLog.action("Watchdog", "provider_quarantine", provider, erfolg=False)
@@ -172,6 +197,8 @@ class ProviderBlacklist:
         s.guardrail_quarantined = False
         s.guardrail_reason = ""
         s.guardrail_event_id = ""
+        s.guardrail_quarantined_at = 0.0
+        s.guardrail_quarantined_since = ""
         s.blacklisted = False
         s.blacklist_bis = 0.0
         AuditLog.action("Watchdog", "provider_quarantine_released", provider, erfolg=True)
@@ -179,6 +206,10 @@ class ProviderBlacklist:
 
     def is_quarantined(self, provider: str) -> bool:
         return self._get(provider).guardrail_quarantined
+
+    def quarantined_providers(self) -> list[str]:
+        """Provider unter Guardrail-Quarantäne (für explizite Recovery-Prüfungen)."""
+        return [name for name, stats in self._stats.items() if stats.guardrail_quarantined]
 
     def ranked_providers(self, preferred: Optional[str] = None) -> list[str]:
         """
@@ -226,11 +257,13 @@ class TaskWatchdog:
     HANG_TIMEOUT    = 300.0   # Sekunden ohne Progress → Task hängt (Ollama auf Mobile braucht länger)
     CHECK_INTERVAL  = 15.0    # Wie oft prüfen
     MAX_RESTARTS    = 2       # Maximale Neustart-Versuche
+    GUARDRAIL_RECOVERY_COOLDOWN = 300.0  # Sekunden zwischen Recovery-Versuchen
 
     def __init__(self):
         self._executor    = None   # Wird später gesetzt (circular import vermeiden)
         self._restarts:   dict[str, int] = {}   # task_id → Anzahl Neustarts
         self._last_progress: dict[str, float] = {}  # task_id → time.monotonic()
+        self._guardrail_recoveries: dict[str, float] = {}
         self._running     = False
         self._task:       Optional[asyncio.Task] = None
         log.info("Watchdog initialisiert")
@@ -300,6 +333,58 @@ class TaskWatchdog:
             inaktiv = now - letzte_aktivitaet
             if inaktiv > self.HANG_TIMEOUT:
                 await self._handle_hang(task_obj, inaktiv)
+
+        await self._maybe_recover_quarantined_providers()
+
+    async def _maybe_recover_quarantined_providers(
+        self, *, blacklist=None, controller=None, probe_resolver=None,
+    ) -> dict[str, str]:
+        """D4: Quarantäne ist kein Endzustand — Recovery endet in VERIFIED oder FAILED.
+
+        Standardmäßig deaktiviert: eine automatische Freigabe würde eine bestehende
+        Safety-Quarantäne lockern. Aktivierung über ISAAC_GUARDRAIL_AUTO_RECOVERY=1.
+        Die Probe prüft Key-/Endpoint-Erreichbarkeit, nicht die Modell-Qualität.
+        """
+        if not _env_flag("ISAAC_GUARDRAIL_AUTO_RECOVERY", "0"):
+            return {}
+        from isaac_guardrails import get_guardrail_controller
+
+        blacklist = blacklist or get_blacklist()
+        controller = controller or get_guardrail_controller()
+        resolve = probe_resolver or _default_probe_resolver
+        now = time.monotonic()
+        outcomes: dict[str, str] = {}
+
+        for provider in blacklist.quarantined_providers():
+            stats = blacklist._get(provider)
+            quarantined_at = float(getattr(stats, "guardrail_quarantined_at", 0.0) or 0.0)
+            last_attempt = self._guardrail_recoveries.get(provider, 0.0)
+            if quarantined_at and now - quarantined_at < self.GUARDRAIL_RECOVERY_COOLDOWN:
+                continue
+            if last_attempt and now - last_attempt < self.GUARDRAIL_RECOVERY_COOLDOWN:
+                continue
+            probe = resolve(provider)
+            if probe is None:
+                log.debug("Guardrail-Recovery: keine Probe für %s", provider)
+                continue
+            self._guardrail_recoveries[provider] = now
+            try:
+                decision = await asyncio.to_thread(
+                    controller.recover_and_verify_provider,
+                    provider=provider,
+                    source_event_id=getattr(stats, "guardrail_event_id", "") or "",
+                    reason="watchdog_auto_recovery",
+                    recovery_action=lambda: None,
+                    verification_probe=probe,
+                    task_id="watchdog",
+                )
+            except Exception as exc:
+                log.warning("Guardrail-Recovery %s fehlgeschlagen: %s", provider, exc)
+                outcomes[provider] = "failed"
+                continue
+            outcomes[provider] = decision.state.value
+            log.info("Guardrail-Recovery %s → %s", provider, decision.state.value)
+        return outcomes
 
     async def _handle_hang(self, task, inaktiv: float):
         from executor import TaskStatus

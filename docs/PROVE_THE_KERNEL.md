@@ -21,6 +21,18 @@ Standardisierte Kategorien:
 - Decision Trace Completeness & Redaction
 - Learning Candidate Extraction & Commit
 
+### Was der Benchmark belegt – und was nicht
+
+Der Lauf misst die Pipeline gegen den Stub `BenchmarkRelay` (Kategorie E: Demo/Simulation),
+nicht gegen Live-Provider. Belegt sind: Classification/Routing, Aufruf des Retrieval-Pfads,
+Strategy-Ausführung, Governance-Pfad, TaskGraph, DecisionTrace-Redaktion und Learning-Commit.
+Nicht belegt sind Antwortqualität, Provider-Fallback und Verhalten bei echten Timeouts.
+
+Der Harness bindet den Stub explizit an `IsaacKernel` und `Executor` (beide frieren
+`get_relay()` im `__init__` ein) und schlägt fehl, wenn der Stub nie aufgerufen wurde oder eine
+Antwort einen Eintrag aus `PIPELINE_ERROR_MARKERS` enthält. Ein nicht-leerer Fehlertext ist
+kein Erfolg.
+
 ---
 
 ## 2. Formales TaskGraph-Modell

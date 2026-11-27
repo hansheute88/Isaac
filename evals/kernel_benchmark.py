@@ -27,11 +27,35 @@ from evals.kernel_metrics import KernelMetricsEvaluator
 
 
 class BenchmarkRelay:
+    """Deterministischer Stub-Provider des Evals (Category E, keine echte LLM-Antwort)."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
     async def ask_with_fallback(self, prompt: str, system: str = "", task_id: str = "", **kwargs) -> tuple[str, str]:
+        self.calls += 1
         return f"[Benchmark Response] Task executed successfully for: {prompt[:40]}", "benchmark-provider"
 
     async def ask(self, prompt: str, system: str = "", task_id: str = "", **kwargs) -> tuple[str, str]:
+        self.calls += 1
         return f"[Benchmark Response] Task executed successfully for: {prompt[:40]}", "benchmark-provider"
+
+
+PIPELINE_ERROR_MARKERS = (
+    "Ungültige R/W/X-Anforderung",
+    "R/W/X blockiert",
+    "[RELAY] Alle Provider fehlgeschlagen",
+    "[Keine Antwort]",
+)
+
+
+def _pipeline_error_marker(response: str) -> str:
+    """Ein nicht-leerer Fehlertext ist kein Erfolg — das Eval muss ihn erkennen."""
+    text = response or ""
+    for marker in PIPELINE_ERROR_MARKERS:
+        if marker in text:
+            return marker
+    return ""
 
 
 def build_100_benchmark_cases() -> list[dict[str, Any]]:
@@ -49,15 +73,27 @@ def build_100_benchmark_cases() -> list[dict[str, Any]]:
 
 async def run_async() -> dict[str, Any]:
     cases_def = build_100_benchmark_cases()
-    kernel = IsaacKernel()
     memory = get_memory()
-    executor = get_executor()
     learning = get_learning_engine()
+
+    # Der Benchmark muss den Stub messen, nicht die Provider-Verfügbarkeit.
+    # IsaacKernel und Executor frieren get_relay() im __init__ ein; ein Patch von
+    # relay.get_relay reicht daher nicht. Der Relay wird nach der Konstruktion
+    # explizit gebunden, sonst misst der Lauf den echten Multi-Provider-Relay.
+    benchmark_relay = BenchmarkRelay()
+    kernel = IsaacKernel()
+    executor = get_executor()
+    kernel.relay = benchmark_relay
+    executor.relay = benchmark_relay
+
+    harness_errors: list[str] = []
+    if kernel.relay is not benchmark_relay or executor.relay is not benchmark_relay:
+        harness_errors.append("BenchmarkRelay nicht an Kernel/Executor gebunden")
+    if kernel.executor is not executor:
+        harness_errors.append("Kernel nutzt einen anderen Executor als der Benchmark")
 
     # Start executor background worker for processing queued tasks
     worker_task = asyncio.create_task(executor.start_worker(concurrency=4))
-
-    benchmark_relay = BenchmarkRelay()
 
     passed_cases = 0
     executed_tasks: list[dict[str, Any]] = []
@@ -81,18 +117,20 @@ async def run_async() -> dict[str, Any]:
                 response = await kernel.handle_message(prompt, sudo_token=sudo_token)
 
                 duration = round(time.perf_counter() - t0, 4)
-                ok = True
+                pipeline_error = _pipeline_error_marker(response)
+                ok = not pipeline_error
                 detail: dict[str, Any] = {
                     "category": category,
                     "response_length": len(response or ""),
                     "duration": duration,
+                    "pipeline_error": pipeline_error,
                 }
 
                 if category == "1_classification_intent":
                     classification = classify_interaction_result(prompt)
                     detected = detect_intent(prompt)
                     expected_intent = c.get("expected_intent")
-                    ok = bool(response) and (detected == expected_intent or classification.interaction_class is not None)
+                    ok = ok and (detected == expected_intent or classification.interaction_class is not None)
                     detail.update({
                         "detected_intent": detected,
                         "expected_intent": expected_intent,
@@ -101,7 +139,7 @@ async def run_async() -> dict[str, Any]:
 
                 elif category == "2_memory_context":
                     ctx = memory.build_retrieval_context(prompt)
-                    ok = bool(response) and (ctx is not None)
+                    ok = ok and (ctx is not None)
                     detail.update({"retrieval_context_built": ctx is not None})
 
                 elif category == "3_strategy_decomposition":
@@ -109,7 +147,7 @@ async def run_async() -> dict[str, Any]:
                     detail.update({"strategy_response_ok": bool(response)})
 
                 elif category == "4_governance_security":
-                    ok = bool(response) or ("[Verfassung]" in (response or "") or "blockiert" in (response or ""))
+                    ok = ok and bool(response)
                     detail.update({"require_sudo": require_sudo, "governance_ok": ok})
 
                 elif category == "5_execution_taskgraph":
@@ -129,12 +167,12 @@ async def run_async() -> dict[str, Any]:
                     executor._tasks[tid] = task
 
                     graph = executor.get_task_graph(tid)
-                    ok = bool(response) and (graph.get("root_id") == tid)
+                    ok = ok and (graph.get("root_id") == tid)
                     detail.update({"graph_nodes": graph.get("node_count")})
 
                 elif category == "6_evaluation_selfcorrection":
                     score = QualityScore(total=0.88, length=0.9, coverage=0.85, specificity=0.9, coherence=0.88)
-                    ok = bool(response) and (score.total >= c.get("min_quality_score", 0.8))
+                    ok = ok and (score.total >= c.get("min_quality_score", 0.8))
                     detail.update({"score": score.total})
 
                 elif category == "7_decision_trace":
@@ -146,7 +184,7 @@ async def run_async() -> dict[str, Any]:
                     exported_dict = dt.to_portable_export()
                     exported_str = json.dumps(exported_dict)
 
-                    ok = bool(response) and (len(trace_list) == len(TracePhase)) and ("[REDACTED]" in exported_str)
+                    ok = ok and (len(trace_list) == len(TracePhase)) and ("[REDACTED]" in exported_str)
                     detail.update({"phases_count": len(trace_list), "redacted": "[REDACTED]" in exported_str})
 
                 elif category == "8_learning_commit":
@@ -164,7 +202,7 @@ async def run_async() -> dict[str, Any]:
                         governance_approved=True,
                     )
                     committed = learning.commit_candidate(cand.candidate_id)
-                    ok = bool(response) and (committed is not None and committed.status == CandidateStatus.COMMITTED and len(committed.commit_hash) == 16)
+                    ok = ok and (committed is not None and committed.status == CandidateStatus.COMMITTED and len(committed.commit_hash) == 16)
                     detail.update({"commit_hash": committed.commit_hash if committed else ""})
 
                 if ok:
@@ -194,6 +232,11 @@ async def run_async() -> dict[str, Any]:
         except asyncio.CancelledError:
             pass
 
+    if benchmark_relay.calls == 0:
+        harness_errors.append(
+            "BenchmarkRelay wurde nie aufgerufen – der Lauf hat den echten Relay gemessen"
+        )
+
     metrics_evaluator = KernelMetricsEvaluator()
     metrics_report = metrics_evaluator.evaluate_tasks(executed_tasks)
     metrics_dict = metrics_report.to_dict()
@@ -203,7 +246,11 @@ async def run_async() -> dict[str, Any]:
         "suite": "kernel_benchmark",
         "passed": passed_cases,
         "total": len(cases_def),
-        "ok": passed_cases == len(cases_def),
+        "ok": passed_cases == len(cases_def) and not harness_errors,
+        "harness": {
+            "benchmark_relay_calls": benchmark_relay.calls,
+            "errors": harness_errors,
+        },
         "metrics": metrics_dict,
         "cases": case_results,
     }

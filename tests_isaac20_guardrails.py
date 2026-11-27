@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import asyncio
+import os
+import time
 import unittest
 from unittest.mock import patch
 
@@ -22,6 +25,90 @@ class FakeBlacklist:
     def verify_quarantine(self, provider):
         self.verified.append(provider)
         return True
+
+
+class TestGuardrailRuntimeRecovery(unittest.TestCase):
+    """D4: Quarantäne endet nur über explizite, probe-verifizierte Recovery."""
+
+    def _quarantined_blacklist(self):
+        blacklist = object.__new__(ProviderBlacklist)
+        blacklist._stats = {"groq": ProviderStats("groq")}
+        blacklist.quarantine(
+            "groq", reason="safety_critical_failure", source_event_id="evt-quarantine"
+        )
+        blacklist._stats["groq"].guardrail_quarantined_at = 0.0  # Cooldown überspringen
+        return blacklist
+
+    def test_auto_recovery_releases_after_successful_probe(self):
+        from watchdog import TaskWatchdog
+
+        blacklist = self._quarantined_blacklist()
+        controller = GuardrailController(blacklist)
+
+        with patch.dict(os.environ, {"ISAAC_GUARDRAIL_AUTO_RECOVERY": "1"}):
+            outcomes = asyncio.run(
+                TaskWatchdog()._maybe_recover_quarantined_providers(
+                    blacklist=blacklist,
+                    controller=controller,
+                    probe_resolver=lambda provider: (lambda: True),
+                )
+            )
+
+        self.assertEqual(outcomes, {"groq": GuardrailState.VERIFIED.value})
+        self.assertFalse(blacklist.is_quarantined("groq"))
+
+    def test_auto_recovery_failed_probe_keeps_quarantine(self):
+        from watchdog import TaskWatchdog
+
+        blacklist = self._quarantined_blacklist()
+        controller = GuardrailController(blacklist)
+
+        with patch.dict(os.environ, {"ISAAC_GUARDRAIL_AUTO_RECOVERY": "1"}):
+            outcomes = asyncio.run(
+                TaskWatchdog()._maybe_recover_quarantined_providers(
+                    blacklist=blacklist,
+                    controller=controller,
+                    probe_resolver=lambda provider: (lambda: False),
+                )
+            )
+
+        self.assertEqual(outcomes, {"groq": GuardrailState.FAILED.value})
+        self.assertTrue(blacklist.is_quarantined("groq"))
+
+    def test_auto_recovery_is_opt_in(self):
+        from watchdog import TaskWatchdog
+
+        blacklist = self._quarantined_blacklist()
+
+        with patch.dict(os.environ, {"ISAAC_GUARDRAIL_AUTO_RECOVERY": "0"}):
+            outcomes = asyncio.run(
+                TaskWatchdog()._maybe_recover_quarantined_providers(
+                    blacklist=blacklist,
+                    controller=GuardrailController(blacklist),
+                    probe_resolver=lambda provider: (lambda: True),
+                )
+            )
+
+        self.assertEqual(outcomes, {})
+        self.assertTrue(blacklist.is_quarantined("groq"))
+
+    def test_cooldown_prevents_immediate_recovery_attempt(self):
+        from watchdog import TaskWatchdog
+
+        blacklist = self._quarantined_blacklist()
+        blacklist._stats["groq"].guardrail_quarantined_at = time.monotonic()
+
+        with patch.dict(os.environ, {"ISAAC_GUARDRAIL_AUTO_RECOVERY": "1"}):
+            outcomes = asyncio.run(
+                TaskWatchdog()._maybe_recover_quarantined_providers(
+                    blacklist=blacklist,
+                    controller=GuardrailController(blacklist),
+                    probe_resolver=lambda provider: (lambda: True),
+                )
+            )
+
+        self.assertEqual(outcomes, {})
+        self.assertTrue(blacklist.is_quarantined("groq"))
 
 
 class TestIsaac20Guardrails(unittest.TestCase):

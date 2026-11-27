@@ -14,9 +14,9 @@ Legende: ✅ umgesetzt & getestet · ⏸ bewusst zurückgestellt · ⏳ Owner-Au
 | Track | Status | Evidenz |
 |---|---|---|
 | A — Architecture Contract | ✅ | `docs/ISAAC_2.0_MASTERPLAN.md`, `docs/ISAAC_2.0_A0_BASELINE.md`, `docs/ISAAC_2.0_B2_CAPABILITY_CONTRACT.md`, `docs/ISAAC_2.0_B3_CAUSAL_EVENT_SCHEMA.md` |
-| B — R/W/X Capability | ✅ | `isaac_capabilities.py`; Enforcement am Tool-Boundary in `tool_runtime.py`; `tests_isaac20_capabilities.py`, `tests_isaac20_e2e.py` |
+| B — R/W/X Capability | ✅ Contract · 🔶 Live-Pfad beratend | `isaac_capabilities.py`; Enforcement am Tool-Boundary in `tool_runtime.py`; beratende Evidenz im Live-Pfad (`executor._check_tool_execution_capability`, opt-out `ISAAC_RWX_ADVISORY=0`); Regression `tests_phase_a_stabilization.TestRwxCapabilityContract`; `tests_isaac20_capabilities.py`, `tests_isaac20_e2e.py` |
 | C — Causal Memory | ✅ | `isaac_causal.py`, `isaac_causal_query.py`; lineage via `audit.py`/`decision_trace.py`; `tests_isaac20_causal.py`, `tests_isaac20_causal_query.py`, `tests_isaac20_runtime_lineage.py` |
-| D — Cybernetic Guardrail | ✅ | `isaac_guardrails.py`, `watchdog.py`, `relay.py`; Quarantäne/Recovery-Lifecycle; `tests_isaac20_guardrails.py` |
+| D — Cybernetic Guardrail | ✅ | `isaac_guardrails.py`, `watchdog.py`, `relay.py`; Quarantäne/Recovery-Lifecycle; Runtime-Recovery `TaskWatchdog._maybe_recover_quarantined_providers` (opt-in `ISAAC_GUARDRAIL_AUTO_RECOVERY=1`, Probe über `key_health`); `tests_isaac20_guardrails.py` |
 | E — Metrics & Benchmarks | ✅ | `benchmarks/isaac20_fault_injection.py` (E1), `benchmarks/isaac20_metrics.py` (E2), `benchmarks/isaac20_ablation.py` (E3); `tests_isaac20_e1/e2/e3.py`; CI-Job `isaac20` |
 | F — Governance Evidence | ✅ | `benchmarks/isaac20_governance.py` (F1), `benchmarks/isaac20_governance_f2.py` (F2); `tests_isaac20_f1.py`, `tests_isaac20_f2.py` |
 | G — SDK / CLI | ✅ SDK / ⏸ CLI | `isaac_sdk.py`, `tests_isaac20_sdk.py`; CLI (§14) bewusst zurückgestellt — nur dokumentiert |
@@ -67,7 +67,7 @@ Legende: ✅ umgesetzt & getestet · ⏸ bewusst zurückgestellt · ⏳ Owner-Au
 
 | Säule | Status | Evidenz |
 |---|---|---|
-| 1 E2E-Benchmark (100 Tasks) | ✅ | `evals/kernel_benchmark.py`, `evals/tasks_100_e2e.json`, `evals/eval_runner.py` |
+| 1 E2E-Benchmark (100 Tasks) | ✅ | `evals/kernel_benchmark.py` (Harness bindet `BenchmarkRelay` explizit an Kernel und Executor; `ok` schlägt bei Pipeline-Fehlermarkern oder unbenutztem Stub fehl), `evals/tasks_100_e2e.json`, `evals/eval_runner.py` |
 | 2 TaskGraph-Modell | ✅ | `executor.Task` (dependencies/goal/evidence/decision_trace), `evals/replay_eval.py` |
 | 3 Learning-Commit-Pipeline | ✅ | `learning_engine.py`, `learning_policy.py`, `evals/learning_eval.py` |
 | 4 Epistemisches Memory | ✅ | `memory.py` (`EpistemicClass`, `add_epistemic_memory`), `tests_prove_the_kernel.py` |
@@ -79,7 +79,34 @@ Legende: ✅ umgesetzt & getestet · ⏸ bewusst zurückgestellt · ⏳ Owner-Au
 - Offizieller 30-Tage-Proof-Lauf, Sentry-Item-Auflösung, CI-Billing-Entsperrung (Owner).
 - `web/`-Monorepo (next-forge) — unberührt.
 
-## 7. Wie das geprüft wird
+## 7. Offene Punkte (bewusst nicht in diesem Schritt)
+
+- **Der 100-Task-Benchmark belegt die Pipeline, nicht die Provider-Anbindung.** Er läuft gegen
+  den deterministischen Stub `BenchmarkRelay` (`evals/kernel_benchmark.py`) und damit ohne echte
+  LLM-Antwort. Belegt sind Routing, Retrieval-Aufruf, Strategy, Governance-Pfad, TaskGraph,
+  DecisionTrace und Learning-Commit — nicht Antwortqualität und nicht Live-Provider-Fallback.
+  Ein Lauf gegen echte Provider ist offen (Owner: API-Keys).
+- **Frühere `ok=True`-Meldung war maskiert:** `ok` prüfte nur „Antwort nicht leer". Ein Text wie
+  `[RELAY] Alle Provider fehlgeschlagen` galt damit als Erfolg. Seit PR #59 wertet der Benchmark
+  die Fehlermarker in `PIPELINE_ERROR_MARKERS` als Fehlschlag und meldet Harness-Fehler separat.
+
+- **Quarantäne-Persistenz:** Der Guardrail-Status ist in-memory; ein Prozess-Neustart hebt eine
+  Safety-Quarantäne ohne Verifikation auf. Persistenz ist ein eigener, größerer Schritt.
+- **Automatische Recovery ist opt-in** (`ISAAC_GUARDRAIL_AUTO_RECOVERY=1`), weil sie eine
+  bestehende Safety-Quarantäne lockern würde. Die Probe prüft Key-/Endpoint-Erreichbarkeit
+  (`key_health.probe_provider`), nicht die Modell-Qualität.
+- **Ein `evals.eval_runner`-Lauf schreibt in das echte `data/`** (Memory, Learning, Self-Model,
+  Audit). In derselben Arbeitskopie kann die Kern-Testsuite danach abweichend laufen; beobachtet:
+  `tests_phase_a_stabilization.TestRwxCapabilityContract` fand nach 100 Benchmark-Tasks
+  `strategy.allow_tools=False` für `Suche: Wetter Berlin` und damit kein
+  `capability_declaration_skipped`. CI ist nicht betroffen (Unittests laufen **vor** dem Eval),
+  lokal gilt: `data/` vor dem Testlauf leer/neu starten. Eine Trennung von Eval- und
+  Laufzeit-Persistenz ist ein eigener Schritt.
+- **R/W/X-Durchsetzung im Live-Pfad** verlangt explizit registrierte Policies
+  (`executor.set_capability_policy` / `isaac_sdk.py`) plus kanonische Task-Deklaration
+  (dict-Form). Bis dahin ist die Live-Evidenz beratend, nicht blockierend.
+
+## 8. Wie das geprüft wird
 
 ```bash
 python3 -m py_compile isaac_core.py isaac_capabilities.py isaac_causal.py \
